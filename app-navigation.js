@@ -373,16 +373,21 @@
       }
     
     }
-        /* Responzivne vyuzitie vysky obrazovky */
-    html {
+    /* Responzivne vyuzitie vysky obrazovky */
+    html, body {
       min-height: 100%;
     }
 
     body {
-      min-height: 100vh !important;
-      min-height: 100dvh !important;
+      height: 100vh !important;
+      height: 100dvh !important;
       display: flex !important;
       flex-direction: column !important;
+      overflow-y: auto !important;
+    }
+
+    header {
+      flex-shrink: 0 !important;
     }
 
     #appViews {
