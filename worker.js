@@ -131,7 +131,7 @@ export default {
 
         const payload = {
           model: "seedance2_mini",
-          videoUri: uploadInfo.runwayUri,
+          promptVideo: uploadInfo.runwayUri,
           promptText: prompt,
           references: images.map(uri => ({ uri })),
           ratio,
