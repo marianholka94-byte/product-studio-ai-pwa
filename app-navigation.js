@@ -201,13 +201,19 @@
       line-height: 1.6;
     }
 
-    #appBottomNav {
-      position: fixed;
-      z-index: 9999;
-      bottom: 0;
-      left: 0;
-      right: 0;
+        #appBottomNav {
+      position: fixed !important;
+      z-index: 99999 !important;
+      bottom: 0 !important;
+      left: 0 !important;
+      right: 0 !important;
+      width: 100%;
+      margin: 0 !important;
+      transform: none !important;
       display: grid;
+      visibility: visible;
+      opacity: 1;
+      pointer-events: auto;
       grid-template-columns: repeat(3, 1fr);
       gap: 7px;
       padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
