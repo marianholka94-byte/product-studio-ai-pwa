@@ -358,27 +358,32 @@
       margin: 0 !important;
     }
 
-    /* VACSIA TYPOGRAFIA V CELEJ APLIKACII - NAVIGACIA OSTAVA BEZ ZMENY */
+    /* VYRAZNE VACSIE PISMO A POLIA - SPODNA NAVIGACIA SA NEMENI */
+    body {
+      font-size: 21px !important;
+    }
+
     header h1 {
-      font-size: 35px !important;
+      font-size: 36px !important;
       line-height: 1.2 !important;
       letter-spacing: 1px !important;
     }
 
     header .muted {
-      font-size: 21px !important;
+      font-size: 22px !important;
       line-height: 1.5 !important;
     }
 
-    h2 {
-      font-size: 34px !important;
+    .panel h2 {
+      font-size: 36px !important;
       line-height: 1.3 !important;
+      margin-bottom: 22px !important;
     }
 
     .panel h2[data-section-icon] {
       display: flex !important;
       align-items: center !important;
-      gap: 14px !important;
+      gap: 16px !important;
     }
 
     .panel h2[data-section-icon]::before {
@@ -386,52 +391,90 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      flex: 0 0 48px;
-      width: 48px;
-      height: 48px;
-      font-size: 34px;
+      flex: 0 0 52px;
+      width: 52px;
+      height: 52px;
+      font-size: 40px;
       line-height: 1;
     }
 
-    label {
-      font-size: 25px !important;
-      line-height: 1.4 !important;
-      margin-top: 22px !important;
-    }
-
-    input,
-    select,
-    textarea {
+    .panel label {
+      display: block !important;
       font-size: 27px !important;
-      min-height: 84px !important;
-      padding: 21px !important;
       line-height: 1.4 !important;
+      font-weight: 700 !important;
+      margin: 24px 0 10px !important;
+      color: #d5dce7 !important;
     }
 
-    input[type="file"] {
-      font-size: 22px !important;
+    .panel input,
+    .panel select,
+    .panel textarea {
+      width: 100% !important;
+      min-height: 92px !important;
+      font-size: 29px !important;
+      line-height: 1.35 !important;
+      padding: 20px !important;
+      border-radius: 14px !important;
     }
 
-    textarea {
-      min-height: 190px !important;
-    }
-
-    button:not(#appBottomNav button) {
-      font-size: 25px !important;
+    .panel input[type="file"] {
+      font-size: 23px !important;
       min-height: 84px !important;
     }
 
-    .note,
-    .muted,
-    .small,
-    .app-placeholder p {
-      font-size: 21px !important;
+    .panel input::placeholder,
+    .panel textarea::placeholder {
+      font-size: 25px !important;
+    }
+
+    .panel select option {
+      font-size: 26px !important;
+    }
+
+    .panel textarea {
+      min-height: 200px !important;
+    }
+
+    .panel button:not(#appBottomNav button) {
+      font-size: 27px !important;
+      min-height: 90px !important;
+      padding: 18px !important;
+    }
+
+    .panel .note,
+    .panel .muted,
+    .panel .small,
+    .panel p {
+      font-size: 22px !important;
       line-height: 1.6 !important;
     }
 
-    .output {
-      font-size: 23px !important;
+    .panel .output {
+      font-size: 24px !important;
       line-height: 1.65 !important;
+    }
+
+    .studio-welcome .welcome-kicker {
+      font-size: 16px !important;
+    }
+
+    .studio-welcome h2 {
+      font-size: 30px !important;
+      line-height: 1.3 !important;
+    }
+
+    .studio-welcome p {
+      font-size: 20px !important;
+      line-height: 1.6 !important;
+    }
+
+    /* Na uzkom mobile maju polia plnu sirku a pohodlne sa ovladaju */
+    @media (max-width: 600px) {
+      .grid {
+        grid-template-columns: 1fr !important;
+        gap: 12px !important;
+      }
     }
 
     html,
