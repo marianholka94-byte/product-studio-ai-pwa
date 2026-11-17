@@ -86,7 +86,7 @@ a{color:#174ea6;overflow-wrap:anywhere}
 <section class="panel" id="videoToVideoPanel">
 <h2>Video → AI reklama</h2>
 <p class="note">Nahraj vlastné produktové video z kamery a 1 až 5 fotografií produktu. AI výrazne upraví filmový vzhľad, svetlo a atmosféru, pričom sa pokúsi zachovať produkt a pohyb kamery.</p>
-<label for="sourceVideo">Vstupné video (MP4, MOV alebo WebM; max. 50 MB, odporúčame do 15 sekúnd)</label>
+<label for="sourceVideo">Vstupné video (MP4, MOV alebo WebM; max. 50 MB a 15 sekúnd)</label>
 <input id="sourceVideo" type="file" accept="video/mp4,video/quicktime,video/webm">
 <video id="sourceVideoPreview" controls playsinline style="display:none;max-height:280px"></video>
 <div id="sourceVideoInfo" class="note">Vyber krátky, stabilný záber produktu. Video musí mať aspoň 512 B.</div>
@@ -249,9 +249,9 @@ sourceVideo.addEventListener('change',()=>{
  sourceVideoPreview.style.display='block';
  sourceVideoPreview.onloadedmetadata=()=>{
   const seconds=sourceVideoPreview.duration;
-  if(Number.isFinite(seconds)&&seconds>30){
+  if(Number.isFinite(seconds)&&seconds>15){
    selectedSourceVideo=null;sourceVideo.value='';sourceVideoPreview.pause();sourceVideoPreview.removeAttribute('src');sourceVideoPreview.style.display='none';
-   $('sourceVideoInfo').textContent='Vstupné video môže mať najviac 30 sekúnd. Vyber kratší záber.';
+   $('sourceVideoInfo').textContent='Vstupné video pre tento režim môže mať najviac 15 sekúnd. Vyber kratší záber.';
    $('sourceVideoInfo').className='status err';return;
   }
   $('sourceVideoInfo').textContent=`Vybrané: ${selectedSourceVideo.name} · ${(selectedSourceVideo.size/1024/1024).toFixed(1)} MB · ${Number.isFinite(seconds)?seconds.toFixed(1)+' s':'dĺžka sa zisťuje'}`;
