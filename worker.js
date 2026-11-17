@@ -55,6 +55,104 @@ export default {
         return reply({ ok: true, service: "PRODUCT STUDIO AI", provider: "Runway Dev", model: "seedance2_mini" });
       }
 
+      if (request.method === "POST" && url.pathname === "/api/generate-video") {
+        const contentLength = Number(request.headers.get("Content-Length") || 0);
+        if (contentLength > 75 * 1024 * 1024) {
+          return reply({ error: "Video a fotografie spolu prekračujú limit 75 MB. Zmenši video alebo použi kratší záber." }, 413);
+        }
+
+        let form;
+        try { form = await request.formData(); }
+        catch { return reply({ error: "Nepodarilo sa načítať video a referenčné fotografie." }, 400); }
+
+        const video = form.get("video");
+        if (!(video instanceof File) || video.size < 512) {
+          return reply({ error: "Nahraj platné vstupné video." }, 400);
+        }
+        if (video.size > 50 * 1024 * 1024) {
+          return reply({ error: "Video môže mať najviac 50 MB. Exportuj kratší alebo menší súbor." }, 413);
+        }
+        const allowedVideoTypes = new Set(["video/mp4", "video/quicktime", "video/webm"]);
+        if (!allowedVideoTypes.has(video.type)) {
+          return reply({ error: "Podporované video formáty sú MP4, MOV a WebM." }, 400);
+        }
+
+        let images;
+        try { images = JSON.parse(String(form.get("references") || "[]")); }
+        catch { return reply({ error: "Referenčné fotografie nie sú v platnom formáte." }, 400); }
+        if (!Array.isArray(images) || images.length < 1 || images.length > 5) {
+          return reply({ error: "Pridaj 1 až 5 referenčných fotografií produktu." }, 400);
+        }
+        for (const image of images) {
+          if (typeof image !== "string" || !/^data:image\/(jpeg|jpg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(image)) {
+            return reply({ error: "Jedna z referenčných fotografií nemá podporovaný formát." }, 400);
+          }
+          if (image.length > 5 * 1024 * 1024) {
+            return reply({ error: "Každá referenčná fotografia musí mať menej než 5 MB." }, 413);
+          }
+        }
+        if (images.reduce((total, image) => total + image.length, 0) > 20 * 1024 * 1024) {
+          return reply({ error: "Súhrnná veľkosť referenčných fotografií prekračuje 20 MB." }, 413);
+        }
+
+        const prompt = String(form.get("prompt") || "").trim();
+        if (!prompt || prompt.length > 10000) {
+          return reply({ error: "Text zadania musí mať 1 až 10 000 znakov." }, 400);
+        }
+        const duration = Number(form.get("duration"));
+        if (!Number.isInteger(duration) || duration < 4 || duration > 15) {
+          return reply({ error: "Dĺžka výsledného videa musí byť 4 až 15 sekúnd." }, 400);
+        }
+        const ratio = String(form.get("ratio") || "");
+        if (!ALLOWED_RATIOS.has(ratio)) {
+          return reply({ error: "Nepodporovaný pomer strán alebo rozlíšenie pre Seedance 2.0 Mini." }, 400);
+        }
+
+        // Upload the original clip to Runway ephemeral storage. The returned runway:// URI
+        // is used directly in the video-to-video generation request.
+        const uploadInit = await fetch("https://api.dev.runwayml.com/v1/uploads", {
+          method: "POST",
+          headers: runwayHeaders(env),
+          body: JSON.stringify({ filename: video.name || "product-source.mp4", type: "ephemeral" })
+        });
+        const uploadInfo = await uploadInit.json().catch(() => ({}));
+        if (!uploadInit.ok || !uploadInfo.uploadUrl || !uploadInfo.runwayUri || !uploadInfo.fields) {
+          const message = uploadInfo.error?.message || uploadInfo.error || uploadInfo.message || `Runway upload vrátil HTTP ${uploadInit.status}.`;
+          return reply({ error: String(message), providerStatus: uploadInit.status }, uploadInit.ok ? 502 : uploadInit.status);
+        }
+
+        const uploadForm = new FormData();
+        for (const [key, value] of Object.entries(uploadInfo.fields)) uploadForm.append(key, String(value));
+        uploadForm.append("file", video, video.name || "product-source.mp4");
+        const uploaded = await fetch(uploadInfo.uploadUrl, { method: "POST", body: uploadForm });
+        if (!uploaded.ok) {
+          return reply({ error: "Nahratie videa do Runway zlyhalo. Skús exportovať video do MP4 a nahrať ho znova.", providerStatus: uploaded.status }, 502);
+        }
+
+        const payload = {
+          model: "seedance2_mini",
+          videoUri: uploadInfo.runwayUri,
+          promptText: prompt,
+          references: images.map(uri => ({ uri })),
+          ratio,
+          duration,
+          audio: false,
+          bitrate: "high"
+        };
+        const upstream = await fetch("https://api.dev.runwayml.com/v1/video_to_video", {
+          method: "POST",
+          headers: runwayHeaders(env),
+          body: JSON.stringify(payload)
+        });
+        const result = await upstream.json().catch(() => ({}));
+        if (!upstream.ok) {
+          const message = result.error?.message || result.error || result.message || `Runway API vrátilo HTTP ${upstream.status}.`;
+          return reply({ error: String(message), providerStatus: upstream.status }, upstream.status);
+        }
+        if (!result.id) return reply({ error: "Runway požiadavku prijal, ale nevrátil ID úlohy.", providerResponse: result }, 502);
+        return reply({ id: result.id, status: result.status || "PENDING", estimatedCost: result.estimatedCost || null });
+      }
+
       if (request.method === "POST" && url.pathname === "/api/generate") {
         const contentLength = Number(request.headers.get("Content-Length") || 0);
         if (contentLength > 22 * 1024 * 1024) {
