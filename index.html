@@ -98,7 +98,7 @@ a{color:#174ea6;overflow-wrap:anywhere}
 window.saveConnection = async function () {
   const button = document.getElementById('saveConfig');
   const box = document.getElementById('connectionStatus');
-  const base = (document.getElementById('apiUrl')?.value || '').trim().replace(/\\/+$/, '');
+  const base = (document.getElementById('apiUrl')?.value || '').trim().replace(/\/+$/, '');
   const password = document.getElementById('appPassword')?.value || '';
   if (!box) { alert('Chýba panel stavu pripojenia.'); return; }
   box.textContent = 'Tlačidlo reaguje. Ukladám nastavenia…';
