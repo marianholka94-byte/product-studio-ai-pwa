@@ -80,45 +80,6 @@
       margin: 0 auto;
     }
 
-    #studioModeSwitch {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-      margin: 14px 0 18px;
-    }
-    #studioModeSwitch .studio-mode {
-      min-width: 0;
-      min-height: 132px !important;
-      margin: 0;
-      padding: 18px 10px !important;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      border: 1px solid #354253 !important;
-      border-radius: 17px !important;
-      background: #151a22 !important;
-      color: #c2cbd8 !important;
-      text-align: center;
-      letter-spacing: 0;
-    }
-    #studioModeSwitch .studio-mode.active {
-      border-color: #c9a75d !important;
-      background: linear-gradient(145deg,#38301f,#211f1b) !important;
-      color: #f0d99f !important;
-      box-shadow: 0 0 0 1px rgba(201,167,93,.2);
-    }
-    #studioModeSwitch .studio-mode span { font-size: 38px; line-height: 1; }
-    #studioModeSwitch .studio-mode strong { font-size: 25px; line-height: 1.2; }
-    #studioModeSwitch .studio-mode small {
-      color: #9aa5b5;
-      font-size: 17px;
-      line-height: 1.3;
-      font-weight: 500;
-    }
-    .studio-mode-content { display: none; }
-    .studio-mode-content.active { display: block; }
 
     .app-screen {
       display: none;
