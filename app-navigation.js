@@ -373,6 +373,58 @@
       }
     
     }
+        /* Responzivne vyuzitie vysky obrazovky */
+    html {
+      min-height: 100%;
+    }
+
+    body {
+      min-height: 100vh !important;
+      min-height: 100dvh !important;
+      display: flex !important;
+      flex-direction: column !important;
+    }
+
+    #appViews {
+      flex: 1 0 auto !important;
+      display: flex !important;
+      flex-direction: column !important;
+      min-height: 0;
+    }
+
+    .app-screen.active {
+      flex: 1 0 auto !important;
+      display: flex !important;
+      flex-direction: column !important;
+    }
+
+    #screenStudio > .panel:last-child,
+    #screenProjects > .panel:last-child,
+    #screenSettings > .panel:last-child {
+      flex: 1 0 auto !important;
+    }
+
+    #screenStudio > .panel:last-child {
+      display: flex !important;
+      flex-direction: column !important;
+      justify-content: space-between !important;
+    }
+
+    @media (max-height: 700px) {
+      body {
+        padding-top: 10px !important;
+      }
+
+      header {
+        margin-bottom: 12px !important;
+      }
+
+      .panel,
+      .app-placeholder {
+        margin-top: 9px !important;
+        margin-bottom: 9px !important;
+      }
+    }
   `;
   document.head.appendChild(style);
 
