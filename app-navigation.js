@@ -317,8 +317,8 @@
 
                         /* ZJEDNOTENY MOBILNY DIZAJN */
     #appBottomNav {
-      min-height: 138px !important;
-      padding: 12px 8px calc(12px + env(safe-area-inset-bottom)) !important;
+      min-height: 160px !important;
+      padding: 14px 8px calc(14px + env(safe-area-inset-bottom)) !important;
       gap: 8px !important;
       grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
       align-items: stretch !important;
@@ -326,9 +326,9 @@
 
     #appBottomNav button {
       min-width: 0 !important;
-      min-height: 112px !important;
-      padding: 10px 3px !important;
-      font-size: 20px !important;
+      min-height: 132px !important;
+      padding: 12px 3px !important;
+      font-size: 23px !important;
       line-height: 1.2 !important;
       font-weight: 800 !important;
       border-radius: 18px !important;
@@ -336,67 +336,67 @@
       flex-direction: column !important;
       align-items: center !important;
       justify-content: center !important;
-      gap: 8px !important;
+      gap: 10px !important;
     }
 
     #appBottomNav button span {
       display: block !important;
-      font-size: 48px !important;
+      font-size: 56px !important;
       line-height: 1 !important;
       margin: 0 !important;
     }
 
     /* VACSIA A CITATELNEJSIA TYPOGRAFIA */
     header h1 {
-      font-size: 29px !important;
+      font-size: 32px !important;
       line-height: 1.2 !important;
       letter-spacing: 1px !important;
     }
 
     header .muted {
-      font-size: 17px !important;
+      font-size: 19px !important;
       line-height: 1.5 !important;
     }
 
     h2 {
-      font-size: 27px !important;
+      font-size: 30px !important;
       line-height: 1.35 !important;
     }
 
     label {
-      font-size: 19px !important;
+      font-size: 22px !important;
       line-height: 1.4 !important;
-      margin-top: 19px !important;
+      margin-top: 20px !important;
     }
 
     input,
     select,
     textarea {
-      font-size: 22px !important;
-      min-height: 68px !important;
-      padding: 17px !important;
+      font-size: 25px !important;
+      min-height: 76px !important;
+      padding: 19px !important;
       line-height: 1.4 !important;
     }
 
     textarea {
-      min-height: 150px !important;
+      min-height: 170px !important;
     }
 
     button {
-      font-size: 20px !important;
-      min-height: 68px !important;
+      font-size: 23px !important;
+      min-height: 76px !important;
     }
 
     .note,
     .muted,
     .small,
     .app-placeholder p {
-      font-size: 17px !important;
+      font-size: 19px !important;
       line-height: 1.6 !important;
     }
 
     .output {
-      font-size: 19px !important;
+      font-size: 21px !important;
       line-height: 1.65 !important;
     }
 
