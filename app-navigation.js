@@ -315,24 +315,30 @@
       gap: 8px !important;
     }
 
-                #appBottomNav {
-      min-height: 150px !important;
-      padding: 12px 8px calc(14px + env(safe-area-inset-bottom)) !important;
+                    #appBottomNav {
+      min-height: 180px !important;
+      padding: 14px 8px calc(16px + env(safe-area-inset-bottom)) !important;
       gap: 8px !important;
       grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
     }
 
     #appBottomNav button {
-      min-height: 116px !important;
-      padding: 14px 3px !important;
-      font-size: 20px !important;
+      min-height: 140px !important;
+      padding: 16px 3px !important;
+      font-size: 23px !important;
       font-weight: 800 !important;
-      border-radius: 19px !important;
+      border-radius: 21px !important;
       display: flex !important;
       flex-direction: column !important;
       align-items: center !important;
       justify-content: center !important;
-      gap: 9px !important;
+      gap: 11px !important;
+    }
+
+    #appBottomNav button span {
+      font-size: 56px !important;
+      line-height: 1 !important;
+      margin: 0 !important;
     }
 
     #appBottomNav button span {
