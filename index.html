@@ -24,6 +24,11 @@ video{width:100%;border-radius:12px;background:#111;margin-top:10px;max-height:5
 .small{font-size:12px;color:#666}.row{display:flex;justify-content:space-between;gap:12px;align-items:center}
 a{color:#174ea6;overflow-wrap:anywhere}
 @media(max-width:430px){.grid{grid-template-columns:1fr 1fr}body{padding-inline:10px}}
+.preview-gallery{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:14px 0}
+.preview-item{min-width:0;background:#0e131a;border:1px solid #303b49;border-radius:14px;padding:8px}
+.preview-item img{display:block;width:100%;height:150px;object-fit:contain;border-radius:9px}
+.preview-item span{display:block;text-align:center;font-size:16px;margin-top:8px;color:#c5cedb}
+@media(min-width:600px){.preview-gallery{grid-template-columns:repeat(3,minmax(0,1fr))}}
 </style>
 </head>
 <body>
@@ -42,9 +47,10 @@ a{color:#174ea6;overflow-wrap:anywhere}
 
 <section class="panel">
 <h2>2. Produkt</h2>
-<label for="photo">Nahraj fotografiu produktu</label>
-<input id="photo" type="file" accept="image/jpeg,image/png,image/webp">
-<img id="preview" class="preview" alt="Náhľad produktu">
+<label for="photo">Nahraj 1 až 5 fotografií produktu</label>
+<input id="photo" type="file" accept="image/jpeg,image/png,image/webp" multiple>
+<p class="note">Pridaj rôzne uhly alebo detaily toho istého produktu. Čím lepšie fotografie, tým presnejší výsledok.</p>
+<div id="previewGallery" class="preview-gallery" aria-live="polite"></div>
 <label for="product">Názov alebo typ produktu</label>
 <input id="product" placeholder="Napr. čierny parfum MUSTANG">
 </section>
@@ -84,16 +90,16 @@ a{color:#174ea6;overflow-wrap:anywhere}
 
 <script>
 const $=id=>document.getElementById(id);
-let promptText='', selectedFile=null, currentTask=null;
-const apiUrl=$('apiUrl'), appPassword=$('appPassword'), photo=$('photo'), preview=$('preview');
+let promptText='', selectedFiles=[], currentTask=null;
+const apiUrl=$('apiUrl'), appPassword=$('appPassword'), photo=$('photo'), previewGallery=$('previewGallery');
 apiUrl.value=localStorage.getItem('psai_api_url')||'';
 appPassword.value=sessionStorage.getItem('psai_password')||'';
 
 function setStatus(message,kind=''){const el=$('status');el.textContent=message;el.className='status '+kind}
 function updateReadyStatus(){
   const hasBackend=!!(localStorage.getItem('psai_api_url') && sessionStorage.getItem('psai_password'));
-  const hasPhoto=!!selectedFile;
-  if(hasBackend && hasPhoto) setStatus('Pripravené: backend je nastavený a fotografia produktu je vybraná. Môžeš pripraviť prompt.');
+  const hasPhoto=selectedFiles.length>0;
+  if(hasBackend && hasPhoto) setStatus(`Pripravené: backend je nastavený a vybraných je ${selectedFiles.length} fotografií produktu.`);
   else if(!hasBackend && !hasPhoto) setStatus('Najskôr nastav backend a vyber fotografiu produktu.');
   else if(!hasBackend) setStatus('Najskôr nastav a over backend.');
   else setStatus('Backend je nastavený. Teraz vyber fotografiu produktu.');
@@ -101,7 +107,7 @@ function updateReadyStatus(){
 function buildPrompt(){
  const product=$('product').value.trim()||'the uploaded product';
  const extra=$('extra').value.trim();
- const base=`Create a photorealistic ${$('duration').value}-second premium product ad from the uploaded image. Product: ${product}. Style: ${$('style').value}. Camera: ${$('motion').value}. Lighting: ${$('lighting').value}. Aspect ratio: ${$('format').value}. Preserve the product's exact shape, packaging, label, logo and original colors. Keep it realistic, sharp and stable, with natural reflections, smooth motion and cinematic premium lighting. No extra objects, altered branding, distorted details, flicker or camera shake.`;
+ const base=`Create a photorealistic ${$('duration').value}-second premium product ad using all uploaded reference photos of the same product. Product: ${product}. Keep the product identity, design, proportions, packaging, logo and colors consistent across all views. Style: ${$('style').value}. Camera: ${$('motion').value}. Lighting: ${$('lighting').value}. Aspect ratio: ${$('format').value}. Preserve the product's exact shape, packaging, label, logo and original colors. Keep it realistic, sharp and stable, with natural reflections, smooth motion and cinematic premium lighting. No extra objects, altered branding, distorted details, flicker or camera shake.`;
  const suffix=extra ? ' Additional direction: ' : '';
  const available=Math.max(0,1000-base.length-suffix.length);
  promptText=(base+(extra?suffix+extra.slice(0,available):'')).slice(0,1000);
@@ -114,9 +120,15 @@ function updateEstimate(){
 $('makePrompt').onclick=buildPrompt;
 ['duration'].forEach(id=>$(id).addEventListener('change',updateEstimate));
 photo.addEventListener('change',()=>{
- selectedFile=photo.files?.[0]||null;
- if(selectedFile){preview.src=URL.createObjectURL(selectedFile);preview.style.display='block';}
- else{preview.removeAttribute('src');preview.style.display='none';}
+ selectedFiles=Array.from(photo.files||[]).slice(0,5);
+ if((photo.files||[]).length>5) setStatus('Môžeš nahrať najviac 5 fotografií. Vybral som prvých 5.','err');
+ previewGallery.innerHTML='';
+ selectedFiles.forEach((file,index)=>{
+  const item=document.createElement('div');item.className='preview-item';
+  const image=document.createElement('img');image.alt=`Fotografia ${index+1}`;image.src=URL.createObjectURL(file);
+  const caption=document.createElement('span');caption.textContent=`Fotografia ${index+1}`;
+  item.append(image,caption);previewGallery.append(item);
+ });
  updateReadyStatus();
 });
 $('saveConfig').onclick=async()=>{
@@ -130,14 +142,14 @@ $('saveConfig').onclick=async()=>{
  catch(e){box.textContent=e.message;box.className='status err';}
 };
 async function imageToDataUri(file){
- if(!file)throw new Error('Najskôr vyber fotografiu produktu.');
+ if(!file)throw new Error('Najskôr vyber aspoň jednu fotografiu produktu.');
  const image=await createImageBitmap(file);
- const max=1800, scale=Math.min(1,max/Math.max(image.width,image.height));
+ const max=1600, scale=Math.min(1,max/Math.max(image.width,image.height));
  const canvas=document.createElement('canvas');canvas.width=Math.round(image.width*scale);canvas.height=Math.round(image.height*scale);
  canvas.getContext('2d').drawImage(image,0,0,canvas.width,canvas.height);
- let data=canvas.toDataURL('image/jpeg',0.88);
- if(data.length>4.8*1024*1024)data=canvas.toDataURL('image/jpeg',0.72);
- if(data.length>5*1024*1024)throw new Error('Fotografia je príliš veľká. Vyber menší obrázok.');
+ let data=canvas.toDataURL('image/jpeg',0.82);
+ if(data.length>4.5*1024*1024)data=canvas.toDataURL('image/jpeg',0.65);
+ if(data.length>5*1024*1024)throw new Error('Jedna fotografia je príliš veľká. Vyber menší obrázok.');
  return data;
 }
 async function api(path,body){
@@ -155,10 +167,11 @@ $('generate').onclick=async()=>{
  try{
   if(!promptText)buildPrompt();
   setStatus('Pripravujem fotografiu a odosielam požiadavku…');
-  const image=await imageToDataUri(selectedFile);
+  if(!selectedFiles.length)throw new Error('Najskôr nahraj aspoň jednu fotografiu produktu.');
+  const images=await Promise.all(selectedFiles.map(imageToDataUri));
   const model='seedance2_mini';
   const ratio=$('format').value==='9:16'?'720:1280':$('format').value==='1:1'?'960:960':'1280:720';
-  const created=await api('/api/generate',{image,prompt:promptText,model,ratio,duration:Number($('duration').value),});
+  const created=await api('/api/generate',{images,prompt:promptText,model,ratio,duration:Number($('duration').value),});
   currentTask=created.id;
   $('history').textContent=`Úloha: ${created.id} · Model: ${model} · Stav: ${created.status||'odoslané'}`;
   setStatus('Požiadavka prijatá. Video sa generuje. Nezatváraj zatiaľ túto stránku.');
