@@ -37,7 +37,10 @@ export default {
 
     const url = new URL(request.url);
     const origin = request.headers.get("Origin");
-    if (origin && origin !== "https://product-studio-ai-pwa.pages.dev" && origin !== "https://product-studio-ai.marianholka94.workers.dev" && origin !== "https://product-studio-ai-frontend.marianholka94.workers.dev") {
+    if (origin && ![
+      "https://product-studio-ai-frontend.marianholka94.workers.dev",
+      "https://product-studio-ai-pwa.pages.dev"
+    ].includes(origin)) {
       return reply({ error: "Tento pôvod požiadavky nie je povolený." }, 403);
     }
     if (!env.RUNWAY_API_KEY || !env.APP_PASSWORD) {
