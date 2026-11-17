@@ -75,7 +75,7 @@ a{color:#174ea6;overflow-wrap:anywhere}
 <section class="panel">
 <h2>4. Generovanie videa</h2>
 <div class="row"><span class="small">Model: Seedance 2.0 Mini</span><strong id="estimate">Odhad: $0.75</strong></div>
-<p class="note">Cena Runway Dev pre Seedance 2.0 Mini: 15 kreditov/s pri 720p (7 kreditov/s pri 480p), minimálne 28 kreditov za generovanie; 1 kredit = 0,01 USD. Pri nastavenom 720p je 5 s približne 75 kreditov = $0,75. Skutočnú cenu a dostupnosť určuje účet poskytovateľa.</p>
+<p class="note">Aktuálna cena Runway Dev pre Seedance 2.0 Mini pri nastavenom 720p: 15 kreditov za sekundu (0,15 USD/s). Pri 5 s je to 75 kreditov = 0,75 USD, pri 10 s 150 kreditov = 1,50 USD a pri 15 s 225 kreditov = 2,25 USD. Minimálna cena generovania je 28 kreditov. Referenčné fotografie sa účtujú bez príplatku. 1 kredit = 0,01 USD. Ceny sa môžu zmeniť.</p>
 <button id="makePrompt" class="secondary">Vytvoriť / obnoviť reklamný prompt</button>
 <div id="prompt" class="output">Po výbere produktu sa tu zobrazí reklamný prompt.</div>
 <button id="generate">GENEROVAŤ VIDEO</button>
@@ -114,8 +114,11 @@ function buildPrompt(){
  $('prompt').textContent=promptText;updateEstimate();return promptText;
 }
 function updateEstimate(){
- const sec=Number($('duration').value), rate=16;
- const credits=Math.max(64,sec*rate);$('estimate').textContent=`Odhad: $${(credits/100).toFixed(2)} (${credits} kreditov)`;
+ const sec=Number($('duration').value);
+ const rate=15; // Seedance 2.0 Mini, 720p: 15 credits/second
+ const minimum=28;
+ const credits=Math.max(minimum,sec*rate);
+ $('estimate').textContent=`Odhad: ${(credits/100).toFixed(2)} (${credits} kreditov)`;
 }
 $('makePrompt').onclick=buildPrompt;
 ['duration'].forEach(id=>$(id).addEventListener('change',updateEstimate));
