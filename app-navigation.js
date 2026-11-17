@@ -6,6 +6,46 @@
       section.querySelector('h2')?.textContent.trim().startsWith(number + '.')
     );
 
+  // Connection handler is intentionally delegated from the document so it
+  // continues to work after navigation moves the settings panel in the DOM.
+  document.addEventListener('click', async function (event) {
+    const target = event.target;
+    const button = target && target.closest ? target.closest('#saveConfig') : null;
+    if (!button) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const status = document.getElementById('connectionStatus');
+    const urlInput = document.getElementById('apiUrl');
+    const passwordInput = document.getElementById('appPassword');
+    if (!status || !urlInput || !passwordInput) return;
+    status.textContent = 'Kliknutie zachytené. Kontrolujem pripojenie…';
+    status.className = 'status';
+    let base = urlInput.value.trim();
+    while (base.endsWith('/')) base = base.slice(0, -1);
+    const password = passwordInput.value;
+    if (!base || !password) {
+      status.textContent = 'Zadaj adresu backendu aj súkromný prístupový kód.';
+      status.className = 'status err';
+      return;
+    }
+    try {
+      localStorage.setItem('psai_api_url', base);
+      sessionStorage.setItem('psai_password', password);
+      status.textContent = 'Údaje uložené. Overujem backend…';
+      const response = await fetch(base + '/api/health', {
+        method: 'GET',
+        headers: { 'X-App-Password': password }
+      });
+      const result = await response.json().catch(function () { return {}; });
+      if (!response.ok) throw new Error(result.error || ('HTTP ' + response.status));
+      status.textContent = 'Spojenie s backendom funguje.';
+      status.className = 'status ok';
+    } catch (error) {
+      status.textContent = 'Tlačidlo funguje, ale spojenie zlyhalo: ' + (error.message || 'Chyba spojenia');
+      status.className = 'status err';
+    }
+  }, true);
+
   const connection = findSection(1);
   const product = findSection(2);
   const advertising = findSection(3);
