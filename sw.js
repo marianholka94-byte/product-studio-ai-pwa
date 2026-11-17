@@ -1,7 +1,13 @@
-const CACHE = "product-studio-ai-final-1";
+const CACHE = "product-studio-ai-v3-20261118";
 const FILES = ["/", "/index.html", "/manifest.webmanifest"];
-self.addEventListener("install", event => event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(FILES))));
-self.addEventListener("activate", event => event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key !== CACHE).map(key => caches.delete(key))))));
+self.addEventListener("install", event => event.waitUntil(
+  caches.open(CACHE).then(cache => cache.addAll(FILES)).then(() => self.skipWaiting())
+));
+self.addEventListener("activate", event => event.waitUntil(
+  caches.keys()
+    .then(keys => Promise.all(keys.filter(key => key !== CACHE).map(key => caches.delete(key))))
+    .then(() => self.clients.claim())
+));
 self.addEventListener("fetch", event => {
   if (event.request.method !== "GET") return;
   const url = new URL(event.request.url);
