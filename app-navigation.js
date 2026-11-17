@@ -17,6 +17,18 @@
     return;
   }
 
+  // Velke orientacne ikony v hlavnych sekciach aplikacie
+  [
+    [connection, '⚡'],
+    [product, '📦'],
+    [advertising, '🎨'],
+    [generation, '🎬'],
+    [history, '🕘']
+  ].forEach(([section, icon]) => {
+    const heading = section.querySelector('h2');
+    if (heading) heading.dataset.sectionIcon = icon;
+  });
+
   const style = document.createElement('style');
   style.textContent = `
     :root {
@@ -346,57 +358,79 @@
       margin: 0 !important;
     }
 
-    /* VACSIA A CITATELNEJSIA TYPOGRAFIA */
+    /* VACSIA TYPOGRAFIA V CELEJ APLIKACII - NAVIGACIA OSTAVA BEZ ZMENY */
     header h1 {
-      font-size: 32px !important;
+      font-size: 35px !important;
       line-height: 1.2 !important;
       letter-spacing: 1px !important;
     }
 
     header .muted {
-      font-size: 19px !important;
+      font-size: 21px !important;
       line-height: 1.5 !important;
     }
 
     h2 {
-      font-size: 30px !important;
-      line-height: 1.35 !important;
+      font-size: 34px !important;
+      line-height: 1.3 !important;
+    }
+
+    .panel h2[data-section-icon] {
+      display: flex !important;
+      align-items: center !important;
+      gap: 14px !important;
+    }
+
+    .panel h2[data-section-icon]::before {
+      content: attr(data-section-icon);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex: 0 0 48px;
+      width: 48px;
+      height: 48px;
+      font-size: 34px;
+      line-height: 1;
     }
 
     label {
-      font-size: 22px !important;
+      font-size: 25px !important;
       line-height: 1.4 !important;
-      margin-top: 20px !important;
+      margin-top: 22px !important;
     }
 
     input,
     select,
     textarea {
-      font-size: 25px !important;
-      min-height: 76px !important;
-      padding: 19px !important;
+      font-size: 27px !important;
+      min-height: 84px !important;
+      padding: 21px !important;
       line-height: 1.4 !important;
     }
 
-    textarea {
-      min-height: 170px !important;
+    input[type="file"] {
+      font-size: 22px !important;
     }
 
-    button {
-      font-size: 23px !important;
-      min-height: 76px !important;
+    textarea {
+      min-height: 190px !important;
+    }
+
+    button:not(#appBottomNav button) {
+      font-size: 25px !important;
+      min-height: 84px !important;
     }
 
     .note,
     .muted,
     .small,
     .app-placeholder p {
-      font-size: 19px !important;
+      font-size: 21px !important;
       line-height: 1.6 !important;
     }
 
     .output {
-      font-size: 21px !important;
+      font-size: 23px !important;
       line-height: 1.65 !important;
     }
 
