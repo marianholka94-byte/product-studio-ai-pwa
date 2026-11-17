@@ -408,7 +408,13 @@
     }
 
     body {
+      padding-bottom: 24px !important;
+    }
+
+    /* Rezerva pre pevnu spodnu navigaciu */
+    .app-screen.active {
       padding-bottom: calc(160px + env(safe-area-inset-bottom)) !important;
+      box-sizing: border-box !important;
     }
 
     *::-webkit-scrollbar {
