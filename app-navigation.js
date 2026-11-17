@@ -315,24 +315,30 @@
       gap: 8px !important;
     }
 
-            #appBottomNav {
-      min-height: 125px !important;
-      padding: 10px 10px calc(12px + env(safe-area-inset-bottom)) !important;
+                #appBottomNav {
+      min-height: 150px !important;
+      padding: 12px 8px calc(14px + env(safe-area-inset-bottom)) !important;
       gap: 8px !important;
+      grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
     }
 
     #appBottomNav button {
-      min-height: 96px !important;
-      padding: 12px 5px !important;
-      font-size: 18px !important;
+      min-height: 116px !important;
+      padding: 14px 3px !important;
+      font-size: 20px !important;
       font-weight: 800 !important;
-      border-radius: 17px !important;
+      border-radius: 19px !important;
+      display: flex !important;
+      flex-direction: column !important;
+      align-items: center !important;
+      justify-content: center !important;
+      gap: 9px !important;
     }
 
     #appBottomNav button span {
-      font-size: 38px !important;
-      line-height: 1.1 !important;
-      margin-bottom: 7px !important;
+      font-size: 46px !important;
+      line-height: 1 !important;
+      margin: 0 !important;
     }
 
     .studio-welcome {
