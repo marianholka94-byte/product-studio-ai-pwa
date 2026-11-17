@@ -14,7 +14,7 @@
     event.preventDefault();
     event.stopPropagation();
     const box = document.getElementById('connectionStatus');
-    const base = (document.getElementById('apiUrl')?.value || '').trim().replace(/\\/+$/, '');
+    const base = (document.getElementById('apiUrl')?.value || '').trim().replace(/\/+$/, '');
     const password = document.getElementById('appPassword')?.value || '';
     if (!box) return;
     box.textContent = 'Kliknutie zachytené. Kontrolujem údaje…';
