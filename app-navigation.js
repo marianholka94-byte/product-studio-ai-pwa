@@ -342,17 +342,70 @@
       line-height: 1 !important;
       margin: 0 !important;
     }
-
-    #appBottomNav button span {
-      font-size: 56px !important;
-      line-height: 1 !important;
-      margin: 0 !important;
+    /* VACSIA CITATELNOST CELEJ APLIKACIE */
+    header h1 {
+      font-size: 27px !important;
     }
 
-    #appBottomNav button span {
-      font-size: 46px !important;
-      line-height: 1 !important;
-      margin: 0 !important;
+    header .muted {
+      font-size: 15px !important;
+    }
+
+    h2 {
+      font-size: 23px !important;
+      line-height: 1.4 !important;
+    }
+
+    label {
+      font-size: 17px !important;
+      line-height: 1.4 !important;
+      margin-top: 19px !important;
+    }
+
+    input,
+    select,
+    textarea {
+      font-size: 19px !important;
+      min-height: 62px !important;
+      padding: 16px !important;
+      line-height: 1.4 !important;
+    }
+
+    textarea {
+      min-height: 130px !important;
+    }
+
+    button {
+      font-size: 18px !important;
+      min-height: 62px !important;
+    }
+
+    .note,
+    .muted,
+    .small,
+    .app-placeholder p {
+      font-size: 16px !important;
+      line-height: 1.65 !important;
+    }
+
+    .output {
+      font-size: 17px !important;
+      line-height: 1.7 !important;
+    }
+
+    /* Viditelnejsi posuvnik */
+    * {
+      scrollbar-width: auto;
+      scrollbar-color: #718096 #151a22;
+    }
+
+    *::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    *::-webkit-scrollbar-thumb {
+      background: #718096;
+      border-radius: 10px;
     }
 
     .studio-welcome {
