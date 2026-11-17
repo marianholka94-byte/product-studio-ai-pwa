@@ -17,12 +17,11 @@
     return;
   }
 
-  // Cislovanie podla viditelneho poradia v jednotlivych obrazovkach
-  // Pripojenie je v Nastaveniach, preto nema cislo v hlavnom postupe.
+  // Odstranenie cisel z nazvov vsetkych hlavnych sekcii
   connection.querySelector('h2').textContent = 'Pripojenie generátora';
-  product.querySelector('h2').textContent = '1. Produkt';
-  advertising.querySelector('h2').textContent = '2. Nastavenie reklamy';
-  generation.querySelector('h2').textContent = '3. Generovanie videa';
+  product.querySelector('h2').textContent = 'Produkt';
+  advertising.querySelector('h2').textContent = 'Nastavenie reklamy';
+  generation.querySelector('h2').textContent = 'Generovanie videa';
   history.querySelector('h2').textContent = 'História posledného generovania';
 
   // Velke orientacne ikony v hlavnych sekciach aplikacie
