@@ -171,7 +171,7 @@ $('generate').onclick=async()=>{
   const images=await Promise.all(selectedFiles.map(imageToDataUri));
   const model='seedance2_mini';
   const ratio=$('format').value==='9:16'?'720:1280':$('format').value==='1:1'?'960:960':'1280:720';
-  const created=await api('/api/generate',{images,prompt:promptText,model,ratio,duration:Number($('duration').value),});
+  const created=await api('/api/generate',{image:images[0],images,prompt:promptText,model,ratio,duration:Number($('duration').value),});
   currentTask=created.id;
   $('history').textContent=`Úloha: ${created.id} · Model: ${model} · Stav: ${created.status||'odoslané'}`;
   setStatus('Požiadavka prijatá. Video sa generuje. Nezatváraj zatiaľ túto stránku.');
