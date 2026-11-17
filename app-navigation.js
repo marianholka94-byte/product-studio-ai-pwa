@@ -373,7 +373,8 @@
         grid-template-columns: 1fr 1fr !important;
       }
         }
-
+    }
+  `;
   document.head.appendChild(style);
 
   const views = document.createElement('main');
