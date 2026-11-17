@@ -411,9 +411,13 @@
       padding-bottom: 24px !important;
     }
 
-    /* Rezerva pre pevnu spodnu navigaciu */
+    /* Rezerva priestoru pod obsahom, aby pevna navigacia nic nezakryvala */
+    #appViews {
+      margin-bottom: calc(190px + env(safe-area-inset-bottom)) !important;
+    }
+
     .app-screen.active {
-      padding-bottom: calc(160px + env(safe-area-inset-bottom)) !important;
+      padding-bottom: 24px !important;
       box-sizing: border-box !important;
     }
 
