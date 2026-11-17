@@ -371,7 +371,7 @@
       .grid {
         grid-template-columns: 1fr 1fr !important;
       }
-        }
+    
     }
   `;
   document.head.appendChild(style);
