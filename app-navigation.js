@@ -11,9 +11,8 @@
   const advertising = findSection(3);
   const generation = findSection(4);
   const history = findSection(5);
-  const videoToVideo = document.getElementById('videoToVideoPanel');
 
-  if (!connection || !product || !advertising || !generation || !history || !videoToVideo) {
+  if (!connection || !product || !advertising || !generation || !history) {
     console.error('PRODUCT STUDIO AI: Chýba niektorá sekcia.');
     return;
   }
@@ -31,8 +30,7 @@
     [product, '📦'],
     [advertising, '🎨'],
     [generation, '🎬'],
-    [history, '🕘'],
-    [videoToVideo, '🎥']
+    [history, '🕘']
   ].forEach(([section, icon]) => {
     const heading = section.querySelector('h2');
     if (heading) heading.dataset.sectionIcon = icon;
@@ -625,49 +623,12 @@ welcome.className = 'studio-welcome';
 welcome.innerHTML = `
   <div class="welcome-kicker">PRODUCT STUDIO AI</div>
   <h2>Vytvor novú reklamu</h2>
-  <p>Vyber si, či chceš vytvoriť video z fotografií alebo vylepšiť vlastné produktové video pomocou AI.</p>
+  <p>Nahraj fotografie produktu a podľa potreby pridaj aj vlastné video. AI z nich vytvorí jednu výslednú reklamu.</p>
 `;
 
-// Dva jasne rezimy v jednom studiu – druhy generator uz nebude schovany na konci stranky.
-  const modeSwitch = document.createElement('div');
-  modeSwitch.id = 'studioModeSwitch';
-  modeSwitch.setAttribute('role', 'tablist');
-  modeSwitch.innerHTML = `
-    <button type="button" class="studio-mode active" data-mode="photo" role="tab" aria-selected="true">
-      <span>📸</span><strong>FOTO → VIDEO</strong><small>Vytvor video z fotografií</small>
-    </button>
-    <button type="button" class="studio-mode" data-mode="video" role="tab" aria-selected="false">
-      <span>🎬</span><strong>VIDEO → AI</strong><small>Vylepši video + fotografie</small>
-    </button>
-  `;
+studio.append(welcome, product, advertising, generation);
 
-  const photoMode = document.createElement('div');
-  photoMode.id = 'photoToVideoMode';
-  photoMode.className = 'studio-mode-content active';
-  photoMode.append(product, advertising, generation);
-
-  const videoMode = document.createElement('div');
-  videoMode.id = 'videoToAiMode';
-  videoMode.className = 'studio-mode-content';
-  videoMode.append(videoToVideo);
-
-  studio.append(welcome, modeSwitch, photoMode, videoMode);
-
-  modeSwitch.querySelectorAll('[data-mode]').forEach(button => {
-    button.addEventListener('click', () => {
-      const isVideo = button.dataset.mode === 'video';
-      modeSwitch.querySelectorAll('[data-mode]').forEach(item => {
-        const active = item === button;
-        item.classList.toggle('active', active);
-        item.setAttribute('aria-selected', active ? 'true' : 'false');
-      });
-      photoMode.classList.toggle('active', !isVideo);
-      videoMode.classList.toggle('active', isVideo);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    });
-  });
-
-  const projectsIntro = document.createElement('div');
+    const projectsIntro = document.createElement('div');
   projectsIntro.className = 'app-placeholder';
   projectsIntro.dataset.sectionIcon = '📁';
   projectsIntro.innerHTML = `
