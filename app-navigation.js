@@ -541,62 +541,24 @@
       }
     
     }
-    /* Responzivne vyuzitie vysky obrazovky */
+    /* Stabilne mobilne rozlozenie: vysku aplikacie neriadi visual viewport/klavesnica. */
     html, body {
       min-height: 100%;
+      height: auto !important;
     }
 
     body {
-      height: 100vh !important;
-      height: 100dvh !important;
-      display: flex !important;
-      flex-direction: column !important;
+      display: block !important;
       overflow-y: auto !important;
     }
 
-    header {
-      flex-shrink: 0 !important;
-    }
-
     #appViews {
-      flex: 1 0 auto !important;
-      display: flex !important;
-      flex-direction: column !important;
+      display: block !important;
       min-height: 0;
     }
 
     .app-screen.active {
-      flex: 1 0 auto !important;
-      display: flex !important;
-      flex-direction: column !important;
-    }
-
-    #screenStudio > .panel:last-child,
-    #screenProjects > .panel:last-child,
-    #screenSettings > .panel:last-child {
-      flex: 1 0 auto !important;
-    }
-
-    #screenStudio > .panel:last-child {
-      display: flex !important;
-      flex-direction: column !important;
-      justify-content: space-between !important;
-    }
-
-    @media (max-height: 700px) {
-      body {
-        padding-top: 10px !important;
-      }
-
-      header {
-        margin-bottom: 12px !important;
-      }
-
-      .panel,
-      .app-placeholder {
-        margin-top: 9px !important;
-        margin-bottom: 9px !important;
-      }
+      display: block !important;
     }
   `;
   document.head.appendChild(style);
@@ -674,19 +636,6 @@ studio.append(welcome, product, advertising, generation);
   });
 
   document.body.appendChild(nav);
-    const viewport = window.visualViewport;
-
-  if (viewport) {
-    const positionNavigation = () => {
-      nav.style.bottom = 'auto';
-      nav.style.top =
-        (viewport.offsetTop + viewport.height - nav.offsetHeight) + 'px';
-    };
-
-    viewport.addEventListener('resize', positionNavigation);
-    viewport.addEventListener('scroll', positionNavigation);
-    window.addEventListener('resize', positionNavigation);
-
-    positionNavigation();
-  }
+    // Spodna navigacia zostava ukotvena cez CSS bottom: 0.
+    // Nepreposuvame ju podla visualViewport, ktory sa meni pri otvoreni klavesnice.
 })();
