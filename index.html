@@ -140,25 +140,6 @@ photo.addEventListener('change',()=>{
  });
  updateReadyStatus();
 });
-$('saveConfig').addEventListener('click',async()=>{
- const base=apiUrl.value.trim().replace(/\/+$/,'');
- const password=appPassword.value;
- const box=$('connectionStatus');
- box.textContent='Kliknutie prijaté. Ukladám nastavenia a overujem backend…';
- box.className='status';
- if(!base||!password){box.textContent='Zadaj adresu backendu aj súkromný prístupový kód.';box.className='status err';return;}
- localStorage.setItem('psai_api_url',base);
- sessionStorage.setItem('psai_password',password);
- try{
-  await api('/api/health');
-  box.textContent='Spojenie s PRODUCT STUDIO AI backendom funguje.';
-  box.className='status ok';
-  updateReadyStatus();
- }catch(e){
-  box.textContent='Backend sa nepodarilo overiť: '+(e?.message||'Neznáma chyba spojenia.');
-  box.className='status err';
- }
-});
 async function imageToDataUri(file){
  if(!file)throw new Error('Najskôr vyber aspoň jednu fotografiu produktu.');
  const image=await createImageBitmap(file);
