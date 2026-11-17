@@ -41,7 +41,7 @@ a{color:#174ea6;overflow-wrap:anywhere}
 <label for="appPassword">Súkromný prístupový kód</label>
 <input id="appPassword" type="password" placeholder="Nastaví sa pri nasadení backendu">
 <p class="note">API kľúč Runway sa zadáva iba do tajných premenných backendu, nikdy nie sem do aplikácie.</p>
-<button class="secondary" id="saveConfig">Uložiť pripojenie</button>
+<button class="secondary" id="saveConfig" onclick="saveConnection()">Uložiť pripojenie</button>
 <div id="connectionStatus" class="status">Backend zatiaľ nie je overený.</div>
 </section>
 
@@ -94,6 +94,38 @@ a{color:#174ea6;overflow-wrap:anywhere}
 <div id="history" class="note">Zatiaľ žiadne generovanie v tejto relácii.</div>
 </section>
 
+<script>
+window.saveConnection = async function () {
+  const button = document.getElementById('saveConfig');
+  const box = document.getElementById('connectionStatus');
+  const base = (document.getElementById('apiUrl')?.value || '').trim().replace(/\\/+$/, '');
+  const password = document.getElementById('appPassword')?.value || '';
+  if (!box) { alert('Chýba panel stavu pripojenia.'); return; }
+  box.textContent = 'Tlačidlo reaguje. Ukladám nastavenia…';
+  box.className = 'status';
+  if (!base || !password) {
+    box.textContent = 'Zadaj adresu backendu aj súkromný prístupový kód.';
+    box.className = 'status err';
+    return;
+  }
+  try {
+    localStorage.setItem('psai_api_url', base);
+    sessionStorage.setItem('psai_password', password);
+    box.textContent = 'Nastavenia uložené. Testujem spojenie s backendom…';
+    const response = await fetch(base + '/api/health', {
+      method: 'GET',
+      headers: { 'X-App-Password': password }
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || ('HTTP ' + response.status));
+    box.textContent = 'Spojenie funguje. Backend PRODUCT STUDIO AI je dostupný.';
+    box.className = 'status ok';
+  } catch (error) {
+    box.textContent = 'Tlačidlo funguje, ale spojenie zlyhalo: ' + (error.message || 'Chyba spojenia');
+    box.className = 'status err';
+  }
+};
+</script>
 <script>
 const $=id=>document.getElementById(id);
 let promptText='', selectedFiles=[], currentTask=null;
