@@ -6,6 +6,42 @@
       section.querySelector('h2')?.textContent.trim().startsWith(number + '.')
     );
 
+  // Independent connection button handler: this file is loaded externally,
+  // so the connection action does not depend on inline page scripts.
+  document.addEventListener('click', async event => {
+    const button = event.target.closest('#saveConfig');
+    if (!button) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const box = document.getElementById('connectionStatus');
+    const base = (document.getElementById('apiUrl')?.value || '').trim().replace(/\\/+$/, '');
+    const password = document.getElementById('appPassword')?.value || '';
+    if (!box) return;
+    box.textContent = 'Kliknutie zachytené. Kontrolujem údaje…';
+    box.className = 'status';
+    if (!base || !password) {
+      box.textContent = 'Zadaj adresu backendu aj súkromný prístupový kód.';
+      box.className = 'status err';
+      return;
+    }
+    try {
+      localStorage.setItem('psai_api_url', base);
+      sessionStorage.setItem('psai_password', password);
+      box.textContent = 'Údaje uložené. Overujem backend…';
+      const response = await fetch(base + '/api/health', {
+        method: 'GET',
+        headers: { 'X-App-Password': password }
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || ('HTTP ' + response.status));
+      box.textContent = 'Spojenie s backendom funguje.';
+      box.className = 'status ok';
+    } catch (error) {
+      box.textContent = 'Tlačidlo funguje, chyba spojenia: ' + (error.message || 'Neznáma chyba');
+      box.className = 'status err';
+    }
+  }, true);
+
   const connection = findSection(1);
   const product = findSection(2);
   const advertising = findSection(3);
