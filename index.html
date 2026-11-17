@@ -259,7 +259,7 @@ async function generateFromCombinedInputs(){
  if(!selectedFiles.length)throw new Error('Pri generovaní z videa pridaj aspoň jednu fotografiu produktu ako referenciu.');
  $('status').textContent='Pripravujem fotografie a nahrávam video do Runway…';
  $('status').className='status';
- const references=await Promise.all(selectedFiles.map(imageFileToDataUri));
+ const references=await Promise.all(selectedFiles.map(imageToDataUri));
  const form=new FormData();
  form.append('video',selectedSourceVideo,selectedSourceVideo.name);
  form.append('references',JSON.stringify(references));
