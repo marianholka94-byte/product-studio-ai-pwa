@@ -358,7 +358,7 @@
       margin: 0 !important;
     }
 
-    /* EXTRA VELKE OVLADACIE PRVKY A IKONY - NAVIGACIA SA NEMENI */
+    /* JEDNOTNA VELKOST PISMA A IKON V CELEJ APLIKACII */
     body {
       font-size: 24px !important;
     }
@@ -374,19 +374,23 @@
       line-height: 1.5 !important;
     }
 
-    .panel h2 {
+    .panel h2,
+    .app-placeholder h2,
+    .studio-welcome h2 {
       font-size: 40px !important;
       line-height: 1.3 !important;
       margin-bottom: 26px !important;
     }
 
-    .panel h2[data-section-icon] {
+    .panel h2[data-section-icon],
+    .app-placeholder[data-section-icon] h2 {
       display: flex !important;
       align-items: center !important;
       gap: 20px !important;
     }
 
-    .panel h2[data-section-icon]::before {
+    .panel h2[data-section-icon]::before,
+    .app-placeholder[data-section-icon] h2::before {
       content: attr(data-section-icon);
       display: inline-flex;
       align-items: center;
@@ -418,12 +422,6 @@
       border-radius: 16px !important;
     }
 
-    .panel input[type="file"] {
-      font-size: 30px !important;
-      min-height: 108px !important;
-      padding: 18px !important;
-    }
-
     .panel input::placeholder,
     .panel textarea::placeholder {
       font-size: 32px !important;
@@ -446,7 +444,9 @@
     .panel .note,
     .panel .muted,
     .panel .small,
-    .panel p {
+    .panel p,
+    .app-placeholder p,
+    .studio-welcome p {
       font-size: 27px !important;
       line-height: 1.55 !important;
     }
@@ -460,17 +460,7 @@
       font-size: 20px !important;
     }
 
-    .studio-welcome h2 {
-      font-size: 36px !important;
-      line-height: 1.3 !important;
-    }
-
-    .studio-welcome p {
-      font-size: 25px !important;
-      line-height: 1.55 !important;
-    }
-
-    /* Polia pod sebou: vacsia sirka a lahsie ovladanie na telefone */
+    /* Rovnake pohodlne ovladanie na vsetkych mobiloch */
     .panel .grid {
       grid-template-columns: minmax(0, 1fr) !important;
       gap: 16px !important;
@@ -631,6 +621,7 @@ studio.append(welcome, product, advertising, generation);
 
   const projectsIntro = document.createElement('div');
   projectsIntro.className = 'app-placeholder';
+  projectsIntro.dataset.sectionIcon = '📁';
   projectsIntro.innerHTML = `
     <h2>Moje projekty</h2>
     <p>Všetky tvoje produktové projekty a reklamné výstupy budú na jednom mieste.</p>
