@@ -1,7 +1,7 @@
 (() => {
   const sections = [...document.querySelectorAll('section.panel')];
 
-  const findSection = (number) =>
+  const findSection = number =>
     sections.find(section =>
       section.querySelector('h2')?.textContent.trim().startsWith(number + '.')
     );
@@ -13,14 +13,46 @@
   const history = findSection(5);
 
   if (!connection || !product || !advertising || !generation || !history) {
-    console.error('PRODUCT STUDIO AI: Nepodarilo sa nájsť všetky sekcie.');
+    console.error('PRODUCT STUDIO AI: Chýba niektorá sekcia.');
     return;
   }
 
   const style = document.createElement('style');
   style.textContent = `
+    :root {
+      color-scheme: dark;
+      font-family: Inter, system-ui, -apple-system, sans-serif;
+      background: #0b0e13;
+      color: #f3f5f8;
+    }
+
     body {
-      padding-bottom: calc(90px + env(safe-area-inset-bottom));
+      background: #0b0e13 !important;
+      color: #f3f5f8 !important;
+      padding: 18px 14px calc(105px + env(safe-area-inset-bottom)) !important;
+    }
+
+    header {
+      margin: 12px 3px 26px !important;
+      align-items: center;
+    }
+
+    header h1 {
+      color: #fff;
+      font-size: 21px;
+      font-weight: 800;
+      letter-spacing: 1.3px;
+    }
+
+    header .muted {
+      color: #8993a3;
+      font-size: 12px;
+      margin-top: 5px;
+    }
+
+    header > span {
+      color: #d6b66e !important;
+      font-weight: 700;
     }
 
     #appViews {
@@ -35,6 +67,138 @@
 
     .app-screen.active {
       display: block;
+      animation: screenIn .22s ease;
+    }
+
+    @keyframes screenIn {
+      from { opacity: 0; transform: translateY(7px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .panel,
+    .app-placeholder {
+      background: #151a22 !important;
+      border: 1px solid #27303c !important;
+      border-radius: 19px !important;
+      padding: 18px !important;
+      margin: 13px 0 !important;
+      color: #f3f5f8 !important;
+      box-shadow: 0 8px 24px rgba(0,0,0,.16);
+    }
+
+    h2 {
+      color: #fff !important;
+      font-size: 16px !important;
+      font-weight: 750 !important;
+      margin-bottom: 17px !important;
+    }
+
+    label {
+      color: #aeb8c7 !important;
+      font-size: 12px !important;
+      font-weight: 650 !important;
+    }
+
+    input, select, textarea {
+      background: #0e131a !important;
+      color: #f3f5f8 !important;
+      border: 1px solid #303b49 !important;
+      border-radius: 12px !important;
+      min-height: 45px;
+      font-size: 14px !important;
+    }
+
+    input::placeholder, textarea::placeholder {
+      color: #657184 !important;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: #c9a75d !important;
+      box-shadow: 0 0 0 2px rgba(201,167,93,.15);
+    }
+
+    input:disabled {
+      opacity: .65;
+    }
+
+    button {
+      border-radius: 12px !important;
+      min-height: 46px;
+      font-weight: 750 !important;
+      background: linear-gradient(135deg,#d9bd7d,#b58b42) !important;
+      color: #17130b !important;
+      border: 0 !important;
+      letter-spacing: .2px;
+    }
+
+    button.secondary {
+      background: #252e3a !important;
+      color: #e7edf5 !important;
+      border: 1px solid #354253 !important;
+    }
+
+    button:disabled {
+      opacity: .45;
+    }
+
+    .muted, .note, .small {
+      color: #8995a6 !important;
+    }
+
+    .output {
+      background: #0e131a !important;
+      border: 1px solid #293442;
+      color: #dbe2ec !important;
+      border-radius: 12px !important;
+    }
+
+    .status {
+      background: #302817 !important;
+      color: #f0d99f !important;
+      border: 1px solid #59482a;
+      border-radius: 12px !important;
+    }
+
+    .status.ok {
+      background: #142b22 !important;
+      color: #9ce0b8 !important;
+      border-color: #285b40;
+    }
+
+    .status.err {
+      background: #321c20 !important;
+      color: #ffb5b5 !important;
+      border-color: #663139;
+    }
+
+    .preview {
+      background: #0e131a !important;
+      border: 1px solid #303b49;
+    }
+
+    video {
+      border: 1px solid #303b49;
+    }
+
+    a {
+      color: #d9bd7d !important;
+    }
+
+    .app-placeholder {
+      text-align: left;
+      padding: 22px !important;
+    }
+
+    .app-placeholder h2 {
+      font-size: 20px !important;
+      margin-bottom: 10px !important;
+    }
+
+    .app-placeholder p {
+      color: #aeb8c7;
+      font-size: 13px;
+      line-height: 1.6;
     }
 
     #appBottomNav {
@@ -45,42 +209,45 @@
       right: 0;
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      padding: 9px 12px calc(9px + env(safe-area-inset-bottom));
-      background: rgba(255,255,255,.96);
-      border-top: 1px solid #e5e7eb;
-      backdrop-filter: blur(16px);
+      gap: 7px;
+      padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+      background: rgba(15,19,26,.97);
+      border-top: 1px solid #293442;
+      backdrop-filter: blur(18px);
     }
 
     #appBottomNav button {
-      border: 0;
-      background: transparent;
-      color: #777;
-      font-size: 12px;
-      font-weight: 600;
-      padding: 9px 4px;
-      border-radius: 12px;
+      background: transparent !important;
+      color: #8792a2 !important;
+      border: 0 !important;
+      min-height: 52px;
+      padding: 5px 3px;
+      margin: 0;
+      font-size: 11px;
+      border-radius: 12px !important;
     }
 
     #appBottomNav button.active {
-      color: #2563eb;
-      background: #eff6ff;
+      background: #29251c !important;
+      color: #e2c47e !important;
     }
 
     #appBottomNav button span {
       display: block;
-      font-size: 21px;
+      font-size: 20px;
       margin-bottom: 3px;
     }
 
-    .app-placeholder {
-      background: white;
-      border: 1px solid #e5e7eb;
-      border-radius: 18px;
-      padding: 22px;
-      margin: 14px 0;
-      text-align: center;
+    @media(max-width:430px) {
+      body {
+        padding-inline: 11px !important;
+      }
+      .panel {
+        padding: 16px !important;
+      }
     }
   `;
+
   document.head.appendChild(style);
 
   const views = document.createElement('main');
@@ -104,21 +271,17 @@
   projectsIntro.className = 'app-placeholder';
   projectsIntro.innerHTML = `
     <h2>Moje projekty</h2>
-    <p>Tu budeš mať svoje produktové projekty a vytvorené reklamy na jednom mieste.</p>
-    <p><strong>Priestor pre tvoje projekty je pripravený.</strong></p>
+    <p>Všetky tvoje produktové projekty a reklamné výstupy budú na jednom mieste.</p>
+    <p><strong>Pracovný priestor PRODUCT STUDIO AI</strong></p>
   `;
 
   projects.append(projectsIntro, history);
   settings.append(connection);
-
   views.append(studio, projects, settings);
 
   const header = document.querySelector('header');
-  if (header) {
-    header.after(views);
-  } else {
-    document.body.prepend(views);
-  }
+  if (header) header.after(views);
+  else document.body.prepend(views);
 
   const nav = document.createElement('nav');
   nav.id = 'appBottomNav';
