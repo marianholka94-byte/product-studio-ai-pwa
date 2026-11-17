@@ -315,157 +315,111 @@
       gap: 8px !important;
     }
 
-                        /* VELKA SPODNA NAVIGACIA */
+                        /* ZJEDNOTENY MOBILNY DIZAJN */
     #appBottomNav {
-      min-height: 195px !important;
-      padding: 14px 8px calc(16px + env(safe-area-inset-bottom)) !important;
-      gap: 7px !important;
-      grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-    }
-
-    /* EXTRA VELKA SPODNA NAVIGACIA */
-    #appBottomNav {
-      min-height: 244px !important;
-      padding: 16px 8px calc(18px + env(safe-area-inset-bottom)) !important;
+      min-height: 138px !important;
+      padding: 12px 8px calc(12px + env(safe-area-inset-bottom)) !important;
       gap: 8px !important;
       grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+      align-items: stretch !important;
     }
 
     #appBottomNav button {
-      min-height: 194px !important;
-      padding: 16px 2px !important;
-      font-size: 31px !important;
+      min-width: 0 !important;
+      min-height: 112px !important;
+      padding: 10px 3px !important;
+      font-size: 20px !important;
+      line-height: 1.2 !important;
       font-weight: 800 !important;
-      border-radius: 22px !important;
+      border-radius: 18px !important;
       display: flex !important;
       flex-direction: column !important;
       align-items: center !important;
       justify-content: center !important;
-      gap: 14px !important;
-      white-space: normal !important;
+      gap: 8px !important;
     }
 
     #appBottomNav button span {
-      font-size: 80px !important;
+      display: block !important;
+      font-size: 48px !important;
       line-height: 1 !important;
       margin: 0 !important;
     }
 
-    /* VYRAZNE VACSIE PISMO */
+    /* VACSIA A CITATELNEJSIA TYPOGRAFIA */
     header h1 {
-      font-size: 34px !important;
-    }
-
-    header .muted {
-      font-size: 19px !important;
-    }
-
-    h2 {
       font-size: 29px !important;
-      line-height: 1.4 !important;
-    }
-    /* MEGA NAVIGATION */
-    #appBottomNav {
-      height: 300px !important;
-      min-height: 300px !important;
-      padding: 18px 8px calc(20px + env(safe-area-inset-bottom)) !important;
-      gap: 6px !important;
-      grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-    }
-
-    #appBottomNav button {
-      height: 250px !important;
-      min-height: 250px !important;
-      padding: 15px 2px !important;
-      font-size: 36px !important;
-      font-weight: 900 !important;
-      border-radius: 22px !important;
-      display: flex !important;
-      flex-direction: column !important;
-      align-items: center !important;
-      justify-content: center !important;
-      gap: 18px !important;
-    }
-
-    #appBottomNav button span {
-      font-size: 100px !important;
-      line-height: 1 !important;
-      margin: 0 !important;
-    }
-
-    /* MEGA TEXT */
-    header h1 {
-      font-size: 38px !important;
+      line-height: 1.2 !important;
+      letter-spacing: 1px !important;
     }
 
     header .muted {
-      font-size: 22px !important;
+      font-size: 17px !important;
+      line-height: 1.5 !important;
     }
 
     h2 {
-      font-size: 34px !important;
-      line-height: 1.4 !important;
+      font-size: 27px !important;
+      line-height: 1.35 !important;
     }
 
     label {
-      font-size: 27px !important;
+      font-size: 19px !important;
       line-height: 1.4 !important;
-      margin-top: 25px !important;
+      margin-top: 19px !important;
     }
 
     input,
     select,
     textarea {
-      font-size: 30px !important;
-      min-height: 96px !important;
-      padding: 22px !important;
+      font-size: 22px !important;
+      min-height: 68px !important;
+      padding: 17px !important;
       line-height: 1.4 !important;
     }
 
     textarea {
-      min-height: 200px !important;
+      min-height: 150px !important;
     }
 
     button {
-      font-size: 28px !important;
-      min-height: 90px !important;
+      font-size: 20px !important;
+      min-height: 68px !important;
     }
 
     .note,
     .muted,
     .small,
     .app-placeholder p {
-      font-size: 24px !important;
-      line-height: 1.65 !important;
+      font-size: 17px !important;
+      line-height: 1.6 !important;
     }
 
     .output {
-      font-size: 25px !important;
-      line-height: 1.7 !important;
+      font-size: 19px !important;
+      line-height: 1.65 !important;
     }
 
-    /* SCROLLING */
-    html {
+    html,
+    body {
       overflow-y: auto !important;
       scrollbar-width: auto !important;
-      scrollbar-color: #aab6c6 #151a22 !important;
+      scrollbar-color: #8995a6 #151a22 !important;
     }
 
     body {
-      overflow-y: auto !important;
-      padding-bottom: 330px !important;
-      scrollbar-width: auto !important;
-      scrollbar-color: #aab6c6 #151a22 !important;
+      padding-bottom: calc(160px + env(safe-area-inset-bottom)) !important;
     }
 
     *::-webkit-scrollbar {
-      width: 12px;
+      width: 8px;
     }
 
     *::-webkit-scrollbar-thumb {
-      background: #aab6c6;
-      border-radius: 12px;
+      background: #8995a6;
+      border-radius: 10px;
     }
+
     .studio-welcome {
       background: linear-gradient(135deg,#202936,#151a22 72%) !important;
       border: 1px solid #394454 !important;
