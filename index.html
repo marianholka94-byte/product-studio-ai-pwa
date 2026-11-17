@@ -140,16 +140,25 @@ photo.addEventListener('change',()=>{
  });
  updateReadyStatus();
 });
-$('saveConfig').onclick=async()=>{
+$('saveConfig').addEventListener('click',async()=>{
  const base=apiUrl.value.trim().replace(/\/+$/,'');
- localStorage.setItem('psai_api_url',base);
- sessionStorage.setItem('psai_password',appPassword.value);
+ const password=appPassword.value;
  const box=$('connectionStatus');
- if(!base||!appPassword.value){box.textContent='Zadaj adresu backendu aj súkromný prístupový kód.';return;}
- box.textContent='Overujem spojenie s backendom…';
- try{await api('/api/health');box.textContent='Spojenie s PRODUCT STUDIO AI backendom funguje.';box.className='status ok';updateReadyStatus();}
- catch(e){box.textContent=e.message;box.className='status err';}
-};
+ box.textContent='Kliknutie prijaté. Ukladám nastavenia a overujem backend…';
+ box.className='status';
+ if(!base||!password){box.textContent='Zadaj adresu backendu aj súkromný prístupový kód.';box.className='status err';return;}
+ localStorage.setItem('psai_api_url',base);
+ sessionStorage.setItem('psai_password',password);
+ try{
+  await api('/api/health');
+  box.textContent='Spojenie s PRODUCT STUDIO AI backendom funguje.';
+  box.className='status ok';
+  updateReadyStatus();
+ }catch(e){
+  box.textContent='Backend sa nepodarilo overiť: '+(e?.message||'Neznáma chyba spojenia.');
+  box.className='status err';
+ }
+});
 async function imageToDataUri(file){
  if(!file)throw new Error('Najskôr vyber aspoň jednu fotografiu produktu.');
  const image=await createImageBitmap(file);
@@ -166,7 +175,9 @@ async function api(path,body){
  const password=sessionStorage.getItem('psai_password')||'';
  if(!base)throw new Error('Najskôr zadaj adresu backendu.');
  if(!password)throw new Error('Najskôr zadaj súkromný prístupový kód.');
- const res=await fetch(base+path,{method:body?'POST':'GET',headers:{'Content-Type':'application/json','X-App-Password':password},body:body?JSON.stringify(body):undefined});
+ const headers={'X-App-Password':password};
+ if(body)headers['Content-Type']='application/json';
+ const res=await fetch(base+path,{method:body?'POST':'GET',headers,body:body?JSON.stringify(body):undefined});
  const data=await res.json().catch(()=>({error:'Server vrátil nečitateľnú odpoveď.'}));
  if(!res.ok)throw new Error(data.error||`Chyba servera ${res.status}`);
  return data;
