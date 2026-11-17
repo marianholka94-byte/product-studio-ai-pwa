@@ -1,1 +1,22 @@
-{"name":"PRODUCT STUDIO AI","short_name":"Product Studio","start_url":"/","display":"standalone","background_color":"#f4f4f2","theme_color":"#171717","lang":"sk"}
+
+{
+  "id": "/",
+  "name": "PRODUCT STUDIO AI",
+  "short_name": "Product Studio",
+  "description": "Súkromné štúdio produktových reklám",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f4f4f2",
+  "theme_color": "#171717",
+  "lang": "sk",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
