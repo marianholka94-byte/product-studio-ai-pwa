@@ -252,7 +252,6 @@
         padding: 16px !important;
       }
     }
-  `;
 
     /* Mobilne rozlozenie a citatelnost */
     body {
