@@ -82,6 +82,46 @@
       margin: 0 auto;
     }
 
+    #studioModeSwitch {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin: 14px 0 18px;
+    }
+    #studioModeSwitch .studio-mode {
+      min-width: 0;
+      min-height: 132px !important;
+      margin: 0;
+      padding: 18px 10px !important;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      border: 1px solid #354253 !important;
+      border-radius: 17px !important;
+      background: #151a22 !important;
+      color: #c2cbd8 !important;
+      text-align: center;
+      letter-spacing: 0;
+    }
+    #studioModeSwitch .studio-mode.active {
+      border-color: #c9a75d !important;
+      background: linear-gradient(145deg,#38301f,#211f1b) !important;
+      color: #f0d99f !important;
+      box-shadow: 0 0 0 1px rgba(201,167,93,.2);
+    }
+    #studioModeSwitch .studio-mode span { font-size: 38px; line-height: 1; }
+    #studioModeSwitch .studio-mode strong { font-size: 25px; line-height: 1.2; }
+    #studioModeSwitch .studio-mode small {
+      color: #9aa5b5;
+      font-size: 17px;
+      line-height: 1.3;
+      font-weight: 500;
+    }
+    .studio-mode-content { display: none; }
+    .studio-mode-content.active { display: block; }
+
     .app-screen {
       display: none;
     }
@@ -585,10 +625,47 @@ welcome.className = 'studio-welcome';
 welcome.innerHTML = `
   <div class="welcome-kicker">PRODUCT STUDIO AI</div>
   <h2>Vytvor novú reklamu</h2>
-  <p>Pridaj fotografiu produktu, vyber vizuálny štýl a priprav profesionálny reklamný koncept.</p>
+  <p>Vyber si, či chceš vytvoriť video z fotografií alebo vylepšiť vlastné produktové video pomocou AI.</p>
 `;
 
-studio.append(welcome, product, advertising, generation, videoToVideo);
+// Dva jasne rezimy v jednom studiu – druhy generator uz nebude schovany na konci stranky.
+  const modeSwitch = document.createElement('div');
+  modeSwitch.id = 'studioModeSwitch';
+  modeSwitch.setAttribute('role', 'tablist');
+  modeSwitch.innerHTML = `
+    <button type="button" class="studio-mode active" data-mode="photo" role="tab" aria-selected="true">
+      <span>📸</span><strong>FOTO → VIDEO</strong><small>Vytvor video z fotografií</small>
+    </button>
+    <button type="button" class="studio-mode" data-mode="video" role="tab" aria-selected="false">
+      <span>🎬</span><strong>VIDEO → AI</strong><small>Vylepši video + fotografie</small>
+    </button>
+  `;
+
+  const photoMode = document.createElement('div');
+  photoMode.id = 'photoToVideoMode';
+  photoMode.className = 'studio-mode-content active';
+  photoMode.append(product, advertising, generation);
+
+  const videoMode = document.createElement('div');
+  videoMode.id = 'videoToAiMode';
+  videoMode.className = 'studio-mode-content';
+  videoMode.append(videoToVideo);
+
+  studio.append(welcome, modeSwitch, photoMode, videoMode);
+
+  modeSwitch.querySelectorAll('[data-mode]').forEach(button => {
+    button.addEventListener('click', () => {
+      const isVideo = button.dataset.mode === 'video';
+      modeSwitch.querySelectorAll('[data-mode]').forEach(item => {
+        const active = item === button;
+        item.classList.toggle('active', active);
+        item.setAttribute('aria-selected', active ? 'true' : 'false');
+      });
+      photoMode.classList.toggle('active', !isVideo);
+      videoMode.classList.toggle('active', isVideo);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  });
 
   const projectsIntro = document.createElement('div');
   projectsIntro.className = 'app-placeholder';
