@@ -6,7 +6,7 @@
   "description": "Súkromné štúdio produktových reklám",
   "start_url": "/",
   "scope": "/",
-  "display": "standalone",
+  "display": "fullscreen",
   "orientation": "portrait",
   "background_color": "#f4f4f2",
   "theme_color": "#171717",
