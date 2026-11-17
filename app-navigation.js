@@ -320,4 +320,19 @@
   });
 
   document.body.appendChild(nav);
+    const viewport = window.visualViewport;
+
+  if (viewport) {
+    const positionNavigation = () => {
+      nav.style.bottom = 'auto';
+      nav.style.top =
+        (viewport.offsetTop + viewport.height - nav.offsetHeight) + 'px';
+    };
+
+    viewport.addEventListener('resize', positionNavigation);
+    viewport.addEventListener('scroll', positionNavigation);
+    window.addEventListener('resize', positionNavigation);
+
+    positionNavigation();
+  }
 })();
