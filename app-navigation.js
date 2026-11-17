@@ -11,8 +11,9 @@
   const advertising = findSection(3);
   const generation = findSection(4);
   const history = findSection(5);
+  const videoToVideo = document.getElementById('videoToVideoPanel');
 
-  if (!connection || !product || !advertising || !generation || !history) {
+  if (!connection || !product || !advertising || !generation || !history || !videoToVideo) {
     console.error('PRODUCT STUDIO AI: Chýba niektorá sekcia.');
     return;
   }
@@ -30,7 +31,8 @@
     [product, '📦'],
     [advertising, '🎨'],
     [generation, '🎬'],
-    [history, '🕘']
+    [history, '🕘'],
+    [videoToVideo, '🎥']
   ].forEach(([section, icon]) => {
     const heading = section.querySelector('h2');
     if (heading) heading.dataset.sectionIcon = icon;
@@ -586,7 +588,7 @@ welcome.innerHTML = `
   <p>Pridaj fotografiu produktu, vyber vizuálny štýl a priprav profesionálny reklamný koncept.</p>
 `;
 
-studio.append(welcome, product, advertising, generation);
+studio.append(welcome, product, advertising, generation, videoToVideo);
 
   const projectsIntro = document.createElement('div');
   projectsIntro.className = 'app-placeholder';
