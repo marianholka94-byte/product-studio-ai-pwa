@@ -254,6 +254,126 @@
     }
   `;
 
+    /* Mobilne rozlozenie a citatelnost */
+    body {
+      width: 100% !important;
+      max-width: none !important;
+      padding: 16px 12px calc(120px + env(safe-area-inset-bottom)) !important;
+    }
+
+    #appViews {
+      width: 100% !important;
+      max-width: none !important;
+    }
+
+    header h1 {
+      font-size: 24px !important;
+    }
+
+    .panel, .app-placeholder {
+      padding: 20px !important;
+      margin: 14px 0 !important;
+      border-radius: 20px !important;
+    }
+
+    h2 {
+      font-size: 19px !important;
+      line-height: 1.35 !important;
+    }
+
+    label {
+      font-size: 14px !important;
+      margin-top: 16px !important;
+    }
+
+    input, select, textarea {
+      font-size: 16px !important;
+      min-height: 52px !important;
+      padding: 14px !important;
+    }
+
+    textarea {
+      min-height: 100px !important;
+    }
+
+    button {
+      font-size: 15px !important;
+      min-height: 54px !important;
+    }
+
+    .note, .muted, .small {
+      font-size: 14px !important;
+      line-height: 1.55 !important;
+    }
+
+    .output {
+      font-size: 15px !important;
+      line-height: 1.6 !important;
+    }
+
+    .grid {
+      grid-template-columns: 1fr !important;
+      gap: 8px !important;
+    }
+
+    #appBottomNav {
+      min-height: 82px !important;
+      padding: 10px 12px calc(12px + env(safe-area-inset-bottom)) !important;
+      gap: 8px !important;
+    }
+
+    #appBottomNav button {
+      min-height: 64px !important;
+      padding: 8px 4px !important;
+      font-size: 14px !important;
+      font-weight: 700 !important;
+      border-radius: 14px !important;
+    }
+
+    #appBottomNav button span {
+      font-size: 27px !important;
+      line-height: 1.1 !important;
+      margin-bottom: 5px !important;
+    }
+
+    .studio-welcome {
+      background: linear-gradient(135deg,#202936,#151a22 72%) !important;
+      border: 1px solid #394454 !important;
+      border-radius: 20px !important;
+      padding: 22px !important;
+      margin: 0 0 15px !important;
+    }
+
+    .studio-welcome .welcome-kicker {
+      color: #d9bd7d;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 1.4px;
+      text-transform: uppercase;
+    }
+
+    .studio-welcome h2 {
+      font-size: 23px !important;
+      margin: 9px 0 !important;
+    }
+
+    .studio-welcome p {
+      color: #aeb8c7;
+      font-size: 14px;
+      line-height: 1.55;
+      margin: 0;
+    }
+
+    @media(min-width:600px) {
+      body {
+        padding-left: 22px !important;
+        padding-right: 22px !important;
+      }
+      .grid {
+        grid-template-columns: 1fr 1fr !important;
+      }
+        }
+
   document.head.appendChild(style);
 
   const views = document.createElement('main');
@@ -271,7 +391,15 @@
   settings.className = 'app-screen';
   settings.id = 'screenSettings';
 
-  studio.append(product, advertising, generation);
+  const welcome = document.createElement('section');
+welcome.className = 'studio-welcome';
+welcome.innerHTML = `
+  <div class="welcome-kicker">PRODUCT STUDIO AI</div>
+  <h2>Vytvor novú reklamu</h2>
+  <p>Pridaj fotografiu produktu, vyber vizuálny štýl a priprav profesionálny reklamný koncept.</p>
+`;
+
+studio.append(welcome, product, advertising, generation);
 
   const projectsIntro = document.createElement('div');
   projectsIntro.className = 'app-placeholder';
