@@ -323,88 +323,105 @@
       grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
     }
 
+    /* EXTRA VELKA SPODNA NAVIGACIA */
+    #appBottomNav {
+      min-height: 244px !important;
+      padding: 16px 8px calc(18px + env(safe-area-inset-bottom)) !important;
+      gap: 8px !important;
+      grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    }
+
     #appBottomNav button {
-      min-height: 155px !important;
-      padding: 14px 2px !important;
-      font-size: 25px !important;
+      min-height: 194px !important;
+      padding: 16px 2px !important;
+      font-size: 31px !important;
       font-weight: 800 !important;
-      border-radius: 20px !important;
+      border-radius: 22px !important;
       display: flex !important;
       flex-direction: column !important;
       align-items: center !important;
       justify-content: center !important;
-      gap: 12px !important;
+      gap: 14px !important;
       white-space: normal !important;
     }
 
     #appBottomNav button span {
-      font-size: 64px !important;
+      font-size: 80px !important;
       line-height: 1 !important;
       margin: 0 !important;
     }
-    /* VACSIA CITATELNOST CELEJ APLIKACIE */
+
+    /* VYRAZNE VACSIE PISMO */
     header h1 {
-      font-size: 27px !important;
+      font-size: 34px !important;
     }
 
     header .muted {
-      font-size: 15px !important;
+      font-size: 19px !important;
     }
 
     h2 {
-      font-size: 23px !important;
+      font-size: 29px !important;
       line-height: 1.4 !important;
     }
 
     label {
-      font-size: 17px !important;
+      font-size: 22px !important;
       line-height: 1.4 !important;
-      margin-top: 19px !important;
+      margin-top: 22px !important;
     }
 
     input,
     select,
     textarea {
-      font-size: 19px !important;
-      min-height: 62px !important;
-      padding: 16px !important;
+      font-size: 24px !important;
+      min-height: 78px !important;
+      padding: 19px !important;
       line-height: 1.4 !important;
     }
 
     textarea {
-      min-height: 130px !important;
+      min-height: 165px !important;
     }
 
     button {
-      font-size: 18px !important;
-      min-height: 62px !important;
+      font-size: 23px !important;
+      min-height: 78px !important;
     }
 
     .note,
     .muted,
     .small,
     .app-placeholder p {
-      font-size: 16px !important;
+      font-size: 20px !important;
       line-height: 1.65 !important;
     }
 
     .output {
-      font-size: 17px !important;
+      font-size: 21px !important;
       line-height: 1.7 !important;
     }
 
-    /* Viditelnejsi posuvnik */
-    * {
-      scrollbar-width: auto;
-      scrollbar-color: #718096 #151a22;
+    /* POSUVANIE OBSAHU */
+    html {
+      overflow-y: auto !important;
+      scrollbar-width: auto !important;
+      scrollbar-color: #8995a6 #151a22 !important;
+    }
+
+    body {
+      overflow-y: auto !important;
+      padding-bottom: 270px !important;
+      scrollbar-width: auto !important;
+      scrollbar-color: #8995a6 #151a22 !important;
     }
 
     *::-webkit-scrollbar {
-      width: 8px;
+      width: 10px;
     }
 
     *::-webkit-scrollbar-thumb {
-      background: #718096;
+      background: #8995a6;
       border-radius: 10px;
     }
 
