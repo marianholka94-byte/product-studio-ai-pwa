@@ -315,24 +315,24 @@
       gap: 8px !important;
     }
 
-        #appBottomNav {
-      min-height: 104px !important;
-      padding: 8px 12px calc(10px + env(safe-area-inset-bottom)) !important;
-      gap: 10px !important;
+            #appBottomNav {
+      min-height: 125px !important;
+      padding: 10px 10px calc(12px + env(safe-area-inset-bottom)) !important;
+      gap: 8px !important;
     }
 
     #appBottomNav button {
-      min-height: 78px !important;
-      padding: 9px 5px !important;
-      font-size: 16px !important;
-      font-weight: 750 !important;
-      border-radius: 15px !important;
+      min-height: 96px !important;
+      padding: 12px 5px !important;
+      font-size: 18px !important;
+      font-weight: 800 !important;
+      border-radius: 17px !important;
     }
 
     #appBottomNav button span {
-      font-size: 31px !important;
+      font-size: 38px !important;
       line-height: 1.1 !important;
-      margin-bottom: 6px !important;
+      margin-bottom: 7px !important;
     }
 
     .studio-welcome {
