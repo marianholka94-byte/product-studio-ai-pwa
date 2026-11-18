@@ -141,32 +141,38 @@
     .studio-welcome h2 { font-size:23px !important;margin:9px 0 !important; }
     .studio-welcome p { color:#aeb8c7;font-size:14px;line-height:1.55;margin:0; }
 
-    /* Navigácia je súčasťou toku stránky, nie plávajúci/fixný panel.
-       V natívnej Android aplikácii tak zostane nad systémovými tlačidlami Androidu. */
+    /* Lightroom-style bottom bar: fixed to the viewport, above Android system navigation. */
+    body {
+      padding-bottom:calc(92px + env(safe-area-inset-bottom, 0px)) !important;
+    }
     #appBottomNav {
-      position:static !important;
-      inset:auto !important;
-      z-index:auto !important;
+      position:fixed !important;
+      left:0 !important;
+      right:0 !important;
+      bottom:0 !important;
+      inset-inline:0 !important;
+      z-index:9999 !important;
       transform:none !important;
       width:100% !important;
-      margin:22px 0 64px !important;
+      margin:0 !important;
       display:grid !important;
       grid-template-columns:repeat(3,minmax(0,1fr)) !important;
       align-items:stretch !important;
-      gap:8px !important;
-      padding:10px 8px 12px !important;
-      background:#0f131a !important;
-      border:1px solid #293442 !important;
-      border-radius:20px !important;
-      box-shadow:0 8px 24px rgba(0,0,0,.2);
+      gap:4px !important;
+      padding:8px 12px calc(8px + env(safe-area-inset-bottom, 0px)) !important;
+      background:#10141b !important;
+      border:0 !important;
+      border-top:1px solid #293442 !important;
+      border-radius:0 !important;
+      box-shadow:0 -5px 18px rgba(0,0,0,.22) !important;
     }
     #appBottomNav button {
-      min-width:0 !important;min-height:68px !important;padding:12px 3px !important;
+      min-width:0 !important;min-height:62px !important;padding:7px 3px !important;
       margin:0 !important;display:flex !important;flex-direction:column !important;
-      align-items:center !important;justify-content:center !important;gap:10px !important;
+      align-items:center !important;justify-content:center !important;gap:6px !important;
       background:transparent !important;color:#8792a2 !important;border:0 !important;
-      font-size:12px !important;line-height:1.2 !important;font-weight:800 !important;
-      border-radius:18px !important;
+      font-size:12px !important;line-height:1.2 !important;font-weight:650 !important;
+      border-radius:12px !important;
     }
     #appBottomNav button.active { background:#29251c !important;color:#e2c47e !important; }
     #appBottomNav button span { display:block !important;font-size:24px !important;line-height:1 !important;margin:0 !important; }
