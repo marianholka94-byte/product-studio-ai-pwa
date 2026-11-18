@@ -581,12 +581,30 @@
     <div class="prompt-editor-heading"><strong>Editor reklamného promptu</strong><span id="promptLength">0 / 1000</span></div>
     <p class="prompt-save-hint">Uprav jednotlivé časti reklamy a následne z nich zostav výsledný prompt.</p>
     <div class="prompt-parts">
-      <label class="prompt-label" for="partScene">Prostredie a scéna</label><textarea id="partScene" rows="2" placeholder="Napr. luxusné tmavé štúdio"></textarea>
-      <label class="prompt-label" for="partProduct">Produkt a jeho vzhľad</label><textarea id="partProduct" rows="2" placeholder="Napr. zachovať presný tvar, obal, logo a farby"></textarea>
-      <label class="prompt-label" for="partStyle">Vizuálny štýl</label><textarea id="partStyle" rows="2" placeholder="Napr. prémiový, fotorealistický, cinematic"></textarea>
-      <label class="prompt-label" for="partCamera">Kamera a pohyb</label><textarea id="partCamera" rows="2" placeholder="Napr. pomalý plynulý orbit"></textarea>
-      <label class="prompt-label" for="partLighting">Osvetlenie</label><textarea id="partLighting" rows="2" placeholder="Napr. dramatické mäkké bočné svetlo"></textarea>
-      <label class="prompt-label" for="partExtra">Ďalšie pokyny</label><textarea id="partExtra" rows="2" placeholder="Čomu sa má reklama vyhnúť? Čo má zdôrazniť?"></textarea>
+      <div class="prompt-part">
+        <button type="button" class="prompt-part-toggle" aria-expanded="false" aria-controls="partScenePanel">Prostredie a scéna <span>＋</span></button>
+        <div class="prompt-part-panel" id="partScenePanel" hidden><textarea id="partScene" rows="4" placeholder="Opíš prostredie, pozadie, rekvizity a atmosféru scény…"></textarea></div>
+      </div>
+      <div class="prompt-part">
+        <button type="button" class="prompt-part-toggle" aria-expanded="false" aria-controls="partProductPanel">Produkt a jeho vzhľad <span>＋</span></button>
+        <div class="prompt-part-panel" id="partProductPanel" hidden><textarea id="partProduct" rows="4" placeholder="Čo musí zostať zachované? Tvar, obal, logo, farby, materiál…"></textarea></div>
+      </div>
+      <div class="prompt-part">
+        <button type="button" class="prompt-part-toggle" aria-expanded="false" aria-controls="partStylePanel">Vizuálny štýl <span>＋</span></button>
+        <div class="prompt-part-panel" id="partStylePanel" hidden><textarea id="partStyle" rows="4" placeholder="Napr. prémiový, fotorealistický, cinematic…"></textarea></div>
+      </div>
+      <div class="prompt-part">
+        <button type="button" class="prompt-part-toggle" aria-expanded="false" aria-controls="partCameraPanel">Kamera a pohyb <span>＋</span></button>
+        <div class="prompt-part-panel" id="partCameraPanel" hidden><textarea id="partCamera" rows="4" placeholder="Opíš uhol záberu, pohyb kamery a tempo…"></textarea></div>
+      </div>
+      <div class="prompt-part">
+        <button type="button" class="prompt-part-toggle" aria-expanded="false" aria-controls="partLightingPanel">Osvetlenie <span>＋</span></button>
+        <div class="prompt-part-panel" id="partLightingPanel" hidden><textarea id="partLighting" rows="4" placeholder="Napr. mäkké bočné svetlo, odlesky, tiene…"></textarea></div>
+      </div>
+      <div class="prompt-part">
+        <button type="button" class="prompt-part-toggle" aria-expanded="false" aria-controls="partExtraPanel">Ďalšie pokyny <span>＋</span></button>
+        <div class="prompt-part-panel" id="partExtraPanel" hidden><textarea id="partExtra" rows="4" placeholder="Čomu sa má reklama vyhnúť? Čo má zdôrazniť?"></textarea></div>
+      </div>
       <button type="button" id="composePrompt" class="secondary">Zostaviť prompt z častí</button>
     </div>
     <label class="prompt-label" for="promptDraftText">Výsledný prompt – môžeš ho upraviť aj ručne</label>
@@ -598,7 +616,7 @@
     <div id="promptEditorStatus" role="status"></div>
     <p class="prompt-save-hint">Prompt sa uloží spolu s projektom po stlačení „Uložiť projekt“.</p>
   `;
-  promptBox.after(promptEditor);
+  advertising.after(promptEditor);
   const promptStyle=document.createElement('style');
   promptStyle.textContent=`
     #promptEditor{margin:12px 0 18px;padding:14px;background:#10151d;border:1px solid #303b49;border-radius:16px;color:#e8edf5}
@@ -609,7 +627,13 @@
     #promptEditor textarea{width:100%;box-sizing:border-box;background:#0b1017;color:#eef1f6;border:1px solid #354253;border-radius:11px;padding:11px;font:inherit;font-size:14px;resize:vertical;line-height:1.5;min-height:64px}
     #promptEditor #promptDraftText{min-height:150px}
     #scenePreset{width:100%;min-height:48px;background:#0e131a;color:#f3f5f8;border:1px solid #303b49;border-radius:16px;padding:12px;font:inherit;font-size:15px}
-    .prompt-parts{display:grid;grid-template-columns:1fr;gap:2px;margin:12px 0 16px}
+    .prompt-parts{display:grid;grid-template-columns:1fr;gap:8px;margin:12px 0 16px}
+    .prompt-part{overflow:hidden;border:1px solid #303b49;border-radius:12px;background:#151c26}
+    .prompt-part-toggle{width:100%;min-height:48px!important;display:flex;align-items:center;justify-content:space-between;text-align:left;background:#1a222e!important;color:#e8edf5!important;border:0!important;border-radius:0!important;padding:12px 14px!important}
+    .prompt-part-toggle span{color:#d6b66e;font-size:18px}
+    .prompt-part-panel{padding:10px}
+    .prompt-part-panel[hidden]{display:none}
+    .prompt-part-panel textarea{min-height:104px!important}
     .prompt-editor-actions{display:grid;grid-template-columns:1fr;gap:8px;margin-top:10px}
     .prompt-editor-actions button,#composePrompt{margin:0;min-height:44px!important}
     #promptEditorStatus{min-height:18px;margin-top:8px;color:#9ce0b8;font-size:12px}
@@ -622,6 +646,23 @@
   const syncPromptLength=()=>{promptLength.textContent=promptDraft.value.length+' / 1000';};
   const partIds=['partScene','partProduct','partStyle','partCamera','partLighting','partExtra'];
   const promptParts=Object.fromEntries(partIds.map(id=>[id,document.getElementById(id)]));
+  promptEditor.querySelectorAll('.prompt-part-toggle').forEach(toggle=>{
+    toggle.addEventListener('click',()=>{
+      const panel=document.getElementById(toggle.getAttribute('aria-controls'));
+      const opening=panel.hidden;
+      promptEditor.querySelectorAll('.prompt-part-panel').forEach(item=>item.hidden=true);
+      promptEditor.querySelectorAll('.prompt-part-toggle').forEach(item=>{
+        item.setAttribute('aria-expanded','false');
+        item.querySelector('span').textContent='＋';
+      });
+      if(opening){
+        panel.hidden=false;
+        toggle.setAttribute('aria-expanded','true');
+        toggle.querySelector('span').textContent='−';
+        panel.querySelector('textarea').focus();
+      }
+    });
+  });
   const scenePresets={
     luxury:{
       scene:'A luxurious dark studio with a deep charcoal background, elegant reflective black surface and carefully controlled negative space.',
