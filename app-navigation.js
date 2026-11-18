@@ -207,11 +207,11 @@
 
     .app-placeholder {
       text-align: left;
-      padding: 22px !important;
+      padding: 12px !important;
     }
 
     .app-placeholder h2 {
-      font-size: 20px !important;
+      font-size: 12px !important;
       margin-bottom: 10px !important;
     }
 
@@ -337,7 +337,7 @@
 
                         /* ZJEDNOTENY MOBILNY DIZAJN */
     #appBottomNav {
-      min-height: 160px !important;
+      min-height: 76px !important;
       padding: 14px 8px calc(14px + env(safe-area-inset-bottom)) !important;
       gap: 8px !important;
       grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
@@ -346,9 +346,9 @@
 
     #appBottomNav button {
       min-width: 0 !important;
-      min-height: 132px !important;
+      min-height: 68px !important;
       padding: 12px 3px !important;
-      font-size: 23px !important;
+      font-size: 12px !important;
       line-height: 1.2 !important;
       font-weight: 800 !important;
       border-radius: 18px !important;
@@ -361,31 +361,31 @@
 
     #appBottomNav button span {
       display: block !important;
-      font-size: 56px !important;
+      font-size: 24px !important;
       line-height: 1 !important;
       margin: 0 !important;
     }
 
     /* JEDNOTNA VELKOST PISMA A IKON V CELEJ APLIKACII */
     body {
-      font-size: 24px !important;
+      font-size: 16px !important;
     }
 
     header h1 {
-      font-size: 39px !important;
+      font-size: 24px !important;
       line-height: 1.2 !important;
       letter-spacing: 1px !important;
     }
 
     header .muted {
-      font-size: 25px !important;
+      font-size: 14px !important;
       line-height: 1.5 !important;
     }
 
     .panel h2,
     .app-placeholder h2,
     .studio-welcome h2 {
-      font-size: 40px !important;
+      font-size: 19px !important;
       line-height: 1.3 !important;
       margin-bottom: 26px !important;
     }
@@ -394,7 +394,7 @@
     .app-placeholder[data-section-icon] h2 {
       display: flex !important;
       align-items: center !important;
-      gap: 20px !important;
+      gap: 10px !important;
     }
 
     .panel h2[data-section-icon]::before,
@@ -403,19 +403,19 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      flex: 0 0 68px;
-      width: 68px;
-      height: 68px;
-      font-size: 52px;
+      flex: 0 0 30px;
+      width: 30px;
+      height: 30px;
+      font-size: 25px;
       line-height: 1;
     }
 
     .panel label {
       display: block !important;
-      font-size: 35px !important;
+      font-size: 14px !important;
       line-height: 1.35 !important;
       font-weight: 700 !important;
-      margin: 28px 0 12px !important;
+      margin: 14px 0 6px !important;
       color: #e0e6ef !important;
     }
 
@@ -423,30 +423,30 @@
     .panel select,
     .panel textarea {
       width: 100% !important;
-      min-height: 120px !important;
-      font-size: 38px !important;
+      min-height: 48px !important;
+      font-size: 16px !important;
       line-height: 1.3 !important;
-      padding: 24px !important;
+      padding: 12px !important;
       border-radius: 16px !important;
     }
 
     .panel input::placeholder,
     .panel textarea::placeholder {
-      font-size: 32px !important;
+      font-size: 14px !important;
     }
 
     .panel select option {
-      font-size: 34px !important;
+      font-size: 16px !important;
     }
 
     .panel textarea {
-      min-height: 240px !important;
+      min-height: 110px !important;
     }
 
     .panel button:not(#appBottomNav button) {
-      font-size: 35px !important;
-      min-height: 116px !important;
-      padding: 22px !important;
+      font-size: 14px !important;
+      min-height: 54px !important;
+      padding: 12px !important;
     }
 
     .panel .note,
@@ -455,17 +455,17 @@
     .panel p,
     .app-placeholder p,
     .studio-welcome p {
-      font-size: 27px !important;
+      font-size: 14px !important;
       line-height: 1.55 !important;
     }
 
     .panel .output {
-      font-size: 30px !important;
+      font-size: 15px !important;
       line-height: 1.6 !important;
     }
 
     .studio-welcome .welcome-kicker {
-      font-size: 20px !important;
+      font-size: 12px !important;
     }
 
     /* Rovnake pohodlne ovladanie na vsetkych mobiloch */
@@ -487,7 +487,7 @@
 
     /* Rezerva priestoru pod obsahom, aby pevna navigacia nic nezakryvala */
     #appViews {
-      margin-bottom: calc(190px + env(safe-area-inset-bottom)) !important;
+      margin-bottom: calc(100px + env(safe-area-inset-bottom)) !important;
     }
 
     .app-screen.active {
@@ -508,7 +508,7 @@
       background: linear-gradient(135deg,#202936,#151a22 72%) !important;
       border: 1px solid #394454 !important;
       border-radius: 20px !important;
-      padding: 22px !important;
+      padding: 12px !important;
       margin: 0 0 15px !important;
     }
 
@@ -570,7 +570,7 @@
       box-sizing: border-box !important;
     }
     #appViews {
-      margin-bottom: calc(190px + env(safe-area-inset-bottom)) !important;
+      margin-bottom: calc(100px + env(safe-area-inset-bottom)) !important;
     }
   `;
   document.head.appendChild(style);
