@@ -62,6 +62,9 @@ a{color:#174ea6;overflow-wrap:anywhere}
 
 <section class="panel">
 <h2>3. Nastavenie reklamy</h2>
+<label for="exportPreset">Predvoľba exportu pre platformu</label>
+<select id="exportPreset"><option value="custom">Vlastné nastavenie</option><option value="instagram">Instagram Reels / Stories – 9:16 · 1080p</option><option value="tiktok">TikTok – 9:16 · 1080p</option><option value="shorts">YouTube Shorts – 9:16 · 1080p</option><option value="youtube">YouTube video – 16:9 · 1080p</option><option value="youtube4k">YouTube 4K – 16:9 · 4K</option><option value="square">Instagram príspevok – 1:1 · 1080p</option></select>
+<p id="exportPresetNote" class="note">Vyber platformu a aplikácia nastaví odporúčaný pomer strán, model a rozlíšenie. Nastavenia môžeš potom upraviť ručne.</p>
 <div class="grid">
 <div><label for="style">Vizuálny štýl</label><select id="style">
 <option>Realistická luxusná reklama</option><option>Minimalistická štúdiová reklama</option><option>Športová dynamická reklama</option><option>Prírodná lifestyle reklama</option><option>Technologická reklama</option></select></div>
@@ -153,6 +156,25 @@ function updateEstimate(){
  const credits=Math.max(rate*4,sec*rate);
  $('estimate').textContent=`Odhad: ${(credits/100).toFixed(2)} USD (${credits} kreditov)`;
 }
+const exportPresets={
+ instagram:{format:'9:16',model:'seedance2',resolution:'1080p',note:'Instagram Reels a Stories: vertikálny formát 9:16 vo Full HD.'},
+ tiktok:{format:'9:16',model:'seedance2',resolution:'1080p',note:'TikTok: vertikálny formát 9:16 vo Full HD.'},
+ shorts:{format:'9:16',model:'seedance2',resolution:'1080p',note:'YouTube Shorts: vertikálny formát 9:16 vo Full HD.'},
+ youtube:{format:'16:9',model:'seedance2',resolution:'1080p',note:'YouTube: širokouhlý formát 16:9 vo Full HD.'},
+ youtube4k:{format:'16:9',model:'seedance2',resolution:'4K',note:'YouTube 4K: širokouhlý formát 16:9. Pozor na výrazne vyššiu cenu.'},
+ square:{format:'1:1',model:'seedance2',resolution:'1080p',note:'Štvorcový príspevok: formát 1:1 vo Full HD.'}
+};
+function applyExportPreset(){
+ const key=$('exportPreset').value,preset=exportPresets[key];
+ if(!preset){$('exportPresetNote').textContent='Vlastné nastavenie: formát, model a rozlíšenie si zvoľ samostatne.';return;}
+ $('format').value=preset.format;$('model').value=preset.model;updateResolutionOptions();$('resolution').value=preset.resolution;
+ $('exportPresetNote').textContent=preset.note+' FPS určuje generovací model.';updateEstimate();
+}
+$('exportPreset').addEventListener('change',applyExportPreset);
+['format','model','resolution'].forEach(id=>$(id).addEventListener('change',()=>{
+ if($('exportPreset').value!=='custom')$('exportPreset').value='custom';
+ $('exportPresetNote').textContent='Vlastné nastavenie: upravil si niektorú hodnotu ručne.';
+}));
 $('makePrompt').onclick=buildPrompt;
 $('model').addEventListener('change',updateResolutionOptions);
 ['duration','resolution'].forEach(id=>$(id).addEventListener('change',updateEstimate));
@@ -250,6 +272,7 @@ async function downloadGeneratedVideo(id){
   if(response.status===401){localStorage.removeItem('psai_session_token');token=await loginAndGetToken();response=await fetch(API_BASE+'/api/download/'+encodeURIComponent(id),{headers:{'Authorization':'Bearer '+token}});}
   if(!response.ok){const data=await response.json().catch(()=>({}));throw new Error(data.error||'Video sa nepodarilo stiahnuť.');}
   const blob=await response.blob();const objectUrl=URL.createObjectURL(blob);
+  const sizeMb=(blob.size/1024/1024).toFixed(1);const sizeInfo=$('downloadInfo');if(sizeInfo)sizeInfo.textContent='Veľkosť súboru: '+sizeMb+' MB';
   const link=document.createElement('a');link.href=objectUrl;
   link.download=`product-studio-${$('format').value.replace(':','x')}-${$('resolution').value}-${$('duration').value}s.mp4`;
   document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(objectUrl),60000);
@@ -266,7 +289,7 @@ async function pollTask(id, outputId='videoWrap', statusId='status'){
    const outputs=task.output||task.outputs||[];
    const url=Array.isArray(outputs)?(typeof outputs[0]==='string'?outputs[0]:outputs[0]?.url||outputs[0]?.uri):outputs?.url;
    if(!url)throw new Error('Video je hotové, ale server nevrátil odkaz na výstup.');
-   $(outputId).innerHTML=`<video controls playsinline src="${url}"></video><button type="button" id="downloadVideo">STIAHNUŤ MP4</button><p class="note">Výstup: ${$('format').value} · ${$('resolution').value} · ${$('duration').value} s. FPS je podľa modelu Seedance.</p>`;
+   $(outputId).innerHTML=`<video controls playsinline src="${url}"></video><button type="button" id="downloadVideo">STIAHNUŤ MP4</button><p id="downloadInfo" class="note">Výstup: ${$('format').value} · ${$('resolution').value} · ${$('duration').value} s. FPS je podľa modelu Seedance. Veľkosť súboru sa zobrazí po stiahnutí.</p>`;
    $('downloadVideo').onclick=()=>downloadGeneratedVideo(id);
    $(statusId).textContent='Hotovo! Video je pripravené. Môžeš si ho prehrať a uložiť.';
    $(statusId).className='status ok';
@@ -355,6 +378,7 @@ window.PSAIProjectBridge = {
       style: $('style').value,
       scenePreset: $('scenePreset')?.value || '',
       format: $('format').value,
+      exportPreset: $('exportPreset').value,
       motion: $('motion').value,
       duration: $('duration').value,
       resolution: $('resolution').value,
@@ -370,6 +394,8 @@ window.PSAIProjectBridge = {
     $('style').value = project.style || $('style').options[0].value;
     if($('scenePreset')) $('scenePreset').value = project.scenePreset || '';
     $('format').value = project.format || '9:16';
+    $('exportPreset').value = project.exportPreset || 'custom';
+    $('exportPresetNote').textContent = project.exportPreset && exportPresets[project.exportPreset] ? exportPresets[project.exportPreset].note : 'Vlastné nastavenie projektu.';
     $('motion').value = project.motion || $('motion').options[0].value;
     $('duration').value = project.duration || '5';
     $('model').value = project.model || 'seedance2_mini';
