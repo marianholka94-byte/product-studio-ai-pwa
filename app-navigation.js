@@ -250,7 +250,7 @@
 
   // Local project library backed by IndexedDB (project metadata + original image files).
   const projectDbName='product-studio-ai-projects', projectStoreName='projects';
-  let activeProjectId=null, projectDbPromise=null;
+  let activeProjectId=null, activeProductId=null, projectDbPromise=null;
   const openProjectDb=()=>{
     if(projectDbPromise)return projectDbPromise;
     projectDbPromise=new Promise((resolve,reject)=>{
@@ -375,6 +375,7 @@
     .product-manager-actions button{min-height:44px!important;margin:0}
     .product-manager-close{min-width:38px!important;width:38px;min-height:38px!important;padding:0!important;border-radius:50%!important}
     .product-manager-add{grid-column:1/-1}
+    .product-manager-create{grid-column:1/-1;background:#29251c!important;color:#e2c47e!important;border:1px solid #5b4b2b!important}
     .product-manager-count{margin:12px 0 0;color:#8995a6;font-size:12px;text-align:center}
 
   `;
@@ -390,10 +391,10 @@
       const firstImage=record.images?.[0]?.blob;if(firstImage)thumb.src=URL.createObjectURL(firstImage);
       const info=document.createElement('div');info.className='saved-project-info';
       const title=document.createElement('strong');title.textContent=record.name||'Nepomenovaný projekt';
-      const meta=document.createElement('small');meta.textContent=(record.images?.length||0)+' fotografií · '+formatProjectDate(record.updatedAt);
+      const linkedCount=record.id? (await getAllProjects()).filter(project=>project.productId===record.id).length:0;const meta=document.createElement('small');meta.textContent=(record.images?.length||0)+' fotografií · '+linkedCount+' reklamných projektov · '+formatProjectDate(record.updatedAt);
       const buttons=document.createElement('div');buttons.className='saved-project-buttons';
       const open=document.createElement('button');open.type='button';open.className='secondary';open.textContent='Otvoriť';
-      open.addEventListener('click',async()=>{try{const latest=await getProject(record.id);if(!latest)throw new Error('Projekt sa už nenašiel.');await window.PSAIProjectBridge.restore(latest);activeProjectId=latest.id;syncPromptEditor(latest.prompt||'');setProjectMessage('Otvorený projekt: '+latest.name);nav.querySelector('[data-screen="screenStudio"]').click();}catch(error){alert(error.message||'Projekt sa nepodarilo otvoriť.');}});
+      open.addEventListener('click',async()=>{try{const latest=await getProject(record.id);if(!latest)throw new Error('Projekt sa už nenašiel.');await window.PSAIProjectBridge.restore(latest);activeProjectId=latest.id;activeProductId=latest.productId||null;syncPromptEditor(latest.prompt||'');setProjectMessage('Otvorený projekt: '+latest.name);nav.querySelector('[data-screen="screenStudio"]').click();}catch(error){alert(error.message||'Projekt sa nepodarilo otvoriť.');}});
       const remove=document.createElement('button');remove.type='button';remove.className='delete-project';remove.textContent='Vymazať';
       remove.addEventListener('click',async()=>{if(!confirm('Naozaj chceš vymazať projekt „'+(record.name||'Nepomenovaný projekt')+'“?'))return;try{await removeProject(record.id);if(activeProjectId===record.id)activeProjectId=null;await renderProjects();}catch(error){alert(error.message||'Projekt sa nepodarilo vymazať.');}});
       buttons.append(open,remove);info.append(title,meta,buttons);card.append(thumb,info);projectsList.append(card);
@@ -403,7 +404,7 @@
   const productManagerBackdrop=document.createElement('div');
   productManagerBackdrop.className='product-manager-backdrop';
   productManagerBackdrop.hidden=true;
-  productManagerBackdrop.innerHTML='<section class="product-manager" role="dialog" aria-modal="true" aria-labelledby="productManagerTitle"><div class="product-manager-head"><h3 id="productManagerTitle">Správa produktu</h3><button type="button" class="secondary product-manager-close" aria-label="Zavrieť">×</button></div><p class="product-manager-sub">Spravuj fotografie produktu. Môžeš pridať nové, odstrániť nepotrebné alebo zmeniť hlavnú fotografiu.</p><div class="product-manager-grid" id="productManagerGrid"></div><p class="product-manager-count" id="productManagerCount"></p><div class="product-manager-actions"><button type="button" class="secondary product-manager-add" id="addProductPhotos">＋ Pridať fotografie</button><button type="button" class="secondary" id="cancelProductManager">Zavrieť</button><button type="button" id="saveProductPhotos">Uložiť zmeny</button></div><input type="file" id="productPhotoInput" accept="image/*" multiple hidden></section>';
+  productManagerBackdrop.innerHTML='<section class="product-manager" role="dialog" aria-modal="true" aria-labelledby="productManagerTitle"><div class="product-manager-head"><h3 id="productManagerTitle">Správa produktu</h3><button type="button" class="secondary product-manager-close" aria-label="Zavrieť">×</button></div><p class="product-manager-sub">Spravuj fotografie produktu. Môžeš pridať nové, odstrániť nepotrebné alebo zmeniť hlavnú fotografiu.</p><div class="product-manager-grid" id="productManagerGrid"></div><p class="product-manager-count" id="productManagerCount"></p><div class="product-manager-actions"><button type="button" class="secondary product-manager-add" id="addProductPhotos">＋ Pridať fotografie</button><button type="button" class="secondary" id="cancelProductManager">Zavrieť</button><button type="button" id="saveProductPhotos">Uložiť zmeny</button><button type="button" class="secondary product-manager-create" id="createProjectFromProduct">＋ Vytvoriť reklamný projekt</button></div><input type="file" id="productPhotoInput" accept="image/*" multiple hidden></section>';
   document.body.append(productManagerBackdrop);
   let managingProductId=null,managingProductName='',managingProductImages=[];
   const closeProductManager=()=>{productManagerBackdrop.hidden=true;managingProductId=null;managingProductName='';managingProductImages=[];productManagerBackdrop.querySelector('#productManagerGrid').innerHTML='';};
@@ -435,6 +436,20 @@
     productManagerBackdrop.querySelector('#productPhotoInput').value='';
     renderProductManagerImages();productManagerBackdrop.hidden=false;
   };
+  productManagerBackdrop.querySelector('#createProjectFromProduct').addEventListener('click',async()=>{
+    const button=productManagerBackdrop.querySelector('#createProjectFromProduct');button.disabled=true;
+    try{
+      if(!managingProductId)throw new Error('Najskôr vyber produkt.');
+      const records=await getAllProducts();const productRecord=records.find(item=>item.id===managingProductId);
+      if(!productRecord)throw new Error('Produkt sa už nenašiel.');
+      closeProductManager();activeProjectId=null;activeProductId=productRecord.id;
+      await window.PSAIProjectBridge.restore({product:productRecord.name,images:productRecord.images||[]});
+      syncPromptEditor('');
+      setProjectMessage('Nový reklamný projekt pre produkt „'+productRecord.name+'“ je pripravený. Ulož ho ako samostatný projekt.');
+      nav.querySelector('[data-screen="screenStudio"]').click();
+    }catch(error){showProductManagerMessage(error.message||'Projekt sa nepodarilo vytvoriť.');}
+    finally{button.disabled=false;}
+  });
   productManagerBackdrop.querySelector('#addProductPhotos').addEventListener('click',()=>productManagerBackdrop.querySelector('#productPhotoInput').click());
   productManagerBackdrop.querySelector('#productPhotoInput').addEventListener('change',event=>{
     const files=[...event.target.files||[]];const remaining=5-managingProductImages.length;
@@ -465,7 +480,7 @@
       const first=record.images?.[0]?.blob;if(first)thumb.src=URL.createObjectURL(first);
       const info=document.createElement('div');info.className='saved-product-info';
       const title=document.createElement('strong');title.textContent=record.name;
-      const meta=document.createElement('small');meta.textContent=(record.images?.length||0)+' fotografií · '+formatProjectDate(record.updatedAt);
+      const linkedProduct=record.productId?await getProduct(record.productId):null;const meta=document.createElement('small');meta.textContent=(record.images?.length||0)+' fotografií'+(linkedProduct?' · Produkt: '+linkedProduct.name:'')+' · '+formatProjectDate(record.updatedAt);
       const buttons=document.createElement('div');buttons.className='saved-product-buttons';
       const manage=document.createElement('button');manage.type='button';manage.className='secondary manage-product';manage.textContent='Spravovať fotografie';
       manage.addEventListener('click',async()=>{try{await openProductManager(record.id);}catch(error){setProjectMessage(error.message||'Správa produktu sa nepodarila otvoriť.',true);}});
@@ -518,12 +533,12 @@
     if(!state.product.trim()&&!state.images.length)throw new Error('Najskôr zadaj názov produktu alebo pridaj fotografiu.');
     if(!state.images.length)throw new Error('Projekt musí obsahovať aspoň jednu fotografiu produktu.');
     const now=Date.now(),existing=activeProjectId?await getProject(activeProjectId):null;
-    const editedPrompt=promptDraft.value.trim()||state.prompt;const record={id:activeProjectId||('project-'+now+'-'+Math.random().toString(36).slice(2,8)),name:state.product.trim()||'Nový produkt',createdAt:existing?.createdAt||now,updatedAt:now,product:state.product,style:state.style,format:state.format,motion:state.motion,duration:state.duration,lighting:state.lighting,extra:state.extra,prompt:editedPrompt,images:state.images};
+    const editedPrompt=promptDraft.value.trim()||state.prompt;const record={id:activeProjectId||('project-'+now+'-'+Math.random().toString(36).slice(2,8)),name:state.product.trim()||'Nový produkt',createdAt:existing?.createdAt||now,updatedAt:now,product:state.product,productId:activeProductId||existing?.productId||null,style:state.style,format:state.format,motion:state.motion,duration:state.duration,lighting:state.lighting,extra:state.extra,prompt:editedPrompt,images:state.images};
     await putProject(record);activeProjectId=record.id;await renderProjects();setProjectMessage('Projekt „'+record.name+'“ bol uložený v tomto zariadení.');return record;
   };
   const startNewProject=async()=>{
     if(!confirm('Začať nový projekt? Neuložené zmeny v aktuálnom projekte sa stratia.'))return;
-    activeProjectId=null;await window.PSAIProjectBridge.restore({});syncPromptEditor('');setProjectMessage('Nový projekt je pripravený. Po pridaní fotografie ho môžeš uložiť.');nav.querySelector('[data-screen="screenStudio"]').click();
+    activeProjectId=null;activeProductId=null;await window.PSAIProjectBridge.restore({});syncPromptEditor('');setProjectMessage('Nový projekt je pripravený. Po pridaní fotografie ho môžeš uložiť.');nav.querySelector('[data-screen="screenStudio"]').click();
   };
   document.getElementById('saveProjectButton').addEventListener('click',async()=>{const button=document.getElementById('saveProjectButton');button.disabled=true;try{await saveCurrentProject();}catch(error){setProjectMessage(error.message||'Projekt sa nepodarilo uložiť.',true);}finally{button.disabled=false;}});
   document.getElementById('newProjectButton').addEventListener('click',startNewProject);
