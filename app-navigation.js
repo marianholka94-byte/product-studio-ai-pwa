@@ -601,42 +601,13 @@ studio.append(welcome, product, advertising, generation);
   projects.append(projectsIntro, history);
   settings.append(connection);
 
-  // Jediny handler tlacidla pripojenia – priradeny priamo po presunuti sekcie do Nastaveni.
-  const saveButton = document.getElementById('saveConfig');
-  if (saveButton) {
-    saveButton.onclick = async function () {
-      const status = document.getElementById('connectionStatus');
-      const urlInput = document.getElementById('apiUrl');
-      const passwordInput = document.getElementById('appPassword');
-      if (!status || !urlInput || !passwordInput) return;
-      status.textContent = 'Kliknutie prijaté. Ukladám nastavenia…';
-      status.className = 'status';
-      let base = urlInput.value.trim();
-      while (base.endsWith('/')) base = base.slice(0, -1);
-      const password = passwordInput.value;
-      if (!base || !password) {
-        status.textContent = 'Zadaj adresu backendu aj súkromný prístupový kód.';
-        status.className = 'status err';
-        return;
-      }
-      try {
-        localStorage.setItem('psai_api_url', base);
-        sessionStorage.setItem('psai_password', password);
-        status.textContent = 'Údaje uložené. Overujem backend…';
-        const response = await fetch(base + '/api/health', {
-          method: 'GET',
-          headers: { 'X-App-Password': password }
-        });
-        const result = await response.json().catch(function () { return {}; });
-        if (!response.ok) throw new Error(result.error || ('HTTP ' + response.status));
-        status.textContent = 'Spojenie s backendom funguje.';
-        status.className = 'status ok';
-      } catch (error) {
-        status.textContent = 'Údaje sú uložené, ale spojenie zlyhalo: ' + (error.message || 'Chyba spojenia');
-        status.className = 'status err';
-      }
-    };
-  }
+  // Technicke pripojenie sa nastavuje automaticky a nie je súčasťou bežného rozhrania.
+  connection.remove();
+  settings.innerHTML = '<section class="app-placeholder"><h2>Zabezpečenie</h2><p>Pripojenie generátora je nastavené automaticky.</p><button id="logoutButton" class="secondary">Odhlásiť toto zariadenie</button></section>';
+  settings.querySelector('#logoutButton').addEventListener('click', () => {
+    localStorage.removeItem('psai_session_token');
+    alert('Zariadenie bolo odhlásené. Pri ďalšom generovaní sa prihlásiš znova.');
+  });
 
   views.append(studio, projects, settings);
 
