@@ -115,7 +115,11 @@ function updateReadyStatus(){
 function buildPrompt(){
  const product=$('product').value.trim()||'the uploaded product';
  const extra=$('extra').value.trim();
- const base=`Create a photorealistic ${$('duration').value}-second premium product ad using all uploaded reference photos of the same product. Product: ${product}. Keep the product identity, design, proportions, packaging, logo and colors consistent across all views. Style: ${$('style').value}. Camera: ${$('motion').value}. Lighting: ${$('lighting').value}. Aspect ratio: ${$('format').value}. Preserve the product's exact shape, packaging, label, logo and original colors. Keep it realistic, sharp and stable, with natural reflections, smooth motion and cinematic premium lighting. No extra objects, altered branding, distorted details, flicker or camera shake.`;
+ const scene=$('scenePreset')?.value ? (window.PSAIScenePresets?.[$('scenePreset').value]?.scene || '') : '';
+ const sceneStyle=$('scenePreset')?.value ? (window.PSAIScenePresets?.[$('scenePreset').value]?.style || '') : '';
+ const sceneCamera=$('scenePreset')?.value ? (window.PSAIScenePresets?.[$('scenePreset').value]?.camera || '') : '';
+ const sceneLighting=$('scenePreset')?.value ? (window.PSAIScenePresets?.[$('scenePreset').value]?.lighting || '') : '';
+ const base=`Create a photorealistic ${$('duration').value}-second premium product ad using all uploaded reference photos of the same product. Product: ${product}. Keep the product identity, design, proportions, packaging, logo and colors consistent across all views. Style: ${sceneStyle || $('style').value}. Scene: ${scene || 'clean premium product-ad scene'}. Camera: ${sceneCamera || $('motion').value}. Lighting: ${sceneLighting || $('lighting').value}. Aspect ratio: ${$('format').value}. Preserve the product's exact shape, packaging, label, logo and original colors. Keep it realistic, sharp and stable, with natural reflections, smooth motion and cinematic premium lighting. No extra objects, altered branding, distorted details, flicker or camera shake.`;
  const suffix=extra ? ' Additional direction: ' : '';
  const available=Math.max(0,1000-base.length-suffix.length);
  promptText=(base+(extra?suffix+extra.slice(0,available):'')).slice(0,1000);
@@ -302,6 +306,7 @@ window.PSAIProjectBridge = {
     return {
       product: $('product').value,
       style: $('style').value,
+      scenePreset: $('scenePreset')?.value || '',
       format: $('format').value,
       motion: $('motion').value,
       duration: $('duration').value,
@@ -314,6 +319,7 @@ window.PSAIProjectBridge = {
   async restore(project) {
     $('product').value = project.product || '';
     $('style').value = project.style || $('style').options[0].value;
+    if($('scenePreset')) $('scenePreset').value = project.scenePreset || '';
     $('format').value = project.format || '9:16';
     $('motion').value = project.motion || $('motion').options[0].value;
     $('duration').value = project.duration || '5';
@@ -348,5 +354,5 @@ if ('serviceWorker' in navigator && new URLSearchParams(location.search).get('na
   });
 }
   </script>
-  <script src="/app-navigation.js?v=ad-scene-library-v1-20261118"></script>
+  <script src="/app-navigation.js?v=ad-settings-scene-select-v1-20261118"></script>
 </body></html>
