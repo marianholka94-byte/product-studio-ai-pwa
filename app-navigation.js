@@ -489,7 +489,7 @@
         try{
           if(!confirm('Načítať produkt „'+record.name+'“ do štúdia? Aktuálne neuložené zmeny v editore sa prepíšu.'))return;
           const latest=await getProduct(record.id);if(!latest)throw new Error('Produkt sa už nenašiel.');
-          activeProjectId=null;
+          activeProjectId=null;activeProductId=latest.id;
           await window.PSAIProjectBridge.restore({product:latest.name,images:latest.images});
           syncPromptEditor('');
           setProjectMessage('Produkt „'+latest.name+'“ je pripravený na novú reklamu.');
