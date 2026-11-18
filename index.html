@@ -294,6 +294,10 @@ async function generateFromCombinedInputs(){
 }
 
 window.PSAIProjectBridge = {
+  setPrompt(value) {
+    promptText = String(value || '').slice(0,1000);
+    $('prompt').textContent = promptText;
+  },
   capture() {
     return {
       product: $('product').value,
@@ -344,5 +348,5 @@ if ('serviceWorker' in navigator && new URLSearchParams(location.search).get('na
   });
 }
   </script>
-  <script src="/app-navigation.js?v=product-project-links-v1-20261118"></script>
+  <script src="/app-navigation.js?v=prompt-editor-sections-v1-20261118"></script>
 </body></html>
