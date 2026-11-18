@@ -283,11 +283,11 @@
 
   const projectsList=document.createElement('div');projectsList.id='savedProjectsList';
   projectsList.innerHTML='<div class="projects-empty"><span class="empty-icon">▣</span><strong>Zatiaľ tu nemáš žiadne projekty</strong><p>Vytvor projekt v štúdiu a ulož si fotografie, nastavenia aj reklamný prompt.</p></div>';
-  projects.append(projectsIntro,productsIntro,productsList,history,projectsList);
-  const productsIntro=document.createElement('section');productsIntro.className='app-placeholder';productsIntro.dataset.sectionIcon='📦';
+    const productsIntro=document.createElement('section');productsIntro.className='app-placeholder';productsIntro.dataset.sectionIcon='📦';
   productsIntro.innerHTML='<h2>Moja knižnica produktov</h2><p>Ulož produkty raz a použi ich znova v ďalších reklamných projektoch.</p>';
   const productsList=document.createElement('div');productsList.id='savedProductsList';
   productsList.innerHTML='<div class="projects-empty"><span class="empty-icon">▧</span><strong>Zatiaľ nemáš uložené produkty</strong><p>V štúdiu môžeš uložiť produkt spolu s jeho fotografiami.</p></div>';
+  projects.append(projectsIntro,productsIntro,productsList,history,projectsList);
 
   const projectActions=document.createElement('div');projectActions.className='project-actions';
   projectActions.innerHTML='<button type="button" id="createProjectButton" class="secondary">＋ Nový projekt</button>';
