@@ -30,7 +30,19 @@ a{color:#174ea6;overflow-wrap:anywhere}
 .preview-item span{display:block;text-align:center;font-size:16px;margin-top:8px;color:#c5cedb}
 @media(min-width:600px){.preview-gallery{grid-template-columns:repeat(3,minmax(0,1fr))}}
 
-.generation-progress{display:none;margin-top:14px;padding:14px;border:1px solid #d9d9d3;border-radius:13px;background:#fafaf8}
+.generation-progress{display:none;margin-top:14px;padding:14px;border:1px solid #303b49;border-radius:13px;background:#171d27;color:#f3f5f8;max-width:100%;overflow:hidden}
+.generation-progress .progress-heading{color:#f3f5f8}
+.generation-progress .progress-detail{color:#aeb8c7}
+.generation-progress .progress-track{background:#303947}
+.generation-progress .progress-step{background:#303947;color:#c5cedb}
+.generation-progress .progress-step.done{background:#183a2a;color:#a9e2b8}
+.generation-progress .progress-step.current{background:#26385e;color:#c6d3ff}
+.test-tools{margin-top:12px;border:1px dashed #465366;border-radius:12px;padding:11px 13px;background:#171d27;color:#f3f5f8;max-width:100%;overflow:hidden}
+.test-tools summary{font-size:13px;font-weight:700;cursor:pointer;color:#f3f5f8}
+.test-tools .note{color:#aeb8c7}
+.test-tools .grid{grid-template-columns:1fr 1fr;min-width:0}
+.test-tools button{min-width:0;white-space:normal;overflow-wrap:anywhere}
+@media(max-width:520px){.test-tools .grid{grid-template-columns:1fr}.test-tools button{width:100%}}
 .generation-progress.active{display:block}
 .progress-heading{display:flex;justify-content:space-between;gap:10px;align-items:center;font-size:14px;font-weight:700}
 .progress-track{height:9px;margin:12px 0 10px;background:#e6e6e1;border-radius:99px;overflow:hidden}
@@ -103,8 +115,8 @@ a{color:#174ea6;overflow-wrap:anywhere}
 <div id="prompt" class="output">Po výbere produktu sa tu zobrazí reklamný prompt.</div>
 <button id="generate">GENEROVAŤ VIDEO</button>
 <div id="status" class="status">Najskôr over backend a vyber fotografiu produktu.</div>
-<details class="test-tools" style="margin-top:12px;border:1px dashed #b8b8b0;border-radius:12px;padding:11px 13px;background:#fafaf8">
- <summary style="font-size:13px;font-weight:700;cursor:pointer">Testovací režim – bez API a bez kreditov</summary>
+<details class="test-tools">
+ <summary>Testovací režim – bez API a bez kreditov</summary>
  <p class="note">Simulácia priebehu iba v tejto obrazovke. Nespúšťa Runway, neposiela fotografie ani nevytvára skutočné video.</p>
  <div class="grid"><button type="button" class="secondary" id="simulateSuccess">Simulovať úspešné dokončenie</button><button type="button" class="secondary" id="simulateFailure">Simulovať chybu</button></div>
  <button type="button" class="secondary" id="resetSimulation">Resetovať test</button>
