@@ -1,7 +1,7 @@
 const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type,X-App-Password",
+  "Access-Control-Allow-Headers": "Content-Type,X-App-Password,Authorization",
   "Access-Control-Allow-Credentials": "false",
   "Access-Control-Max-Age": "86400",
   "Vary": "Origin"
@@ -12,6 +12,35 @@ function reply(data, status = 200) {
     status,
     headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", ...CORS }
   });
+}
+
+
+function b64url(bytes) {
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+}
+function fromB64url(value) {
+  const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
+  const binary = atob(normalized + "=".repeat((4 - normalized.length % 4) % 4));
+  return Uint8Array.from(binary, char => char.charCodeAt(0));
+}
+async function signSession(payload, secret) {
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const body = b64url(new TextEncoder().encode(JSON.stringify(payload)));
+  const signature = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(body));
+  return body + "." + b64url(new Uint8Array(signature));
+}
+async function verifySession(token, secret) {
+  try {
+    const [body, signature] = token.split(".");
+    if (!body || !signature) return false;
+    const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["verify"]);
+    const valid = await crypto.subtle.verify("HMAC", key, fromB64url(signature), new TextEncoder().encode(body));
+    if (!valid) return false;
+    const payload = JSON.parse(new TextDecoder().decode(fromB64url(body)));
+    return Number(payload.exp) > Math.floor(Date.now() / 1000);
+  } catch { return false; }
 }
 
 function runwayHeaders(env) {
@@ -46,11 +75,21 @@ export default {
     if (!env.RUNWAY_API_KEY || !env.APP_PASSWORD) {
       return reply({ error: "Backend nie je nakonfigurovaný. Skontroluj tajné premenné RUNWAY_API_KEY a APP_PASSWORD." }, 503);
     }
-    if (request.headers.get("X-App-Password") !== env.APP_PASSWORD) {
-      return reply({ error: "Nesprávny súkromný prístupový kód." }, 401);
-    }
 
     try {
+      if (request.method === "POST" && url.pathname === "/api/session") {
+        if (request.headers.get("X-App-Password") !== env.APP_PASSWORD) {
+          return reply({ error: "Nesprávny prístupový kód." }, 401);
+        }
+        const token = await signSession({ exp: Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60 }, env.APP_PASSWORD);
+        return reply({ token, expiresIn: 30 * 24 * 60 * 60 });
+      }
+      const bearer = (request.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "");
+      const legacyPassword = request.headers.get("X-App-Password") === env.APP_PASSWORD;
+      if (!legacyPassword && !(await verifySession(bearer, env.APP_PASSWORD))) {
+        return reply({ error: "Prihlásenie vypršalo. Prihlás sa znova." }, 401);
+      }
+
       if (request.method === "GET" && url.pathname === "/api/health") {
         return reply({ ok: true, service: "PRODUCT STUDIO AI", provider: "Runway Dev", model: "seedance2_mini" });
       }
