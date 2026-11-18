@@ -245,7 +245,7 @@ sourceVideo.addEventListener('change',()=>{
   $('sourceVideoInfo').textContent=`Vybrané: ${selectedSourceVideo.name} · ${(selectedSourceVideo.size/1024/1024).toFixed(1)} MB · ${Number.isFinite(seconds)?seconds.toFixed(1)+' s':'dĺžka sa zisťuje'}`;
   $('sourceVideoInfo').className='note';
  };
-};
+ });
 async function uploadFormApi(path,form){
  let token=localStorage.getItem('psai_session_token')||'';
  if(!token) token=await loginAndGetToken();
