@@ -599,7 +599,7 @@
     promptParts.partLighting.value='Lighting: '+document.getElementById('lighting').value+'. Use natural reflections and cinematic highlights.';
     promptParts.partExtra.value=document.getElementById('extra').value.trim();
   };
-  const syncPromptEditor=(textValue='')=>{promptDraft.value=textValue||'';syncPromptLength();promptStatus.textContent='';};
+  const syncPromptEditor=(textValue='')=>{promptDraft.value=textValue||'';syncPromptLength();promptStatus.textContent='';loadPartsFromSettings();};
   const composePromptFromParts=()=>{
     const duration=document.getElementById('duration').value;
     const format=document.getElementById('format').value;
