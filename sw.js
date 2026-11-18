@@ -1,5 +1,5 @@
-const CACHE = "product-studio-ai-v28-restore-splash-20261118";
-const FILES = ["/", "/index.html", "/manifest.webmanifest", "/icon.svg", "/app-navigation.js?v=restore-animated-splash-20261118"];
+const CACHE = "product-studio-ai-v29-remove-stuck-splash-20261118";
+const FILES = ["/", "/index.html", "/manifest.webmanifest", "/icon.svg", "/app-navigation.js?v=restore-stable-ui-20261118"];
 self.addEventListener("install", event => event.waitUntil(
   caches.open(CACHE).then(cache => cache.addAll(FILES)).then(() => self.skipWaiting())
 ));
