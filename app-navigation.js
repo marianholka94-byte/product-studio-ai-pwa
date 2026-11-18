@@ -583,27 +583,27 @@
     <div class="prompt-parts">
       <div class="prompt-part">
         <button type="button" class="prompt-part-toggle" aria-expanded="false" aria-controls="partScenePanel">Prostredie a scéna <span>＋</span></button>
-        <div class="prompt-part-panel" id="partScenePanel" hidden><textarea id="partScene" rows="4" placeholder="Opíš prostredie, pozadie, rekvizity a atmosféru scény…"></textarea></div>
+        <div class="prompt-part-panel" id="partScenePanel" hidden><textarea id="partScene" rows="4" placeholder="Opíš prostredie, pozadie, rekvizity a atmosféru scény…"></textarea><button type="button" class="add-prompt-part secondary" data-part="partScene">Pridať do promptu</button></div>
       </div>
       <div class="prompt-part">
         <button type="button" class="prompt-part-toggle" aria-expanded="false" aria-controls="partProductPanel">Produkt a jeho vzhľad <span>＋</span></button>
-        <div class="prompt-part-panel" id="partProductPanel" hidden><textarea id="partProduct" rows="4" placeholder="Čo musí zostať zachované? Tvar, obal, logo, farby, materiál…"></textarea></div>
+        <div class="prompt-part-panel" id="partProductPanel" hidden><textarea id="partProduct" rows="4" placeholder="Čo musí zostať zachované? Tvar, obal, logo, farby, materiál…"></textarea><button type="button" class="add-prompt-part secondary" data-part="partProduct">Pridať do promptu</button></div>
       </div>
       <div class="prompt-part">
         <button type="button" class="prompt-part-toggle" aria-expanded="false" aria-controls="partStylePanel">Vizuálny štýl <span>＋</span></button>
-        <div class="prompt-part-panel" id="partStylePanel" hidden><textarea id="partStyle" rows="4" placeholder="Napr. prémiový, fotorealistický, cinematic…"></textarea></div>
+        <div class="prompt-part-panel" id="partStylePanel" hidden><textarea id="partStyle" rows="4" placeholder="Napr. prémiový, fotorealistický, cinematic…"></textarea><button type="button" class="add-prompt-part secondary" data-part="partStyle">Pridať do promptu</button></div>
       </div>
       <div class="prompt-part">
         <button type="button" class="prompt-part-toggle" aria-expanded="false" aria-controls="partCameraPanel">Kamera a pohyb <span>＋</span></button>
-        <div class="prompt-part-panel" id="partCameraPanel" hidden><textarea id="partCamera" rows="4" placeholder="Opíš uhol záberu, pohyb kamery a tempo…"></textarea></div>
+        <div class="prompt-part-panel" id="partCameraPanel" hidden><textarea id="partCamera" rows="4" placeholder="Opíš uhol záberu, pohyb kamery a tempo…"></textarea><button type="button" class="add-prompt-part secondary" data-part="partCamera">Pridať do promptu</button></div>
       </div>
       <div class="prompt-part">
         <button type="button" class="prompt-part-toggle" aria-expanded="false" aria-controls="partLightingPanel">Osvetlenie <span>＋</span></button>
-        <div class="prompt-part-panel" id="partLightingPanel" hidden><textarea id="partLighting" rows="4" placeholder="Napr. mäkké bočné svetlo, odlesky, tiene…"></textarea></div>
+        <div class="prompt-part-panel" id="partLightingPanel" hidden><textarea id="partLighting" rows="4" placeholder="Napr. mäkké bočné svetlo, odlesky, tiene…"></textarea><button type="button" class="add-prompt-part secondary" data-part="partLighting">Pridať do promptu</button></div>
       </div>
       <div class="prompt-part">
         <button type="button" class="prompt-part-toggle" aria-expanded="false" aria-controls="partExtraPanel">Ďalšie pokyny <span>＋</span></button>
-        <div class="prompt-part-panel" id="partExtraPanel" hidden><textarea id="partExtra" rows="4" placeholder="Čomu sa má reklama vyhnúť? Čo má zdôrazniť?"></textarea></div>
+        <div class="prompt-part-panel" id="partExtraPanel" hidden><textarea id="partExtra" rows="4" placeholder="Čomu sa má reklama vyhnúť? Čo má zdôrazniť?"></textarea><button type="button" class="add-prompt-part secondary" data-part="partExtra">Pridať do promptu</button></div>
       </div>
       <button type="button" id="composePrompt" class="secondary">Zostaviť prompt z častí</button>
     </div>
@@ -634,6 +634,8 @@
     .prompt-part-panel{padding:10px}
     .prompt-part-panel[hidden]{display:none}
     .prompt-part-panel textarea{min-height:104px!important}
+    .add-prompt-part{width:100%;min-height:42px!important;margin:8px 0 0!important}
+    .add-prompt-part.added{background:#173326!important;color:#a8e5bd!important;border:1px solid #326548!important}
     .prompt-editor-actions{display:grid;grid-template-columns:1fr;gap:8px;margin-top:10px}
     .prompt-editor-actions button,#composePrompt{margin:0;min-height:44px!important}
     #promptEditorStatus{min-height:18px;margin-top:8px;color:#9ce0b8;font-size:12px}
@@ -723,7 +725,10 @@
     ].filter(Boolean);
     promptDraft.value=pieces.join(' ').slice(0,1000);syncPromptLength();
     if(window.PSAIProjectBridge?.setPrompt)window.PSAIProjectBridge.setPrompt(promptDraft.value);
-    promptStatus.textContent='Prompt bol zostavený z upravených častí.';
+    promptEditor.querySelectorAll('.add-prompt-part').forEach(button=>{
+      button.classList.add('added');button.textContent='✓ Pridané do promptu';
+    });
+    promptStatus.textContent='Upravené časti boli pridané do výsledného promptu.';
   };
   const loadPartsFromSettings=()=>{fillPromptParts();};
   window.PSAIScenePresets=scenePresets;
@@ -739,6 +744,15 @@
   sceneSelect?.addEventListener('change',()=>{
     applySelectedScene();
     promptStatus.textContent=sceneSelect.value?'Vybraná reklamná scéna sa použije pri vytvorení promptu.':'Použije sa iba základné nastavenie reklamy.';
+  });
+  promptEditor.querySelectorAll('.add-prompt-part').forEach(button=>{
+    button.addEventListener('click',()=>{
+      const value=promptParts[button.dataset.part]?.value.trim();
+      if(!value){promptStatus.textContent='Najskôr vyplň túto časť promptu.';return;}
+      composePromptFromParts();
+      const label=button.closest('.prompt-part')?.querySelector('.prompt-part-toggle')?.textContent.trim()||'Časť';
+      promptStatus.textContent='✓ '+label+' bola pridaná do výsledného promptu.';
+    });
   });
   document.getElementById('composePrompt').addEventListener('click',composePromptFromParts);
   document.getElementById('resetPromptParts').addEventListener('click',()=>{loadPartsFromSettings();composePromptFromParts();promptStatus.textContent='Časti promptu boli obnovené podľa nastavení reklamy.';});
