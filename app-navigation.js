@@ -141,6 +141,64 @@
     .studio-welcome h2 { font-size:23px !important;margin:9px 0 !important; }
     .studio-welcome p { color:#aeb8c7;font-size:14px;line-height:1.55;margin:0; }
 
+    /* Mobile workspace polish. Navigation controls and Android system bars are intentionally untouched. */
+    .app-screen { min-width:0; }
+    .panel, .app-placeholder, .studio-welcome { min-width:0; }
+    .panel { padding:clamp(14px,4vw,22px) !important; }
+    .panel label { margin-top:16px !important; }
+    .panel input:not([type="file"]), .panel select, .panel textarea {
+      display:block;
+      min-width:0 !important;
+      width:100% !important;
+      min-height:50px !important;
+      padding:13px 14px !important;
+      border-radius:13px !important;
+      font-size:16px !important;
+    }
+    .panel textarea { min-height:116px !important; resize:vertical; }
+    .panel input[type="file"] {
+      display:block;
+      width:100% !important;
+      min-width:0 !important;
+      min-height:54px !important;
+      padding:9px !important;
+      font-size:14px !important;
+      line-height:1.4 !important;
+      overflow:hidden;
+    }
+    .panel input[type="file"]::file-selector-button {
+      max-width:100%;
+      min-height:34px;
+      margin:0 8px 0 0;
+      padding:7px 10px;
+      border:0;
+      border-radius:8px;
+      background:#303b49;
+      color:#f3f5f8;
+      font:600 13px system-ui,sans-serif;
+    }
+    .panel .grid { grid-template-columns:minmax(0,1fr) !important; gap:8px 14px !important; }
+    .panel .row { align-items:flex-start; flex-wrap:wrap; }
+    .panel .row strong { overflow-wrap:anywhere; text-align:right; }
+    .preview-gallery { grid-template-columns:repeat(2,minmax(0,1fr)) !important; gap:10px !important; }
+    .preview-item { min-width:0; }
+    .preview-item img { width:100%; height:clamp(112px,34vw,170px) !important; }
+    .preview-item span { font-size:13px !important; overflow-wrap:anywhere; }
+    .panel button { width:100%; white-space:normal; }
+    .panel video { display:block; width:100%; max-height: min(58vh,520px); object-fit:contain; }
+    .panel .output { max-height:none; overflow-wrap:anywhere; }
+    .panel .note { overflow-wrap:anywhere; }
+    @media(min-width:600px) {
+      .panel .grid { grid-template-columns:repeat(2,minmax(0,1fr)) !important; gap:12px 16px !important; }
+      .panel { padding:22px !important; }
+      .preview-gallery { grid-template-columns:repeat(3,minmax(0,1fr)) !important; }
+    }
+    @media(min-width:900px) {
+      #appViews { max-width:980px !important; }
+      header { max-width:980px; margin-inline:auto !important; }
+      .panel { padding:24px !important; }
+    }
+
     /* Lightroom-style bottom bar: fixed to the viewport, above Android system navigation. */
     body {
       padding-bottom:calc(92px + env(safe-area-inset-bottom, 0px)) !important;
