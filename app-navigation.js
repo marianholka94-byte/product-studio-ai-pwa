@@ -547,7 +547,7 @@
     if(!state.product.trim()&&!state.images.length)throw new Error('Najskôr zadaj názov produktu alebo pridaj fotografiu.');
     if(!state.images.length)throw new Error('Projekt musí obsahovať aspoň jednu fotografiu produktu.');
     const now=Date.now(),existing=activeProjectId?await getProject(activeProjectId):null;
-    const editedPrompt=promptDraft.value.trim()||state.prompt;const record={id:activeProjectId||('project-'+now+'-'+Math.random().toString(36).slice(2,8)),name:state.product.trim()||'Nový produkt',createdAt:existing?.createdAt||now,updatedAt:now,product:state.product,productId:activeProductId||existing?.productId||null,style:state.style,format:state.format,motion:state.motion,duration:state.duration,lighting:state.lighting,extra:state.extra,prompt:editedPrompt,images:state.images};
+    const editedPrompt=promptDraft.value.trim()||state.prompt;const record={id:activeProjectId||('project-'+now+'-'+Math.random().toString(36).slice(2,8)),name:state.product.trim()||'Nový produkt',createdAt:existing?.createdAt||now,updatedAt:now,product:state.product,productId:activeProductId||existing?.productId||null,style:state.style,scenePreset:state.scenePreset||'',format:state.format,motion:state.motion,duration:state.duration,lighting:state.lighting,extra:state.extra,prompt:editedPrompt,images:state.images};
     await putProject(record);activeProjectId=record.id;await renderProjects();setProjectMessage('Projekt „'+record.name+'“ bol uložený v tomto zariadení.');return record;
   };
   const startNewProject=async()=>{
@@ -559,26 +559,27 @@
   document.getElementById('createProjectButton').addEventListener('click',startNewProject);
 
   // Simple prompt editor: the prompt is saved as part of the complete project.
+  // Scene selection belongs to ad settings, alongside the visual style.
+  const styleSelect=document.getElementById('style');
+  const sceneControl=document.createElement('div');
+  sceneControl.innerHTML=`
+    <label for="scenePreset">Reklamná scéna</label>
+    <select id="scenePreset">
+      <option value="">Bez predvolenej scény</option>
+      <option value="luxury">Luxury Studio – luxusné tmavé štúdio</option>
+      <option value="golden">Golden Premium – zlaté svetlo</option>
+      <option value="water">Water &amp; Reflections – voda a odrazy</option>
+      <option value="smoke">Smoke &amp; Shadows – dym a tiene</option>
+      <option value="minimal">Minimalist – čistá produktová reklama</option>
+      <option value="dynamic">Dynamic Commercial – dynamická scéna</option>
+    </select>`;
+  sceneControl.style.marginTop='12px';
+  if(styleSelect?.parentElement)styleSelect.parentElement.after(sceneControl);
   const promptBox=document.getElementById('prompt');
   const promptEditor=document.createElement('section');promptEditor.id='promptEditor';
   promptEditor.innerHTML=`
     <div class="prompt-editor-heading"><strong>Editor reklamného promptu</strong><span id="promptLength">0 / 1000</span></div>
     <p class="prompt-save-hint">Uprav jednotlivé časti reklamy a následne z nich zostav výsledný prompt.</p>
-    <div class="scene-library">
-      <label class="prompt-label" for="scenePreset">Knižnica reklamných scén</label>
-      <div class="scene-library-controls">
-        <select id="scenePreset">
-          <option value="luxury">Luxury Studio – luxusné tmavé štúdio</option>
-          <option value="golden">Golden Premium – zlaté svetlo</option>
-          <option value="water">Water &amp; Reflections – voda a odrazy</option>
-          <option value="smoke">Smoke &amp; Shadows – dym a tiene</option>
-          <option value="minimal">Minimalist – čistá produktová reklama</option>
-          <option value="dynamic">Dynamic Commercial – dynamická scéna</option>
-        </select>
-        <button type="button" id="applyScenePreset" class="secondary">Použiť scénu</button>
-      </div>
-      <p class="prompt-save-hint">Predvoľba upraví scénu, štýl, kameru a osvetlenie. Produkt, jeho fotografie a identita zostanú zachované.</p>
-    </div>
     <div class="prompt-parts">
       <label class="prompt-label" for="partScene">Prostredie a scéna</label><textarea id="partScene" rows="2" placeholder="Napr. luxusné tmavé štúdio"></textarea>
       <label class="prompt-label" for="partProduct">Produkt a jeho vzhľad</label><textarea id="partProduct" rows="2" placeholder="Napr. zachovať presný tvar, obal, logo a farby"></textarea>
@@ -607,10 +608,7 @@
     .prompt-label{display:block;margin:10px 0 6px;font-size:12px;color:#aab4c3}
     #promptEditor textarea{width:100%;box-sizing:border-box;background:#0b1017;color:#eef1f6;border:1px solid #354253;border-radius:11px;padding:11px;font:inherit;font-size:14px;resize:vertical;line-height:1.5;min-height:64px}
     #promptEditor #promptDraftText{min-height:150px}
-    .scene-library{margin:12px 0 16px;padding:12px;background:#171e28;border:1px solid #354253;border-radius:12px}
-    .scene-library-controls{display:grid;grid-template-columns:1fr;gap:8px}
-    #scenePreset{width:100%;min-height:46px;background:#0b1017;color:#eef1f6;border:1px solid #354253;border-radius:11px;padding:10px;font:inherit;font-size:13px}
-    #applyScenePreset{min-height:44px!important;margin:0}
+    #scenePreset{width:100%;min-height:48px;background:#0e131a;color:#f3f5f8;border:1px solid #303b49;border-radius:16px;padding:12px;font:inherit;font-size:15px}
     .prompt-parts{display:grid;grid-template-columns:1fr;gap:2px;margin:12px 0 16px}
     .prompt-editor-actions{display:grid;grid-template-columns:1fr;gap:8px;margin-top:10px}
     .prompt-editor-actions button,#composePrompt{margin:0;min-height:44px!important}
@@ -663,11 +661,12 @@
     }
   };
   const fillPromptParts=()=>{
-    promptParts.partScene.value='A clean premium product-ad scene.';
+    const selectedScene=scenePresets[document.getElementById('scenePreset')?.value];
+    promptParts.partScene.value=selectedScene?.scene||'A clean premium product-ad scene.';
     promptParts.partProduct.value='Product: '+(document.getElementById('product').value.trim()||'the uploaded product')+'. Preserve its exact identity, design, proportions, packaging, label, logo and original colors.';
-    promptParts.partStyle.value='Photorealistic '+document.getElementById('style').value+' premium commercial style.';
-    promptParts.partCamera.value='Camera movement: '+document.getElementById('motion').value+'. Smooth, stable motion without camera shake.';
-    promptParts.partLighting.value='Lighting: '+document.getElementById('lighting').value+'. Use natural reflections and cinematic highlights.';
+    promptParts.partStyle.value=selectedScene?.style||('Photorealistic '+document.getElementById('style').value+' premium commercial style.');
+    promptParts.partCamera.value=selectedScene?.camera||('Camera movement: '+document.getElementById('motion').value+'. Smooth, stable motion without camera shake.');
+    promptParts.partLighting.value=selectedScene?.lighting||('Lighting: '+document.getElementById('lighting').value+'. Use natural reflections and cinematic highlights.');
     promptParts.partExtra.value=document.getElementById('extra').value.trim();
   };
   const syncPromptEditor=(textValue='')=>{promptDraft.value=textValue||'';syncPromptLength();promptStatus.textContent='';loadPartsFromSettings();};
@@ -686,14 +685,19 @@
     promptStatus.textContent='Prompt bol zostavený z upravených častí.';
   };
   const loadPartsFromSettings=()=>{fillPromptParts();};
-  document.getElementById('applyScenePreset').addEventListener('click',()=>{
-    const preset=scenePresets[document.getElementById('scenePreset').value];
+  window.PSAIScenePresets=scenePresets;
+  const sceneSelect=document.getElementById('scenePreset');
+  const applySelectedScene=()=>{
+    const preset=scenePresets[sceneSelect?.value];
     if(!preset)return;
     promptParts.partScene.value=preset.scene;
     promptParts.partStyle.value=preset.style;
     promptParts.partCamera.value=preset.camera;
     promptParts.partLighting.value=preset.lighting;
-    promptStatus.textContent='Scéna bola použitá. Produkt a jeho fotografie zostali nezmenené.';
+  };
+  sceneSelect?.addEventListener('change',()=>{
+    applySelectedScene();
+    promptStatus.textContent=sceneSelect.value?'Vybraná reklamná scéna sa použije pri vytvorení promptu.':'Použije sa iba základné nastavenie reklamy.';
   });
   document.getElementById('composePrompt').addEventListener('click',composePromptFromParts);
   document.getElementById('resetPromptParts').addEventListener('click',()=>{loadPartsFromSettings();composePromptFromParts();promptStatus.textContent='Časti promptu boli obnovené podľa nastavení reklamy.';});
