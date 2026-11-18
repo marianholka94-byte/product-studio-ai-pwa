@@ -383,7 +383,7 @@
   const setProjectMessage=(message,isError=false)=>{const status=document.getElementById('projectSaveStatus');if(status){status.textContent=message;status.style.color=isError?'#ffb5b5':'#9ce0b8';}};
   const formatProjectDate=value=>new Intl.DateTimeFormat('sk-SK',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}).format(new Date(value));
   const renderProjects=async()=>{
-    const records=(await getAllProjects()).sort((a,b)=>b.updatedAt-a.updatedAt);projectsList.innerHTML='';
+    const records=(await getAllProjects()).sort((a,b)=>b.updatedAt-a.updatedAt);const linkedProducts=await getAllProducts();const linkedProductNames=new Map(linkedProducts.map(item=>[item.id,item.name]));projectsList.innerHTML='';
     if(!records.length){projectsList.innerHTML='<div class="projects-empty"><span class="empty-icon">▣</span><strong>Zatiaľ tu nemáš žiadne projekty</strong><p>Vytvor projekt v štúdiu a ulož si fotografie, nastavenia aj reklamný prompt.</p></div>';return;}
     records.forEach(record=>{
       const card=document.createElement('article');card.className='saved-project-card';
@@ -391,7 +391,7 @@
       const firstImage=record.images?.[0]?.blob;if(firstImage)thumb.src=URL.createObjectURL(firstImage);
       const info=document.createElement('div');info.className='saved-project-info';
       const title=document.createElement('strong');title.textContent=record.name||'Nepomenovaný projekt';
-      const linkedCount=record.id? (await getAllProjects()).filter(project=>project.productId===record.id).length:0;const meta=document.createElement('small');meta.textContent=(record.images?.length||0)+' fotografií · '+linkedCount+' reklamných projektov · '+formatProjectDate(record.updatedAt);
+      const linkedProductName=record.productId?linkedProductNames.get(record.productId):null;const meta=document.createElement('small');meta.textContent=(record.images?.length||0)+' fotografií'+(linkedProductName?' · Produkt: '+linkedProductName:'')+' · '+formatProjectDate(record.updatedAt);
       const buttons=document.createElement('div');buttons.className='saved-project-buttons';
       const open=document.createElement('button');open.type='button';open.className='secondary';open.textContent='Otvoriť';
       open.addEventListener('click',async()=>{try{const latest=await getProject(record.id);if(!latest)throw new Error('Projekt sa už nenašiel.');await window.PSAIProjectBridge.restore(latest);activeProjectId=latest.id;activeProductId=latest.productId||null;syncPromptEditor(latest.prompt||'');setProjectMessage('Otvorený projekt: '+latest.name);nav.querySelector('[data-screen="screenStudio"]').click();}catch(error){alert(error.message||'Projekt sa nepodarilo otvoriť.');}});
@@ -472,7 +472,7 @@
   });
 
   const renderProducts=async()=>{
-    const records=(await getAllProducts()).sort((a,b)=>b.updatedAt-a.updatedAt);productsList.innerHTML='';
+    const records=(await getAllProducts()).sort((a,b)=>b.updatedAt-a.updatedAt);const linkedProjects=await getAllProjects();const linkedProjectCounts=new Map(records.map(item=>[item.id,linkedProjects.filter(project=>project.productId===item.id).length]));productsList.innerHTML='';
     if(!records.length){productsList.innerHTML='<div class="projects-empty"><span class="empty-icon">▧</span><strong>Zatiaľ nemáš uložené produkty</strong><p>V štúdiu môžeš uložiť produkt spolu s jeho fotografiami.</p></div>';return;}
     records.forEach(record=>{
       const card=document.createElement('article');card.className='saved-product-card';
@@ -480,7 +480,7 @@
       const first=record.images?.[0]?.blob;if(first)thumb.src=URL.createObjectURL(first);
       const info=document.createElement('div');info.className='saved-product-info';
       const title=document.createElement('strong');title.textContent=record.name;
-      const linkedProduct=record.productId?await getProduct(record.productId):null;const meta=document.createElement('small');meta.textContent=(record.images?.length||0)+' fotografií'+(linkedProduct?' · Produkt: '+linkedProduct.name:'')+' · '+formatProjectDate(record.updatedAt);
+      const linkedCount=linkedProjectCounts.get(record.id)||0;const meta=document.createElement('small');meta.textContent=(record.images?.length||0)+' fotografií · '+linkedCount+' reklamných projektov · '+formatProjectDate(record.updatedAt);
       const buttons=document.createElement('div');buttons.className='saved-product-buttons';
       const manage=document.createElement('button');manage.type='button';manage.className='secondary manage-product';manage.textContent='Spravovať fotografie';
       manage.addEventListener('click',async()=>{try{await openProductManager(record.id);}catch(error){setProjectMessage(error.message||'Správa produktu sa nepodarila otvoriť.',true);}});
