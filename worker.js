@@ -71,6 +71,7 @@ export default {
     const allowedOrigins = new Set([
       "https://product-studio-ai-frontend.marianholka94.workers.dev",
       "https://product-studio-ai-pwa.pages.dev",
+      "https://feature-social-export-preset.product-studio-ai-pwa.pages.dev",
       "https://localhost",
       "http://localhost",
       "capacitor://localhost",
