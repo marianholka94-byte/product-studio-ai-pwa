@@ -51,13 +51,12 @@ function runwayHeaders(env) {
   };
 }
 
-// Only the six aspect/resolution combinations exposed by this app are accepted.
-// All six values are in the model-specific Seedance 2.0 Mini SDK ratio list (12 total).
-const ALLOWED_RATIOS = new Set([
-  // 480p: landscape, square, portrait
-  "864:496", "640:640", "496:864",
-  // 720p: landscape, square, portrait
-  "1280:720", "960:960", "720:1280"
+// Ratios accepted by Seedance 2.0 Mini and full Seedance 2.0.
+const MINI_RATIOS = new Set(["864:496","640:640","496:864","1280:720","960:960","720:1280"]);
+const FULL_RATIOS = new Set([
+  ...MINI_RATIOS,
+  "1920:1080","1440:1440","1080:1920",
+  "3840:2160","3840:3840","2160:3840"
 ]);
 
 export default {
