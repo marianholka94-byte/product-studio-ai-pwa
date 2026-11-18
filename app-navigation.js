@@ -325,12 +325,12 @@
     if(!state.product.trim()&&!state.images.length)throw new Error('Najskôr zadaj názov produktu alebo pridaj fotografiu.');
     if(!state.images.length)throw new Error('Projekt musí obsahovať aspoň jednu fotografiu produktu.');
     const now=Date.now(),existing=activeProjectId?await getProject(activeProjectId):null;
-    const record={id:activeProjectId||('project-'+now+'-'+Math.random().toString(36).slice(2,8)),name:state.product.trim()||'Nový produkt',createdAt:existing?.createdAt||now,updatedAt:now,product:state.product,style:state.style,format:state.format,motion:state.motion,duration:state.duration,lighting:state.lighting,extra:state.extra,prompt:state.prompt,promptConcepts:existing?.promptConcepts||[],images:state.images};
+    const editedPrompt=promptDraft.value.trim()||state.prompt;const record={id:activeProjectId||('project-'+now+'-'+Math.random().toString(36).slice(2,8)),name:state.product.trim()||'Nový produkt',createdAt:existing?.createdAt||now,updatedAt:now,product:state.product,style:state.style,format:state.format,motion:state.motion,duration:state.duration,lighting:state.lighting,extra:state.extra,prompt:editedPrompt,promptConcepts:existing?.promptConcepts||[],images:state.images};
     await putProject(record);activeProjectId=record.id;await renderProjects();setProjectMessage('Projekt „'+record.name+'“ bol uložený v tomto zariadení.');return record;
   };
   const startNewProject=async()=>{
     if(!confirm('Začať nový projekt? Neuložené zmeny v aktuálnom projekte sa stratia.'))return;
-    activeProjectId=null;await window.PSAIProjectBridge.restore({});setProjectMessage('Nový projekt je pripravený. Po pridaní fotografie ho môžeš uložiť.');nav.querySelector('[data-screen="screenStudio"]').click();
+    activeProjectId=null;await window.PSAIProjectBridge.restore({});syncPromptEditor('',[]);promptName.value='';setProjectMessage('Nový projekt je pripravený. Po pridaní fotografie ho môžeš uložiť.');nav.querySelector('[data-screen="screenStudio"]').click();
   };
   document.getElementById('saveProjectButton').addEventListener('click',async()=>{const button=document.getElementById('saveProjectButton');button.disabled=true;try{await saveCurrentProject();}catch(error){setProjectMessage(error.message||'Projekt sa nepodarilo uložiť.',true);}finally{button.disabled=false;}});
   document.getElementById('newProjectButton').addEventListener('click',startNewProject);
