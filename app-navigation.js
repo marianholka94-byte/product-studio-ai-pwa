@@ -714,11 +714,34 @@
   };
   const fillPromptParts=()=>{
     const selectedScene=scenePresets[document.getElementById('scenePreset')?.value];
+    const styleTranslations={
+      'Realistická luxusná reklama':'photorealistic luxury commercial aesthetic',
+      'Minimalistická štúdiová reklama':'minimalist studio product commercial',
+      'Športová dynamická reklama':'dynamic sports commercial aesthetic',
+      'Prírodná lifestyle reklama':'natural lifestyle commercial aesthetic',
+      'Technologická reklama':'modern technology commercial aesthetic'
+    };
+    const motionTranslations={
+      'Pomalé približovanie (push-in)':'a slow, smooth cinematic push-in',
+      'Plynulý pohyb zľava doprava':'a smooth camera move from left to right',
+      'Jemný orbit okolo produktu':'a gentle cinematic orbit around the product',
+      'Detailný makro záber':'a detailed macro close-up shot',
+      'Statická kamera':'a locked-off static camera'
+    };
+    const lightingTranslations={
+      'Tmavé štúdio, jemné zlaté okrajové svetlo':'dark studio with subtle golden rim lighting',
+      'Svetlé čisté štúdio, mäkké svetlo':'bright clean studio with soft diffused lighting',
+      'Dramatické bočné svetlo a tiene':'dramatic side lighting and deep shadows',
+      'Vonkajšie prirodzené svetlo':'natural outdoor lighting'
+    };
     promptParts.partScene.value=selectedScene?.scene||'A clean premium product-ad scene.';
     promptParts.partProduct.value='Product: '+(document.getElementById('product').value.trim()||'the uploaded product')+'. Preserve its exact identity, design, proportions, packaging, label, logo and original colors.';
-    promptParts.partStyle.value=selectedScene?.style||('Photorealistic '+document.getElementById('style').value+' premium commercial style.');
-    promptParts.partCamera.value=selectedScene?.camera||('Camera movement: '+document.getElementById('motion').value+'. Smooth, stable motion without camera shake.');
-    promptParts.partLighting.value=selectedScene?.lighting||('Lighting: '+document.getElementById('lighting').value+'. Use natural reflections and cinematic highlights.');
+    const style=document.getElementById('style').value;
+    const motion=document.getElementById('motion').value;
+    const lighting=document.getElementById('lighting').value;
+    promptParts.partStyle.value=selectedScene?.style||((styleTranslations[style]||style)+'; photorealistic premium commercial quality.');
+    promptParts.partCamera.value=selectedScene?.camera||('Camera movement: '+(motionTranslations[motion]||motion)+'. Smooth, stable motion without camera shake.');
+    promptParts.partLighting.value=selectedScene?.lighting||('Lighting: '+(lightingTranslations[lighting]||lighting)+'. Use natural reflections and cinematic highlights.');
     promptParts.partExtra.value=document.getElementById('extra').value.trim();
   };
   const syncPromptEditor=(textValue='')=>{promptDraft.value=textValue||'';syncPromptLength();promptStatus.textContent='';loadPartsFromSettings();};
@@ -726,7 +749,7 @@
     const duration=document.getElementById('duration').value;
     const format=document.getElementById('format').value;
     const pieces=[
-      'Create a photorealistic '+duration+'-second premium product advertisement using all uploaded reference photos of the same product.',
+      'Create a photorealistic '+duration+'-second premium product advertisement for '+(document.getElementById('product').value.trim()||'the uploaded product')+' using all uploaded reference photos of the same product.',
       promptParts.partScene.value.trim(),promptParts.partProduct.value.trim(),promptParts.partStyle.value.trim(),
       promptParts.partCamera.value.trim(),promptParts.partLighting.value.trim(),
       'Aspect ratio: '+format+'. Keep the product sharp and consistent across all frames. Avoid extra objects, altered branding, distorted details and flicker.',
@@ -770,6 +793,12 @@
 
     // Offline Slovak-to-English phrasebook. No network request or API key is used.
     const phraseRules=[
+      [/za ním nech sa pomaly vznáša/gi,'behind it, let subtle smoke drift slowly'],
+      [/nech sa pomaly vznáša jemný dym/gi,'let subtle smoke drift slowly'],
+      [/pomaly vznáša jemný dym/gi,'subtle smoke slowly drifts'],
+      [/zachovaj jeho pôvodný vzhľad/gi,'preserve its original appearance'],
+      [/zachovaj jeho presný tvar/gi,'preserve its exact shape'],
+      [/zvýrazni jeho hrany/gi,'highlight its edges'],
       [/čierny mramorový podstavec/gi,'a black marble pedestal'],
       [/biely mramorový podstavec/gi,'a white marble pedestal'],
       [/mramorový podstavec/gi,'a marble pedestal'],
