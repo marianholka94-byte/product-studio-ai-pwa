@@ -997,4 +997,36 @@
   if(originalPromptButton)originalPromptButton.addEventListener('click',()=>{setTimeout(()=>syncPromptEditor(document.getElementById('prompt').textContent||''),0);});
   syncPromptEditor(document.getElementById('prompt').textContent==='Po výbere produktu sa tu zobrazí reklamný prompt.'?'':document.getElementById('prompt').textContent);
   renderProjects().catch(error=>{projectsList.textContent='Knižnicu projektov sa nepodarilo načítať: '+error.message;});
+
+  // Lightweight startup splash: CSS-only motion, no GIF/video download.
+  if (!document.getElementById('psai-splash')) {
+    const splashStyle=document.createElement('style');
+    splashStyle.textContent=`
+      #psai-splash{position:fixed;inset:0;z-index:999999;background:radial-gradient(ellipse at 50% 43%,#242017 0%,#0b0e13 48%,#050609 100%);display:flex;align-items:center;justify-content:center;flex-direction:column;overflow:hidden;opacity:1;transition:opacity .45s ease}
+      #psai-splash.psai-leave{opacity:0;pointer-events:none}
+      #psai-splash .psai-orbit{position:absolute;width:min(78vw,360px);aspect-ratio:1;border:1px solid transparent;border-top-color:rgba(231,184,91,.95);border-bottom-color:rgba(231,184,91,.32);border-radius:50%;filter:drop-shadow(0 0 8px rgba(224,169,68,.65));animation:psaiOrbit 2.2s cubic-bezier(.4,0,.2,1) both}
+      #psai-splash .psai-orbit:after{content:"";position:absolute;inset:13px;border:1px solid rgba(224,184,105,.22);border-radius:50%}
+      #psai-splash .psai-mark{width:min(62vw,260px);height:auto;z-index:1;filter:drop-shadow(0 0 18px rgba(220,164,68,.24));animation:psaiReveal 1.15s cubic-bezier(.16,1,.3,1) both}
+      #psai-splash .psai-wordmark{z-index:1;margin-top:28px;text-align:center;letter-spacing:.22em;color:#e9e9e9;font-size:clamp(19px,5vw,27px);font-weight:800;opacity:0;animation:psaiText .5s ease 1s forwards}
+      #psai-splash .psai-wordmark span{display:block;margin-top:8px;font-size:12px;letter-spacing:.42em;font-weight:500;color:#d4d7dc}
+      #psai-splash .psai-wordmark b{color:#e3b65f}
+      #psai-splash .psai-spark{position:absolute;width:7px;height:7px;border-radius:50%;background:#ffe6a0;box-shadow:0 0 12px 5px rgba(237,183,81,.55);top:calc(50% - 142px);left:calc(50% + 110px);animation:psaiSpark 1.3s ease-in-out .5s infinite alternate}
+      #psai-splash .psai-skip{position:absolute;bottom:calc(24px + env(safe-area-inset-bottom,0px));border:1px solid rgba(218,180,106,.35);background:rgba(15,17,22,.72);color:#d9c18e;border-radius:30px;padding:8px 17px;font-size:12px}
+      @keyframes psaiOrbit{0%{transform:rotate(-55deg) scale(.7);opacity:0}35%{opacity:1}100%{transform:rotate(305deg) scale(1.06);opacity:.75}}
+      @keyframes psaiReveal{0%{transform:scale(.72) rotate(-9deg);opacity:0;filter:brightness(.45)}65%{opacity:1;filter:brightness(1.3) drop-shadow(0 0 28px rgba(225,174,81,.55))}100%{transform:scale(1) rotate(0);filter:brightness(1) drop-shadow(0 0 18px rgba(220,164,68,.24))}}
+      @keyframes psaiText{to{opacity:1;transform:translateY(0)}from{opacity:0;transform:translateY(9px)}}
+      @keyframes psaiSpark{from{transform:scale(.7);opacity:.5}to{transform:scale(1.45);opacity:1}}
+      @media(prefers-reduced-motion:reduce){#psai-splash *{animation-duration:.01ms!important;animation-iteration-count:1!important}}
+    `;
+    document.head.appendChild(splashStyle);
+    const splashEl=document.createElement('div');
+    splashEl.id='psai-splash';
+    splashEl.innerHTML='<div class="psai-orbit"></div><div class="psai-spark"></div><img class="psai-mark" src="/icon.svg" alt="PRODUCT STUDIO AI"><div class="psai-wordmark">PRODUCT<span>STUDIO <b>AI</b></span></div><button class="psai-skip" type="button">Preskočiť</button>';
+    document.body.appendChild(splashEl);
+    let splashClosed=false;
+    const closeSplash=()=>{if(splashClosed)return;splashClosed=true;splashEl.classList.add('psai-leave');window.setTimeout(()=>splashEl.remove(),500);};
+    splashEl.querySelector('.psai-skip').addEventListener('click',closeSplash);
+    window.setTimeout(closeSplash,2350);
+  }
+
 })();
