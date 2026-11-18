@@ -562,14 +562,15 @@
       display: block !important;
     }
 
-    /* PWA Android: nech spodna navigacia aplikacie nelezi nad systemovymi tlacidlami Androidu. */
-    @media (display-mode: standalone) {
+    /* Android: spodna navigacia aplikacie musi byt nad systemovou navigacnou listou.
+       Nepodmienujeme to display-mode, pretoze niektore instalacie PWA ho nerozpoznaju rovnako. */
+    @media (max-width: 600px) {
       #appBottomNav {
-        bottom: 44px !important;
+        bottom: 64px !important;
         padding-bottom: 14px !important;
       }
       #appViews {
-        margin-bottom: 230px !important;
+        margin-bottom: 250px !important;
       }
     }
   `;
