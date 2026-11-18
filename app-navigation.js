@@ -603,10 +603,42 @@ studio.append(welcome, product, advertising, generation);
 
   // Technicke pripojenie sa nastavuje automaticky a nie je súčasťou bežného rozhrania.
   connection.remove();
-  settings.innerHTML = '<section class="app-placeholder"><h2>Zabezpečenie</h2><p>Pripojenie generátora je nastavené automaticky.</p><button id="logoutButton" class="secondary">Odhlásiť toto zariadenie</button></section>';
+  settings.innerHTML = '<section class="app-placeholder"><h2>Zabezpečenie</h2><p>Najskôr bezpečne over pripojenie generátora. Tento test nevytvára video a nemíňa Runway kredity.</p><button id="verifyConnection" class="secondary">Overiť pripojenie</button><p id="connectionCheckStatus" role="status">Pripojenie zatiaľ nebolo overené.</p><button id="logoutButton" class="secondary">Odhlásiť toto zariadenie</button></section>';
+  settings.querySelector('#verifyConnection').addEventListener('click', async () => {
+    const button = settings.querySelector('#verifyConnection');
+    const status = settings.querySelector('#connectionCheckStatus');
+    const apiBase = 'https://square-feather-4b83.marianholka94.workers.dev';
+    button.disabled = true;
+    status.textContent = 'Overujem bezpečné pripojenie…';
+    try {
+      let token = localStorage.getItem('psai_session_token') || '';
+      let health = token ? await fetch(apiBase + '/api/health', { headers: { Authorization: 'Bearer ' + token } }) : null;
+      if (!health || health.status === 401) {
+        localStorage.removeItem('psai_session_token');
+        const password = window.prompt('Zadaj súkromný prístupový kód pre PRODUCT STUDIO AI:');
+        if (!password) throw new Error('Prihlásenie bolo zrušené.');
+        const login = await fetch(apiBase + '/api/session', { method: 'POST', headers: { 'X-App-Password': password } });
+        const loginData = await login.json().catch(() => ({}));
+        if (!login.ok || !loginData.token) throw new Error(loginData.error || 'Prihlásenie sa nepodarilo.');
+        token = loginData.token;
+        health = await fetch(apiBase + '/api/health', { headers: { Authorization: 'Bearer ' + token } });
+      }
+      const result = await health.json().catch(() => ({}));
+      if (!health.ok || !result.ok) throw new Error(result.error || 'Backend neodpovedá správne.');
+      localStorage.setItem('psai_session_token', token);
+      status.textContent = 'Pripojenie je úspešne overené. Generátor je pripravený.';
+      status.style.color = '#9ce0b8';
+    } catch (error) {
+      status.textContent = error.message || 'Overenie pripojenia zlyhalo.';
+      status.style.color = '#ffb5b5';
+    } finally {
+      button.disabled = false;
+    }
+  });
   settings.querySelector('#logoutButton').addEventListener('click', () => {
     localStorage.removeItem('psai_session_token');
-    alert('Zariadenie bolo odhlásené. Pri ďalšom generovaní sa prihlásiš znova.');
+    settings.querySelector('#connectionCheckStatus').textContent = 'Zariadenie bolo odhlásené.';
+    alert('Zariadenie bolo odhlásené. Pri ďalšom overení sa prihlásiš znova.');
   });
 
   views.append(studio, projects, settings);
