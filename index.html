@@ -103,6 +103,12 @@ a{color:#174ea6;overflow-wrap:anywhere}
 <div id="prompt" class="output">Po výbere produktu sa tu zobrazí reklamný prompt.</div>
 <button id="generate">GENEROVAŤ VIDEO</button>
 <div id="status" class="status">Najskôr over backend a vyber fotografiu produktu.</div>
+<details class="test-tools" style="margin-top:12px;border:1px dashed #b8b8b0;border-radius:12px;padding:11px 13px;background:#fafaf8">
+ <summary style="font-size:13px;font-weight:700;cursor:pointer">Testovací režim – bez API a bez kreditov</summary>
+ <p class="note">Simulácia priebehu iba v tejto obrazovke. Nespúšťa Runway, neposiela fotografie ani nevytvára skutočné video.</p>
+ <div class="grid"><button type="button" class="secondary" id="simulateSuccess">Simulovať úspešné dokončenie</button><button type="button" class="secondary" id="simulateFailure">Simulovať chybu</button></div>
+ <button type="button" class="secondary" id="resetSimulation">Resetovať test</button>
+</details>
 <div id="generationProgress" class="generation-progress" role="status" aria-live="polite">
  <div class="progress-heading"><span id="progressTitle">Pripravujem generovanie</span><span id="progressElapsed">0:00</span></div>
  <div class="progress-track"><div class="progress-bar"></div></div>
@@ -142,6 +148,38 @@ function startGenerationProgress(detail){
 }
 function stopGenerationProgress(){if(progressClock){clearInterval(progressClock);progressClock=null;}}
 function completeGenerationProgress(title,detail){stopGenerationProgress();setGenerationProgress(2,title,detail);document.querySelectorAll('.progress-step').forEach(step=>step.classList.add('done'));$('progressElapsed').textContent=formatElapsed(Date.now()-progressStartedAt);}
+
+
+// Bezpečná lokálna simulácia UI: tieto tlačidlá nikdy nevolajú backend ani Runway.
+let simulationRunning=false;
+const simulationWait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+async function runProgressSimulation(fail=false){
+ if(simulationRunning)return;
+ simulationRunning=true;$('simulateSuccess').disabled=true;$('simulateFailure').disabled=true;$('resetSimulation').disabled=true;
+ $('videoWrap').innerHTML='';$('history').textContent='TEST · Simulovaná úloha · bez API';
+ startGenerationProgress('Testovacia simulácia. Neodosielajú sa žiadne dáta.');
+ setStatus('TESTOVACÍ REŽIM – žiadne kredity sa nespotrebúvajú.');
+ await simulationWait(1200);
+ setGenerationProgress(1,'AI generuje video','Simulovaný priebeh. Skutočný generátor nebol kontaktovaný.');
+ $('status').textContent='TEST · AI spracovanie (simulované)…';
+ await simulationWait(2600);
+ if(fail){
+  stopGenerationProgress();$('generationProgress').classList.remove('active');
+  setStatus('TEST · Simulovaná chyba: generovanie zlyhalo. Toto nie je skutočná chyba Runway.','err');
+  $('history').textContent='TEST · Simulovaná úloha · FAILED';
+ }else{
+  completeGenerationProgress('Simulácia dokončená','Test úspešne overil zobrazenie dokončenia. Skutočné video sa nevytvorilo.');
+  $('status').textContent='TEST · Simulácia úspešne dokončená. Skutočné video sa negenerovalo.';$('status').className='status ok';
+  $('videoWrap').innerHTML='<p class="note">Test úspešný: stav dokončenia sa zobrazuje správne. Toto nie je prehrateľné video.</p>';
+  $('history').textContent='TEST · Simulovaná úloha · SUCCEEDED';
+ }
+ simulationRunning=false;$('simulateSuccess').disabled=false;$('simulateFailure').disabled=false;$('resetSimulation').disabled=false;
+}
+$('simulateSuccess').addEventListener('click',()=>runProgressSimulation(false));
+$('simulateFailure').addEventListener('click',()=>runProgressSimulation(true));
+$('resetSimulation').addEventListener('click',()=>{
+ if(simulationRunning)return;stopGenerationProgress();$('generationProgress').classList.remove('active');$('videoWrap').innerHTML='';$('history').textContent='Zatiaľ žiadne generovanie v tejto relácii.';setStatus('Test resetovaný. Skutočné generovanie môžeš spustiť bežným tlačidlom.');
+});
 
 function updateReadyStatus(){
   const hasBackend=!!localStorage.getItem('psai_session_token');
