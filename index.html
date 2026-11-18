@@ -69,9 +69,11 @@ a{color:#174ea6;overflow-wrap:anywhere}
 <div><label for="motion">Pohyb kamery</label><select id="motion"><option>Pomalé približovanie (push-in)</option><option>Plynulý pohyb zľava doprava</option><option>Jemný orbit okolo produktu</option><option>Detailný makro záber</option><option>Statická kamera</option></select></div>
 <div><label for="duration">Dĺžka klipu</label><select id="duration"><option value="5">5 sekúnd</option><option value="10">10 sekúnd</option><option value="15">15 sekúnd</option></select></div>
 </div>
+<label for="model">AI video model</label>
+<select id="model"><option value="seedance2_mini">Economy – Seedance 2.0 Mini</option><option value="seedance2">Quality – Seedance 2.0</option></select>
 <label for="resolution">Rozlíšenie výstupu</label>
-<select id="resolution"><option value="720p">720p – vyššia kvalita</option><option value="480p">480p – menší súbor</option></select>
-<p class="note">Pomer strán a rozlíšenie sa nastavia priamo pri generovaní. FPS určuje model Seedance; aplikácia ho zatiaľ nemení ani neprepočítava.</p>
+<select id="resolution"><option value="720p">720p – vyvážená kvalita</option><option value="480p">480p – menší súbor</option></select>
+<p id="resolutionNote" class="note">Seedance 2.0 Mini podporuje maximálne 720p. Model Quality sprístupní 1080p a 4K. FPS určuje model.</p>
 <label for="lighting">Svetlo a prostredie</label>
 <select id="lighting"><option>Tmavé štúdio, jemné zlaté okrajové svetlo</option><option>Svetlé čisté štúdio, mäkké svetlo</option><option>Dramatické bočné svetlo a tiene</option><option>Vonkajšie prirodzené svetlo</option></select>
 <label for="extra">Dodatočné požiadavky</label>
@@ -80,8 +82,8 @@ a{color:#174ea6;overflow-wrap:anywhere}
 
 <section class="panel">
 <h2>4. Generovanie videa</h2>
-<div class="row"><span class="small">Model: Seedance 2.0 Mini</span><strong id="estimate">Odhad: $0.75</strong></div>
-<p class="note">Aktuálna cena Runway Dev pre Seedance 2.0 Mini pri nastavenom 720p: 15 kreditov za sekundu (0,15 USD/s). Pri 5 s je to 75 kreditov = 0,75 USD, pri 10 s 150 kreditov = 1,50 USD a pri 15 s 225 kreditov = 2,25 USD. Minimálna cena generovania je 28 kreditov. Referenčné fotografie sa účtujú bez príplatku. 1 kredit = 0,01 USD. Ceny sa môžu zmeniť.</p>
+<div class="row"><span class="small" id="modelLabel">Model: Seedance 2.0 Mini</span><strong id="estimate">Odhad: 0,75 USD</strong></div>
+<p id="pricingNote" class="note">Odhad podľa cenníka Runway Dev. Cena sa počíta podľa modelu, rozlíšenia a dĺžky. 1 kredit = 0,01 USD. Skutočnú cenu potvrdzuje poskytovateľ pri odoslaní úlohy.</p>
 <button id="makePrompt" class="secondary">Vytvoriť / obnoviť reklamný prompt</button>
 <div id="prompt" class="output">Po výbere produktu sa tu zobrazí reklamný prompt.</div>
 <button id="generate">GENEROVAŤ VIDEO</button>
@@ -127,15 +129,32 @@ function buildPrompt(){
  promptText=(base+(extra?suffix+extra.slice(0,available):'')).slice(0,1000);
  $('prompt').textContent=promptText;updateEstimate();return promptText;
 }
+function updateResolutionOptions(){
+ const quality=$('model').value==='seedance2';
+ const options=quality
+  ? [['480p','480p – menší súbor'],['720p','720p – vyvážená kvalita'],['1080p','1080p – Full HD'],['4K','4K – maximálne rozlíšenie']]
+  : [['480p','480p – menší súbor'],['720p','720p – vyššia kvalita']];
+ const previous=$('resolution').value;
+ $('resolution').innerHTML=options.map(([value,label])=>`<option value="${value}">${label}</option>`).join('');
+ $('resolution').value=options.some(([value])=>value===previous)?previous:(quality?'1080p':'720p');
+ $('modelLabel').textContent=quality?'Model: Seedance 2.0':'Model: Seedance 2.0 Mini';
+ $('resolutionNote').textContent=quality
+  ? 'Seedance 2.0 podporuje 480p, 720p, 1080p a 4K. Dostupnosť závisí od API účtu.'
+  : 'Seedance 2.0 Mini podporuje maximálne 720p. Pre Full HD a 4K vyber model Quality.';
+ updateEstimate();
+}
 function updateEstimate(){
- const sec=Number($('duration').value);
- if($('resolution').value!=='720p'){$('estimate').textContent='Cena 480p: overí poskytovateľ';return;}
- const rate=15; // Seedance 2.0 Mini, 720p: 15 credits/second
- const minimum=28;
- const credits=Math.max(minimum,sec*rate);
+ const sec=Number($('duration').value), model=$('model').value, resolution=$('resolution').value;
+ const rates=model==='seedance2'
+  ? {'480p':14,'720p':30,'1080p':40,'4K':150}
+  : {'480p':7,'720p':15};
+ const rate=rates[resolution];
+ if(!rate){$('estimate').textContent='Cena sa nedá vypočítať';return;}
+ const credits=Math.max(rate*4,sec*rate);
  $('estimate').textContent=`Odhad: ${(credits/100).toFixed(2)} USD (${credits} kreditov)`;
 }
 $('makePrompt').onclick=buildPrompt;
+$('model').addEventListener('change',updateResolutionOptions);
 ['duration','resolution'].forEach(id=>$(id).addEventListener('change',updateEstimate));
 photo.addEventListener('change',()=>{
  selectedFiles=Array.from(photo.files||[]).slice(0,5);
@@ -208,9 +227,12 @@ $('generate').onclick=async()=>{
   if(!promptText)buildPrompt();
   setStatus('Pripravujem fotografie a odosielam požiadavku…');
   const images=await Promise.all(selectedFiles.map(imageToDataUri));
-  const model='seedance2_mini';
-  const ratios={ '720p':{'9:16':'720:1280','1:1':'960:960','16:9':'1280:720'}, '480p':{'9:16':'496:864','1:1':'640:640','16:9':'864:496'} };
-  const ratio=ratios[$('resolution').value][$('format').value];
+  const model=$('model').value;
+  const ratios={
+   seedance2_mini:{'720p':{'9:16':'720:1280','1:1':'960:960','16:9':'1280:720'},'480p':{'9:16':'496:864','1:1':'640:640','16:9':'864:496'}},
+   seedance2:{'480p':{'9:16':'496:864','1:1':'640:640','16:9':'864:496'},'720p':{'9:16':'720:1280','1:1':'960:960','16:9':'1280:720'},'1080p':{'9:16':'1080:1920','1:1':'1440:1440','16:9':'1920:1080'},'4K':{'9:16':'2160:3840','1:1':'3840:3840','16:9':'3840:2160'}}
+  };
+  const ratio=ratios[model][$('resolution').value][$('format').value];
   const created=await api('/api/generate',{image:images[0],images,prompt:promptText,model,ratio,duration:Number($('duration').value),});
   currentTask=created.id;
   $('history').textContent=`Úloha: ${created.id} · Model: ${model} · Stav: ${created.status||'odoslané'}`;
@@ -309,6 +331,7 @@ async function generateFromCombinedInputs(){
  const ratios={ '720p':{'9:16':'720:1280','1:1':'960:960','16:9':'1280:720'}, '480p':{'9:16':'496:864','1:1':'640:640','16:9':'864:496'} };
  const ratio=ratios[$('resolution').value][$('format').value];
  form.append('ratio',ratio);
+ form.append('model',$('model').value);
  form.append('duration',$('duration').value);
  const created=await uploadFormApi('/api/generate-video',form);
  currentTask=created.id;
@@ -332,6 +355,7 @@ window.PSAIProjectBridge = {
       motion: $('motion').value,
       duration: $('duration').value,
       resolution: $('resolution').value,
+      model: $('model').value,
       lighting: $('lighting').value,
       extra: $('extra').value,
       prompt: promptText || $('prompt').textContent || '',
@@ -345,6 +369,8 @@ window.PSAIProjectBridge = {
     $('format').value = project.format || '9:16';
     $('motion').value = project.motion || $('motion').options[0].value;
     $('duration').value = project.duration || '5';
+    $('model').value = project.model || 'seedance2_mini';
+    updateResolutionOptions();
     $('resolution').value = project.resolution || '720p';
     $('lighting').value = project.lighting || $('lighting').options[0].value;
     $('extra').value = project.extra || '';
@@ -361,7 +387,7 @@ window.PSAIProjectBridge = {
     });
     $('prompt').textContent=project.prompt || 'Prompt ešte nebol vytvorený.';
     promptText=project.prompt || '';
-    updateEstimate();
+    updateResolutionOptions();
     updateReadyStatus();
   }
 };
