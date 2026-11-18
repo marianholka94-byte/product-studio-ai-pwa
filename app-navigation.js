@@ -626,7 +626,7 @@ studio.append(welcome, product, advertising, generation);
       let health = token ? await fetch(apiBase + '/api/health', { headers: { Authorization: 'Bearer ' + token } }) : null;
       if (!health || health.status === 401) {
         localStorage.removeItem('psai_session_token');
-        const password = window.prompt('Zadaj súkromný prístupový kód pre PRODUCT STUDIO AI:');
+        const password = await window.requestAppPassword();
         if (!password) throw new Error('Prihlásenie bolo zrušené.');
         const login = await fetch(apiBase + '/api/session', { method: 'POST', headers: { 'X-App-Password': password } });
         const loginData = await login.json().catch(() => ({}));
