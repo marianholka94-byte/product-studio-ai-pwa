@@ -292,6 +292,47 @@ async function generateFromCombinedInputs(){
  await pollTask(created.id);
  return true;
 }
+
+window.PSAIProjectBridge = {
+  capture() {
+    return {
+      product: $('product').value,
+      style: $('style').value,
+      format: $('format').value,
+      motion: $('motion').value,
+      duration: $('duration').value,
+      lighting: $('lighting').value,
+      extra: $('extra').value,
+      prompt: promptText || $('prompt').textContent || '',
+      images: selectedFiles.map(file => ({ name:file.name, type:file.type, blob:file }))
+    };
+  },
+  async restore(project) {
+    $('product').value = project.product || '';
+    $('style').value = project.style || $('style').options[0].value;
+    $('format').value = project.format || '9:16';
+    $('motion').value = project.motion || $('motion').options[0].value;
+    $('duration').value = project.duration || '5';
+    $('lighting').value = project.lighting || $('lighting').options[0].value;
+    $('extra').value = project.extra || '';
+    selectedFiles = (project.images || []).map((item,index) =>
+      new File([item.blob], item.name || ('produkt-'+(index+1)+'.jpg'), {type:item.type || item.blob.type || 'image/jpeg'})
+    );
+    const gallery=$('previewGallery');
+    gallery.innerHTML='';
+    selectedFiles.forEach((file,index)=>{
+      const item=document.createElement('div');item.className='preview-item';
+      const image=document.createElement('img');image.alt='Fotografia '+(index+1);image.src=URL.createObjectURL(file);
+      const caption=document.createElement('span');caption.textContent='Fotografia '+(index+1);
+      item.append(image,caption);gallery.append(item);
+    });
+    $('prompt').textContent=project.prompt || 'Prompt ešte nebol vytvorený.';
+    promptText=project.prompt || '';
+    updateEstimate();
+    updateReadyStatus();
+  }
+};
+
 updateEstimate();
 updateReadyStatus();
 </script>
