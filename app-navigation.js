@@ -574,7 +574,7 @@
       <option value="dynamic">Dynamic Commercial – dynamická scéna</option>
     </select>`;
   sceneControl.style.marginTop='12px';
-  if(styleSelect?.parentElement)styleSelect.parentElement.after(sceneControl);
+  if(styleSelect?.parentElement)styleSelect.parentElement.append(sceneControl);
   const promptBox=document.getElementById('prompt');
   const promptEditor=document.createElement('section');promptEditor.id='promptEditor';
   promptEditor.innerHTML=`
