@@ -197,7 +197,7 @@
 
   const projectsIntro=document.createElement('div');projectsIntro.className='app-placeholder';projectsIntro.dataset.sectionIcon='📁';
   projectsIntro.innerHTML='<h2>Moje projekty</h2><p>Všetky tvoje produktové projekty a reklamné výstupy budú na jednom mieste.</p><p><strong>Pracovný priestor PRODUCT STUDIO AI</strong></p>';
-  projects.append(projectsIntro,history);
+
 
   connection.remove();
   settings.innerHTML='<section class="app-placeholder"><h2>Zabezpečenie</h2><p>Najskôr bezpečne over pripojenie generátora. Tento test nevytvára video a nemíňa Runway kredity.</p><button id="verifyConnection" class="secondary">Overiť pripojenie</button><p id="connectionCheckStatus" role="status">Pripojenie zatiaľ nebolo overené.</p><button id="logoutButton" class="secondary">Odhlásiť toto zariadenie</button></section>';
@@ -283,7 +283,7 @@
 
   const projectsList=document.createElement('div');projectsList.id='savedProjectsList';
   projectsList.innerHTML='<div class="projects-empty"><span class="empty-icon">▣</span><strong>Zatiaľ tu nemáš žiadne projekty</strong><p>Vytvor projekt v štúdiu a ulož si fotografie, nastavenia aj reklamný prompt.</p></div>';
-  projects.append(projectsList);
+  projects.append(projectsIntro,productsIntro,productsList,history,projectsList);
   const productsIntro=document.createElement('section');productsIntro.className='app-placeholder';productsIntro.dataset.sectionIcon='📦';
   productsIntro.innerHTML='<h2>Moja knižnica produktov</h2><p>Ulož produkty raz a použi ich znova v ďalších reklamných projektoch.</p>';
   const productsList=document.createElement('div');productsList.id='savedProductsList';
@@ -309,6 +309,10 @@
     .studio-project-actions button,.project-actions button{margin:0;min-height:48px!important}
     .studio-project-actions #projectSaveStatus{grid-column:1/-1;margin:0;min-height:18px;font-size:12px;color:#9ce0b8}
     .project-actions{margin-top:14px}
+    .library-section-heading{margin:24px 2px 8px;padding:0 2px;background:transparent;border:0;border-radius:0;box-shadow:none}
+    .library-section-heading h2{display:flex;align-items:center;gap:10px;margin:0 0 5px!important;font-size:19px!important;color:#fff}
+    .library-section-heading h2::before{content:attr(data-section-icon);font-size:21px}
+    .library-section-heading p{margin:0;color:#8995a6!important;font-size:13px!important;line-height:1.45!important}
     .projects-empty{display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;padding:34px 18px;background:#10151d;border:1px dashed #354253;border-radius:18px;color:#e8edf5}
     .projects-empty .empty-icon{font-size:34px;color:#d9bd7d}
     .projects-empty p{margin:0;max-width:260px;color:#8995a6;font-size:13px;line-height:1.5}
