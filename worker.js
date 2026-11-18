@@ -99,7 +99,54 @@ export default {
       }
 
       if (request.method === "GET" && url.pathname === "/api/health") {
-        return reply({ ok: true, service: "PRODUCT STUDIO AI", provider: "Runway Dev", model: "seedance2_mini" });
+        return reply({ ok: true, service: "PRODUCT STUDIO AI", provider: "Runway Dev", model: "seedance2_mini", promptAssistant: Boolean(env.OPENAI_API_KEY) });
+      }
+
+      if (request.method === "POST" && url.pathname === "/api/create-prompt") {
+        if (!env.OPENAI_API_KEY) {
+          return reply({ error: "AI tvorba promptov ešte nie je nakonfigurovaná. V Cloudflare Worker pridaj tajnú premennú OPENAI_API_KEY." }, 503);
+        }
+        let body;
+        try { body = await request.json(); }
+        catch { return reply({ error: "Požiadavka neobsahuje platné JSON dáta." }, 400); }
+        const idea = String(body.idea || "").trim();
+        if (!idea || idea.length > 3000) {
+          return reply({ error: "Opíš svoju predstavu v rozsahu 1 až 3 000 znakov." }, 400);
+        }
+        const context = body.context && typeof body.context === "object" ? body.context : {};
+        const safeContext = {
+          product: String(context.product || "").slice(0,160),
+          visualStyle: String(context.visualStyle || "").slice(0,160),
+          scene: String(context.scene || "").slice(0,1200),
+          camera: String(context.camera || "").slice(0,300),
+          lighting: String(context.lighting || "").slice(0,300),
+          duration: String(context.duration || "").slice(0,10),
+          aspectRatio: String(context.aspectRatio || "").slice(0,10),
+          extra: String(context.extra || "").slice(0,500)
+        };
+        const aiResponse = await fetch("https://api.openai.com/v1/responses", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${env.OPENAI_API_KEY}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            model: env.OPENAI_PROMPT_MODEL || "gpt-6.2-astra",
+            store: false,
+            instructions: "You are an expert commercial product-ad prompt writer. Convert the user's Slovak or other-language creative idea into one polished, concise English video-generation prompt. Use the supplied settings as constraints and context. Preserve the product identity, packaging, logo, proportions and original colors. Do not invent product features, claims, text, logos, props or scene elements that conflict with the user's idea. Include scene composition, camera movement, lighting, realistic materials and motion where relevant. Avoid contradictory instructions and filler. Return only the final prompt in English, no heading, no quotation marks, maximum 1000 characters.",
+            input: "USER'S CREATIVE IDEA:\n" + idea + "\n\nAPP SETTINGS (use as context, do not blindly repeat):\n" + JSON.stringify(safeContext)
+          })
+        });
+        const aiData = await aiResponse.json().catch(() => ({}));
+        if (!aiResponse.ok) {
+          const message = aiData.error?.message || aiData.message || `OpenAI API vrátilo HTTP ${aiResponse.status}.`;
+          return reply({ error: String(message) }, aiResponse.status === 429 ? 429 : 502);
+        }
+        const output = (aiData.output || []).flatMap(item => item.content || [])
+          .filter(item => item.type === "output_text")
+          .map(item => item.text || "").join("\n").trim();
+        if (!output) return reply({ error: "AI nevytvorila použiteľný text. Skús upraviť zadanie." }, 502);
+        return reply({ prompt: output.slice(0,1000) });
       }
 
       if (request.method === "POST" && url.pathname === "/api/generate-video") {
