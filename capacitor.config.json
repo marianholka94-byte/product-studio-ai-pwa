@@ -1,0 +1,10 @@
+{
+  "appId": "com.marianholka.productstudioai",
+  "appName": "PRODUCT STUDIO AI",
+  "webDir": "www",
+  "plugins": {
+    "SystemBars": {
+      "insetsHandling": "auto"
+    }
+  }
+}
