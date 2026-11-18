@@ -77,8 +77,8 @@ public class MainActivity extends Activity {
                     return host != null && !host.equals("product-studio-ai-pwa.pages.dev");
                 }
                 @Override
-                public void onPageCommitVisible(WebView view, android.webkit.WebResourceRequest request) {
-                    super.onPageCommitVisible(view, request);
+                public void onPageCommitVisible(WebView view, String url) {
+                    super.onPageCommitVisible(view, url);
                     scheduleIntroDismiss();
                 }
                 @Override
