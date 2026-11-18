@@ -398,9 +398,20 @@
       const buttons=document.createElement('div');buttons.className='saved-project-buttons';
       const open=document.createElement('button');open.type='button';open.className='secondary';open.textContent='Otvoriť';
       open.addEventListener('click',async()=>{try{const latest=await getProject(record.id);if(!latest)throw new Error('Projekt sa už nenašiel.');await window.PSAIProjectBridge.restore(latest);activeProjectId=latest.id;activeProductId=latest.productId||null;syncPromptEditor(latest.prompt||'');setProjectMessage('Otvorený projekt: '+latest.name);nav.querySelector('[data-screen="screenStudio"]').click();}catch(error){alert(error.message||'Projekt sa nepodarilo otvoriť.');}});
+      const duplicate=document.createElement('button');duplicate.type='button';duplicate.className='secondary';duplicate.textContent='Duplikovať';
+      duplicate.addEventListener('click',async()=>{
+        duplicate.disabled=true;
+        try{
+          const latest=await getProject(record.id);if(!latest)throw new Error('Projekt sa už nenašiel.');
+          const now=Date.now();
+          const copy={...latest,id:'project-'+now+'-'+Math.random().toString(36).slice(2,8),name:(latest.name||'Projekt')+' (kópia)',createdAt:now,updatedAt:now,images:(latest.images||[]).map(image=>({...image}))};
+          await putProject(copy);await renderProjects();setProjectMessage('Kópia projektu „'+copy.name+'“ bola vytvorená. Pôvodný projekt zostal nezmenený.');
+        }catch(error){alert(error.message||'Projekt sa nepodarilo duplikovať.');}
+        finally{duplicate.disabled=false;}
+      });
       const remove=document.createElement('button');remove.type='button';remove.className='delete-project';remove.textContent='Vymazať';
       remove.addEventListener('click',async()=>{if(!confirm('Naozaj chceš vymazať projekt „'+(record.name||'Nepomenovaný projekt')+'“?'))return;try{await removeProject(record.id);if(activeProjectId===record.id)activeProjectId=null;await renderProjects();}catch(error){alert(error.message||'Projekt sa nepodarilo vymazať.');}});
-      buttons.append(open,remove);info.append(title,meta,buttons);card.append(thumb,info);projectsList.append(card);
+      buttons.append(open,duplicate,remove);info.append(title,meta,buttons);card.append(thumb,info);projectsList.append(card);
     });
   };
 
