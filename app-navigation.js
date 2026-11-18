@@ -356,7 +356,25 @@
     .saved-product-info strong{display:block;color:#f3f5f8;font-size:15px;overflow-wrap:anywhere}
     .saved-product-info small{display:block;color:#8995a6;font-size:12px;line-height:1.5;margin-top:5px}
     .saved-product-buttons{display:flex;gap:7px;margin-top:9px}
-    .saved-product-buttons button{min-height:38px!important;padding:8px!important;margin:0!important;font-size:12px!important;flex:1}
+    .saved-product-buttons{flex-wrap:wrap}
+    .saved-product-buttons button{min-height:38px!important;padding:8px!important;margin:0!important;font-size:12px!important;flex:1 1 28%}
+    .saved-product-buttons .manage-product{flex:1 1 100%;background:#202936!important;color:#e5d09c!important;border:1px solid #4a5362!important}
+    .product-manager-backdrop{position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(0,0,0,.78)}
+    .product-manager{width:100%;max-width:560px;max-height:82vh;overflow:auto;padding:18px;background:#151a22;border:1px solid #394454;border-radius:20px;box-shadow:0 18px 50px rgba(0,0,0,.45)}
+    .product-manager-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}
+    .product-manager-head h3{margin:0;color:#fff;font-size:18px}
+    .product-manager-sub{margin:0 0 14px;color:#9aa6b6;font-size:13px;line-height:1.45}
+    .product-manager-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+    .product-manager-image{min-width:0;padding:8px;background:#0e131a;border:1px solid #303b49;border-radius:14px}
+    .product-manager-image img{display:block;width:100%;height:150px;object-fit:contain;background:#080b10;border-radius:9px}
+    .product-manager-image small{display:block;margin:7px 0;color:#aeb8c7;font-size:11px;overflow-wrap:anywhere}
+    .product-manager-image button{width:100%;min-height:36px!important;margin:4px 0 0;padding:7px!important;font-size:11px!important}
+    .product-manager-image .remove-photo{background:#302126!important;color:#ffb5b5!important;border:1px solid #663139!important}
+    .product-manager-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
+    .product-manager-actions button{min-height:44px!important;margin:0}
+    .product-manager-close{min-width:38px!important;width:38px;min-height:38px!important;padding:0!important;border-radius:50%!important}
+    .product-manager-add{grid-column:1/-1}
+    .product-manager-count{margin:12px 0 0;color:#8995a6;font-size:12px;text-align:center}
 
   `;
   document.head.appendChild(projectStyle);
@@ -381,6 +399,56 @@
     });
   };
 
+  const productManagerBackdrop=document.createElement('div');
+  productManagerBackdrop.className='product-manager-backdrop';
+  productManagerBackdrop.hidden=true;
+  productManagerBackdrop.innerHTML='<section class="product-manager" role="dialog" aria-modal="true" aria-labelledby="productManagerTitle"><div class="product-manager-head"><h3 id="productManagerTitle">Správa produktu</h3><button type="button" class="secondary product-manager-close" aria-label="Zavrieť">×</button></div><p class="product-manager-sub">Spravuj fotografie produktu. Môžeš pridať nové, odstrániť nepotrebné alebo zmeniť hlavnú fotografiu.</p><div class="product-manager-grid" id="productManagerGrid"></div><p class="product-manager-count" id="productManagerCount"></p><div class="product-manager-actions"><button type="button" class="secondary product-manager-add" id="addProductPhotos">＋ Pridať fotografie</button><button type="button" class="secondary" id="cancelProductManager">Zavrieť</button><button type="button" id="saveProductPhotos">Uložiť zmeny</button></div><input type="file" id="productPhotoInput" accept="image/*" multiple hidden></section>';
+  document.body.append(productManagerBackdrop);
+  let managingProductId=null,managingProductImages=[];
+  const closeProductManager=()=>{productManagerBackdrop.hidden=true;managingProductId=null;managingProductImages=[];};
+  productManagerBackdrop.querySelector('.product-manager-close').addEventListener('click',closeProductManager);
+  productManagerBackdrop.querySelector('#cancelProductManager').addEventListener('click',closeProductManager);
+  productManagerBackdrop.addEventListener('click',event=>{if(event.target===productManagerBackdrop)closeProductManager();});
+  const renderProductManagerImages=()=>{
+    const grid=productManagerBackdrop.querySelector('#productManagerGrid');grid.innerHTML='';
+    managingProductImages.forEach((photo,index)=>{
+      const tile=document.createElement('div');tile.className='product-manager-image';
+      const img=document.createElement('img');img.alt='Fotografia '+(index+1);img.src=URL.createObjectURL(photo.blob);
+      const name=document.createElement('small');name.textContent=(index===0?'★ Hlavná fotografia · ':'Fotografia '+(index+1)+' · ')+(photo.name||'produktová fotografia');
+      const main=document.createElement('button');main.type='button';main.className='secondary';main.textContent=index===0?'Hlavná fotografia':'Nastaviť ako hlavnú';
+      main.disabled=index===0;main.addEventListener('click',()=>{const selected=managingProductImages.splice(index,1)[0];managingProductImages.unshift(selected);renderProductManagerImages();});
+      const remove=document.createElement('button');remove.type='button';remove.className='remove-photo';remove.textContent='Odstrániť';remove.disabled=managingProductImages.length<=1;
+      remove.addEventListener('click',()=>{if(managingProductImages.length<=1){alert('Produkt musí mať aspoň jednu fotografiu.');return;}managingProductImages.splice(index,1);renderProductManagerImages();});
+      tile.append(img,name,main,remove);grid.append(tile);
+    });
+    productManagerBackdrop.querySelector('#productManagerCount').textContent=managingProductImages.length+' / 5 fotografií';
+    productManagerBackdrop.querySelector('#addProductPhotos').disabled=managingProductImages.length>=5;
+  };
+  const openProductManager=async id=>{
+    const record=await getProduct(id);if(!record)throw new Error('Produkt sa už nenašiel.');
+    managingProductId=id;managingProductImages=(record.images||[]).map(item=>({...item}));
+    productManagerBackdrop.querySelector('#productManagerTitle').textContent=record.name;
+    productManagerBackdrop.querySelector('#productPhotoInput').value='';
+    renderProductManagerImages();productManagerBackdrop.hidden=false;
+  };
+  productManagerBackdrop.querySelector('#addProductPhotos').addEventListener('click',()=>productManagerBackdrop.querySelector('#productPhotoInput').click());
+  productManagerBackdrop.querySelector('#productPhotoInput').addEventListener('change',event=>{
+    const files=[...event.target.files||[]];const remaining=5-managingProductImages.length;
+    if(files.length>remaining)alert('Môžeš pridať najviac '+remaining+' ďalšie fotografie.');
+    files.slice(0,remaining).forEach(file=>{if(file.type.startsWith('image/'))managingProductImages.push({name:file.name,type:file.type,blob:file});});
+    event.target.value='';renderProductManagerImages();
+  });
+  productManagerBackdrop.querySelector('#saveProductPhotos').addEventListener('click',async()=>{
+    const button=productManagerBackdrop.querySelector('#saveProductPhotos');button.disabled=true;
+    try{
+      if(!managingProductImages.length)throw new Error('Produkt musí mať aspoň jednu fotografiu.');
+      const latest=await getProduct(managingProductId);if(!latest)throw new Error('Produkt sa už nenašiel.');
+      latest.images=managingProductImages;latest.updatedAt=Date.now();await putProduct(latest);
+      closeProductManager();await renderProducts();setProjectMessage('Fotografie produktu „'+latest.name+'“ boli uložené.');
+    }catch(error){alert(error.message||'Fotografie sa nepodarilo uložiť.');}
+    finally{button.disabled=false;}
+  });
+
   const renderProducts=async()=>{
     const records=(await getAllProducts()).sort((a,b)=>b.updatedAt-a.updatedAt);productsList.innerHTML='';
     if(!records.length){productsList.innerHTML='<div class="projects-empty"><span class="empty-icon">▧</span><strong>Zatiaľ nemáš uložené produkty</strong><p>V štúdiu môžeš uložiť produkt spolu s jeho fotografiami.</p></div>';return;}
@@ -392,6 +460,8 @@
       const title=document.createElement('strong');title.textContent=record.name;
       const meta=document.createElement('small');meta.textContent=(record.images?.length||0)+' fotografií · '+formatProjectDate(record.updatedAt);
       const buttons=document.createElement('div');buttons.className='saved-product-buttons';
+      const manage=document.createElement('button');manage.type='button';manage.className='secondary manage-product';manage.textContent='Spravovať fotografie';
+      manage.addEventListener('click',async()=>{try{await openProductManager(record.id);}catch(error){alert(error.message||'Správa produktu sa nepodarila otvoriť.');}});
       const use=document.createElement('button');use.type='button';use.className='secondary';use.textContent='Použiť v reklame';
       use.addEventListener('click',async()=>{
         try{
@@ -417,7 +487,7 @@
         try{await removeProduct(record.id);await renderProducts();}
         catch(error){alert(error.message||'Produkt sa nepodarilo vymazať.');}
       });
-      buttons.append(use,rename,remove);info.append(title,meta,buttons);card.append(thumb,info);productsList.append(card);
+      buttons.append(manage,use,rename,remove);info.append(title,meta,buttons);card.append(thumb,info);productsList.append(card);
     });
   };
   const saveProductToLibrary=async()=>{
