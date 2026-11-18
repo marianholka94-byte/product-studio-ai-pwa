@@ -25,6 +25,16 @@ video{width:100%;border-radius:12px;background:#111;margin-top:10px;max-height:5
 a{color:#174ea6;overflow-wrap:anywhere}
 @media(max-width:430px){.grid{grid-template-columns:1fr 1fr}body{padding-inline:10px}}
 .preview-gallery{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:14px 0}
+.photo-card{min-width:0;background:#171d27;border:1px solid #303b49;border-radius:13px;padding:8px;color:#f3f5f8}
+.photo-card img{display:block;width:100%;height:142px;object-fit:contain;border-radius:8px;background:#0b1017}
+.photo-card-meta{display:flex;justify-content:space-between;align-items:center;gap:6px;margin:8px 0;font-size:11px;color:#c5cedb}
+.photo-main-tag{padding:4px 7px;border-radius:99px;background:#3a3020;color:#e8ca83;font-weight:700}
+.photo-card-actions{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.photo-card-actions button{margin:0!important;min-width:0;padding:8px 5px!important;font-size:11px!important;white-space:normal;line-height:1.25}
+.photo-card-actions .photo-primary{grid-column:1/-1;background:#29251c!important;color:#e2c47e!important;border:1px solid #5b4b2b!important}
+.photo-card-actions .photo-remove{background:#302126!important;color:#ffb5b5!important;border:1px solid #663139!important}
+.photo-help{margin-top:8px;color:#aeb8c7;font-size:12px;line-height:1.45}
+
 .preview-item{min-width:0;background:#0e131a;border:1px solid #303b49;border-radius:14px;padding:8px}
 .preview-item img{display:block;width:100%;height:150px;object-fit:contain;border-radius:9px}
 .preview-item span{display:block;text-align:center;font-size:16px;margin-top:8px;color:#c5cedb}
@@ -223,17 +233,37 @@ $('exportPreset').addEventListener('change',applyExportPreset);
 $('makePrompt').onclick=buildPrompt;
 $('model').addEventListener('change',updateResolutionOptions);
 ['duration','resolution'].forEach(id=>$(id).addEventListener('change',updateEstimate));
-photo.addEventListener('change',()=>{
- selectedFiles=Array.from(photo.files||[]).slice(0,5);
- if((photo.files||[]).length>5) setStatus('Môžeš nahrať najviac 5 fotografií. Vybral som prvých 5.','err');
+function renderSelectedPhotos(){
  previewGallery.innerHTML='';
  selectedFiles.forEach((file,index)=>{
-  const item=document.createElement('div');item.className='preview-item';
-  const image=document.createElement('img');image.alt=`Fotografia ${index+1}`;image.src=URL.createObjectURL(file);
-  const caption=document.createElement('span');caption.textContent=`Fotografia ${index+1}`;
-  item.append(image,caption);previewGallery.append(item);
+  const card=document.createElement('article');card.className='photo-card';
+  const image=document.createElement('img');image.alt=`Náhľad fotografie ${index+1}`;image.src=URL.createObjectURL(file);
+  const meta=document.createElement('div');meta.className='photo-card-meta';
+  const name=document.createElement('span');name.textContent=`${index+1}. ${file.name}`;name.style.overflowWrap='anywhere';
+  const tag=document.createElement('span');tag.className='photo-main-tag';tag.textContent=index===0?'HLAVNÁ':'REFERENCIA';
+  meta.append(name,tag);
+  const actions=document.createElement('div');actions.className='photo-card-actions';
+  const primary=document.createElement('button');primary.type='button';primary.className='photo-primary';primary.textContent=index===0?'Hlavná fotografia':'Použiť ako hlavnú';primary.disabled=index===0;
+  primary.addEventListener('click',()=>{selectedFiles.splice(index,1);selectedFiles.unshift(file);renderSelectedPhotos();updateReadyStatus();});
+  const left=document.createElement('button');left.type='button';left.className='secondary';left.textContent='← Doľava';left.disabled=index===0;
+  left.addEventListener('click',()=>{[selectedFiles[index-1],selectedFiles[index]]=[selectedFiles[index],selectedFiles[index-1]];renderSelectedPhotos();});
+  const right=document.createElement('button');right.type='button';right.className='secondary';right.textContent='Doprava →';right.disabled=index===selectedFiles.length-1;
+  right.addEventListener('click',()=>{[selectedFiles[index+1],selectedFiles[index]]=[selectedFiles[index],selectedFiles[index+1]];renderSelectedPhotos();});
+  const remove=document.createElement('button');remove.type='button';remove.className='photo-remove';remove.textContent='Odstrániť';
+  remove.addEventListener('click',()=>{selectedFiles.splice(index,1);renderSelectedPhotos();updateReadyStatus();});
+  actions.append(primary,left,right,remove);card.append(image,meta,actions);previewGallery.append(card);
  });
- updateReadyStatus();
+ const help=document.createElement('p');help.className='photo-help';help.textContent=selectedFiles.length?'Prvá fotografia je hlavná a odošle sa ako primárny záber. Ostatné fotografie slúžia ako referencie. Poradie môžeš kedykoľvek zmeniť.':'Zatiaľ nie sú vybrané žiadne fotografie.';previewGallery.append(help);
+}
+photo.addEventListener('change',()=>{
+ const incoming=Array.from(photo.files||[]);
+ const invalid=incoming.find(file=>!['image/jpeg','image/png','image/webp'].includes(file.type));
+ const tooLarge=incoming.find(file=>file.size>20*1024*1024);
+ if(invalid){setStatus('Podporované sú iba JPG, PNG a WebP fotografie.','err');photo.value='';return;}
+ if(tooLarge){setStatus('Jedna z fotografií má viac ako 20 MB. Vyber menší súbor.','err');photo.value='';return;}
+ selectedFiles=incoming.slice(0,5);
+ if(incoming.length>5)setStatus('Môžeš nahrať najviac 5 fotografií. Vybral som prvých 5.','err');
+ renderSelectedPhotos();updateReadyStatus();
 });
 async function imageToDataUri(file){
  if(!file)throw new Error('Najskôr vyber aspoň jednu fotografiu produktu.');
@@ -464,14 +494,7 @@ window.PSAIProjectBridge = {
     selectedFiles = (project.images || []).map((item,index) =>
       new File([item.blob], item.name || ('produkt-'+(index+1)+'.jpg'), {type:item.type || item.blob.type || 'image/jpeg'})
     );
-    const gallery=$('previewGallery');
-    gallery.innerHTML='';
-    selectedFiles.forEach((file,index)=>{
-      const item=document.createElement('div');item.className='preview-item';
-      const image=document.createElement('img');image.alt='Fotografia '+(index+1);image.src=URL.createObjectURL(file);
-      const caption=document.createElement('span');caption.textContent='Fotografia '+(index+1);
-      item.append(image,caption);gallery.append(item);
-    });
+    renderSelectedPhotos();
     $('prompt').textContent=project.prompt || 'Prompt ešte nebol vytvorený.';
     promptText=project.prompt || '';
     updateResolutionOptions();
