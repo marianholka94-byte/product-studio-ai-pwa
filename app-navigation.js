@@ -314,7 +314,7 @@
       const meta=document.createElement('small');meta.textContent=(record.images?.length||0)+' fotografií · '+formatProjectDate(record.updatedAt);
       const buttons=document.createElement('div');buttons.className='saved-project-buttons';
       const open=document.createElement('button');open.type='button';open.className='secondary';open.textContent='Otvoriť';
-      open.addEventListener('click',async()=>{try{const latest=await getProject(record.id);if(!latest)throw new Error('Projekt sa už nenašiel.');await window.PSAIProjectBridge.restore(latest);activeProjectId=latest.id;setProjectMessage('Otvorený projekt: '+latest.name);nav.querySelector('[data-screen="screenStudio"]').click();}catch(error){alert(error.message||'Projekt sa nepodarilo otvoriť.');}});
+      open.addEventListener('click',async()=>{try{const latest=await getProject(record.id);if(!latest)throw new Error('Projekt sa už nenašiel.');await window.PSAIProjectBridge.restore(latest);activeProjectId=latest.id;syncPromptEditor(latest.prompt||'',latest.promptConcepts||[]);setProjectMessage('Otvorený projekt: '+latest.name);nav.querySelector('[data-screen="screenStudio"]').click();}catch(error){alert(error.message||'Projekt sa nepodarilo otvoriť.');}});
       const remove=document.createElement('button');remove.type='button';remove.className='delete-project';remove.textContent='Vymazať';
       remove.addEventListener('click',async()=>{if(!confirm('Naozaj chceš vymazať projekt „'+(record.name||'Nepomenovaný projekt')+'“?'))return;try{await removeProject(record.id);if(activeProjectId===record.id)activeProjectId=null;await renderProjects();}catch(error){alert(error.message||'Projekt sa nepodarilo vymazať.');}});
       buttons.append(open,remove);info.append(title,meta,buttons);card.append(thumb,info);projectsList.append(card);
@@ -325,7 +325,7 @@
     if(!state.product.trim()&&!state.images.length)throw new Error('Najskôr zadaj názov produktu alebo pridaj fotografiu.');
     if(!state.images.length)throw new Error('Projekt musí obsahovať aspoň jednu fotografiu produktu.');
     const now=Date.now(),existing=activeProjectId?await getProject(activeProjectId):null;
-    const record={id:activeProjectId||('project-'+now+'-'+Math.random().toString(36).slice(2,8)),name:state.product.trim()||'Nový produkt',createdAt:existing?.createdAt||now,updatedAt:now,product:state.product,style:state.style,format:state.format,motion:state.motion,duration:state.duration,lighting:state.lighting,extra:state.extra,prompt:state.prompt,images:state.images};
+    const record={id:activeProjectId||('project-'+now+'-'+Math.random().toString(36).slice(2,8)),name:state.product.trim()||'Nový produkt',createdAt:existing?.createdAt||now,updatedAt:now,product:state.product,style:state.style,format:state.format,motion:state.motion,duration:state.duration,lighting:state.lighting,extra:state.extra,prompt:state.prompt,promptConcepts:existing?.promptConcepts||[],images:state.images};
     await putProject(record);activeProjectId=record.id;await renderProjects();setProjectMessage('Projekt „'+record.name+'“ bol uložený v tomto zariadení.');return record;
   };
   const startNewProject=async()=>{
@@ -335,5 +335,93 @@
   document.getElementById('saveProjectButton').addEventListener('click',async()=>{const button=document.getElementById('saveProjectButton');button.disabled=true;try{await saveCurrentProject();}catch(error){setProjectMessage(error.message||'Projekt sa nepodarilo uložiť.',true);}finally{button.disabled=false;}});
   document.getElementById('newProjectButton').addEventListener('click',startNewProject);
   document.getElementById('createProjectButton').addEventListener('click',startNewProject);
+
+  // Prompt editor and named prompt concepts stored inside each project.
+  const promptBox=document.getElementById('prompt');
+  const promptEditor=document.createElement('section');promptEditor.id='promptEditor';
+  promptEditor.innerHTML=`
+    <div class="prompt-editor-heading"><strong>Editor reklamného promptu</strong><span id="promptLength">0 / 1000</span></div>
+    <label class="prompt-label" for="promptDraftName">Názov konceptu</label>
+    <input id="promptDraftName" type="text" maxlength="50" placeholder="Napr. Luxusná reklama">
+    <label class="prompt-label" for="promptDraftText">Text promptu</label>
+    <textarea id="promptDraftText" rows="7" maxlength="1000" placeholder="Najskôr vytvor reklamný prompt alebo sem vlož vlastný text…"></textarea>
+    <div class="prompt-editor-actions"><button type="button" id="copyPromptDraft" class="secondary">Kopírovať</button><button type="button" id="savePromptConcept">Uložiť koncept</button></div>
+    <div id="promptConceptStatus" role="status"></div>
+    <div class="prompt-concepts-title">Uložené koncepty</div>
+    <div id="promptConceptList"><p class="prompt-empty">Zatiaľ nemáš uložené žiadne koncepty.</p></div>
+  `;
+  promptBox.after(promptEditor);
+  const promptStyle=document.createElement('style');
+  promptStyle.textContent=`
+    #promptEditor{margin:12px 0 18px;padding:14px;background:#10151d;border:1px solid #303b49;border-radius:16px;color:#e8edf5}
+    .prompt-editor-heading{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:12px}
+    .prompt-editor-heading strong,.prompt-concepts-title{font-size:14px;color:#f2f4f8;font-weight:750}
+    #promptLength{font-size:11px;color:#8995a6}
+    .prompt-label{display:block;margin:10px 0 6px;font-size:12px;color:#aab4c3}
+    #promptDraftName,#promptDraftText{width:100%;box-sizing:border-box;background:#0b1017;color:#eef1f6;border:1px solid #354253;border-radius:11px;padding:11px;font:inherit;font-size:14px}
+    #promptDraftText{resize:vertical;line-height:1.5;min-height:120px}
+    .prompt-editor-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+    .prompt-editor-actions button{margin:0;min-height:44px!important}
+    #promptConceptStatus{min-height:18px;margin-top:8px;color:#9ce0b8;font-size:12px}
+    .prompt-concepts-title{margin:12px 0 8px}
+    .prompt-empty{margin:0;color:#8995a6;font-size:12px}
+    .prompt-concept-item{padding:10px;margin-top:8px;border:1px solid #303b49;border-radius:12px;background:#151b25}
+    .prompt-concept-item strong{display:block;font-size:13px;overflow-wrap:anywhere}
+    .prompt-concept-item small{display:block;color:#8995a6;font-size:11px;margin-top:4px}
+    .prompt-concept-buttons{display:flex;gap:6px;margin-top:8px}
+    .prompt-concept-buttons button{flex:1;min-height:34px!important;margin:0!important;padding:6px!important;font-size:11px!important}
+  `;
+  document.head.appendChild(promptStyle);
+  const promptDraft=document.getElementById('promptDraftText');
+  const promptName=document.getElementById('promptDraftName');
+  const promptStatus=document.getElementById('promptConceptStatus');
+  const promptLength=document.getElementById('promptLength');
+  let currentPromptConcepts=[];
+  const syncPromptLength=()=>{promptLength.textContent=promptDraft.value.length+' / 1000';};
+  promptDraft.addEventListener('input',syncPromptLength);
+  const syncPromptEditor=(textValue='',concepts=[])=>{
+    promptDraft.value=textValue||'';
+    currentPromptConcepts=Array.isArray(concepts)?concepts:[];
+    syncPromptLength();renderPromptConcepts();
+  };
+  const renderPromptConcepts=()=>{
+    const list=document.getElementById('promptConceptList');list.innerHTML='';
+    if(!currentPromptConcepts.length){list.innerHTML='<p class="prompt-empty">Zatiaľ nemáš uložené žiadne koncepty.</p>';return;}
+    currentPromptConcepts.slice().sort((a,b)=>b.updatedAt-a.updatedAt).forEach(concept=>{
+      const item=document.createElement('div');item.className='prompt-concept-item';
+      const title=document.createElement('strong');title.textContent=concept.name;
+      const meta=document.createElement('small');meta.textContent=new Date(concept.updatedAt).toLocaleString('sk-SK')+' · '+concept.text.length+' znakov';
+      const actions=document.createElement('div');actions.className='prompt-concept-buttons';
+      const load=document.createElement('button');load.type='button';load.className='secondary';load.textContent='Načítať';
+      load.addEventListener('click',()=>{promptName.value=concept.name;promptDraft.value=concept.text;document.getElementById('prompt').textContent=concept.text;promptLength.textContent=concept.text.length+' / 1000';promptStatus.textContent='Koncept načítaný do editora.';});
+      const remove=document.createElement('button');remove.type='button';remove.className='secondary';remove.textContent='Odstrániť';
+      remove.addEventListener('click',async()=>{if(!activeProjectId){promptStatus.textContent='Najskôr ulož projekt.';return;}if(!confirm('Odstrániť koncept „'+concept.name+'“?'))return;try{const project=await getProject(activeProjectId);project.promptConcepts=(project.promptConcepts||[]).filter(x=>x.id!==concept.id);await putProject(project);currentPromptConcepts=project.promptConcepts;renderPromptConcepts();promptStatus.textContent='Koncept bol odstránený.';}catch(error){promptStatus.textContent=error.message||'Koncept sa nepodarilo odstrániť.';}});
+      actions.append(load,remove);item.append(title,meta,actions);list.append(item);
+    });
+  };
+  document.getElementById('copyPromptDraft').addEventListener('click',async()=>{
+    const value=promptDraft.value.trim();if(!value){promptStatus.textContent='Nie je čo kopírovať.';return;}
+    try{await navigator.clipboard.writeText(value);promptStatus.textContent='Prompt bol skopírovaný.';}
+    catch(error){promptDraft.focus();promptDraft.select();try{document.execCommand('copy');promptStatus.textContent='Prompt bol skopírovaný.';}catch(e){promptStatus.textContent='Kopírovanie sa nepodarilo. Označ text a skopíruj ho ručne.';}}
+  });
+  document.getElementById('savePromptConcept').addEventListener('click',async()=>{
+    const name=promptName.value.trim(),value=promptDraft.value.trim();
+    if(!name){promptStatus.textContent='Zadaj názov konceptu.';return;}
+    if(!value){promptStatus.textContent='Text promptu je prázdny.';return;}
+    if(!activeProjectId){promptStatus.textContent='Najskôr ulož projekt, ku ktorému chceš koncept priradiť.';return;}
+    try{
+      const project=await getProject(activeProjectId);if(!project)throw new Error('Aktuálny projekt sa nenašiel.');
+      const existing=(project.promptConcepts||[]).find(item=>item.name.toLowerCase()===name.toLowerCase());
+      const concept={id:existing?.id||('prompt-'+Date.now()+'-'+Math.random().toString(36).slice(2,6)),name,text:value,createdAt:existing?.createdAt||Date.now(),updatedAt:Date.now()};
+      project.promptConcepts=(project.promptConcepts||[]).filter(item=>item.id!==concept.id);project.promptConcepts.push(concept);
+      project.prompt=value;project.updatedAt=Date.now();await putProject(project);
+      currentPromptConcepts=project.promptConcepts;document.getElementById('prompt').textContent=value;renderPromptConcepts();
+      promptStatus.textContent='Koncept „'+name+'“ bol uložený v projekte.';
+    }catch(error){promptStatus.textContent=error.message||'Koncept sa nepodarilo uložiť.';}
+  });
+  const originalPromptButton=document.getElementById('makePrompt');
+  if(originalPromptButton)originalPromptButton.addEventListener('click',()=>{setTimeout(()=>{promptDraft.value=document.getElementById('prompt').textContent||'';syncPromptLength();},0);});
+  syncPromptEditor(document.getElementById('prompt').textContent==='Po výbere produktu sa tu zobrazí reklamný prompt.'?'':document.getElementById('prompt').textContent,[]);
+
   renderProjects().catch(error=>{projectsList.textContent='Knižnicu projektov sa nepodarilo načítať: '+error.message;});
 })();
