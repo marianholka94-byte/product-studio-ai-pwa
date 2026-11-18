@@ -41,7 +41,7 @@
       min-height:100%;
       height:auto !important;
       margin:0 auto;
-      padding:16px 12px 24px !important;
+      padding:16px 12px calc(88px + env(safe-area-inset-bottom, 0px)) !important;
       overflow-y:auto !important;
       background:#0b0e13 !important;
       color:#f3f5f8 !important;
@@ -149,7 +149,7 @@
       z-index:auto !important;
       transform:none !important;
       width:100% !important;
-      margin:22px 0 0 !important;
+      margin:22px 0 64px !important;
       display:grid !important;
       grid-template-columns:repeat(3,minmax(0,1fr)) !important;
       align-items:stretch !important;
