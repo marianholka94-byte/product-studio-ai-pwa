@@ -12,10 +12,10 @@
   "lang": "sk",
   "icons": [
     {
-      "src": "/icon.svg",
+      "src": "/icon.svg?v=gold-aperture-20261118",
       "sizes": "any",
       "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "purpose": "any"
     }
   ]
 }
