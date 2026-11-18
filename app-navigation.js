@@ -562,16 +562,14 @@
       display: block !important;
     }
 
-    /* Android: spodna navigacia aplikacie musi byt nad systemovou navigacnou listou.
-       Nepodmienujeme to display-mode, pretoze niektore instalacie PWA ho nerozpoznaju rovnako. */
-    @media (max-width: 600px) {
-      #appBottomNav {
-        bottom: 96px !important;
-        padding-bottom: 18px !important;
-      }
-      #appViews {
-        margin-bottom: 290px !important;
-      }
+    /* Android PWA v rezime standalone: systemova navigacna lista ma vlastny priestor.
+       Navigaciu aplikacie preto ukotvime na spodok okna a respektujeme safe-area. */
+    #appBottomNav {
+      bottom: 0 !important;
+      padding-bottom: calc(14px + env(safe-area-inset-bottom)) !important;
+    }
+    #appViews {
+      margin-bottom: calc(190px + env(safe-area-inset-bottom)) !important;
     }
   `;
   document.head.appendChild(style);
