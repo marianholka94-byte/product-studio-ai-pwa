@@ -88,10 +88,19 @@ a{color:#174ea6;overflow-wrap:anywhere}
 <div id="videoWrap"></div>
 </section>
 
-
+<section class="panel">
+<h2>5. Generovanie cez Dreamina</h2>
+<p class="note">Použi svoje existujúce Dreamina kredity. Prompt a fotografie pripravíš tu, samotné generovanie dokončíš ručne na oficiálnej stránke Dreamina. Aplikácia sa neprihlasuje do Dreaminy a neposiela tam tvoje údaje.</p>
+<button id="dreaminaOpen">OTVORIŤ DREAMINA A SKOPÍROVAŤ PROMPT</button>
+<div id="dreaminaStatus" class="status">1. Vyber fotografie produktu a nastav reklamu. 2. Stlač tlačidlo vyššie. 3. V Dreamine nahraj rovnaké fotografie a vlož skopírovaný prompt.</div>
+<label for="dreaminaVideo">Importovať hotové video z Dreaminy (MP4 / MOV / WebM)</label>
+<input id="dreaminaVideo" type="file" accept="video/mp4,video/quicktime,video/webm">
+<div id="dreaminaVideoPreview"></div>
+<p class="small">Hotové video zostane v tomto zariadení. Môžeš si ho pozrieť a stiahnuť; automaticky sa neodosiela na náš backend.</p>
+</section>
 
 <section class="panel">
-<h2>5. História posledného generovania</h2>
+<h2>6. História posledného generovania</h2>
 <div id="history" class="note">Zatiaľ žiadne generovanie v tejto relácii.</div>
 </section>
 
@@ -134,6 +143,43 @@ function updateEstimate(){
  $('estimate').textContent=`Odhad: ${(credits/100).toFixed(2)} (${credits} kreditov)`;
 }
 $('makePrompt').onclick=buildPrompt;
+
+// Dreamina: bezpečný manuálny handoff. Žiadne automatické prihlasovanie ani upload.
+$('dreaminaOpen').addEventListener('click',async()=>{
+ const prompt=buildPrompt();
+ const tab=window.open('https://dreamina.capcut.com/', '_blank');
+ try{
+  await navigator.clipboard.writeText(prompt);
+  $('dreaminaStatus').textContent=tab
+   ? 'Prompt je skopírovaný. V Dreamine nahraj vybrané fotografie produktu a vlož prompt do poľa pre zadanie.'
+   : 'Prompt je skopírovaný. Otvor Dreaminu v novom okne; ak sa neotvorila, povoľ v prehliadači vyskakovacie okná.';
+  $('dreaminaStatus').className='status ok';
+ }catch(error){
+  $('prompt').scrollIntoView({behavior:'smooth',block:'center'});
+  $('dreaminaStatus').textContent='Dreamina sa otvorila. Automatické kopírovanie nebolo povolené — podrž prompt vyššie, označ ho a skopíruj ručne.';
+  $('dreaminaStatus').className='status';
+ }
+});
+
+let dreaminaVideoUrl=null;
+$('dreaminaVideo').addEventListener('change',()=>{
+ const file=$('dreaminaVideo').files?.[0];
+ if(dreaminaVideoUrl)URL.revokeObjectURL(dreaminaVideoUrl);
+ $('dreaminaVideoPreview').innerHTML='';
+ if(!file)return;
+ if(!['video/mp4','video/quicktime','video/webm'].includes(file.type)){
+  $('dreaminaStatus').textContent='Vyber video vo formáte MP4, MOV alebo WebM.';
+  $('dreaminaStatus').className='status err';$('dreaminaVideo').value='';return;
+ }
+ dreaminaVideoUrl=URL.createObjectURL(file);
+ const video=document.createElement('video');video.controls=true;video.playsInline=true;video.src=dreaminaVideoUrl;
+ const link=document.createElement('a');link.href=dreaminaVideoUrl;link.download=file.name||'dreamina-video.mp4';link.textContent='Stiahnuť / uložiť hotové video';
+ const info=document.createElement('p');info.className='small';info.textContent=file.name+' · '+(file.size/1024/1024).toFixed(1)+' MB';
+ $('dreaminaVideoPreview').append(video,info,link);
+ $('dreaminaStatus').textContent='Video je načítané v aplikácii. Môžeš si ho prehrať a uložiť.';
+ $('dreaminaStatus').className='status ok';
+});
+
 ['duration'].forEach(id=>$(id).addEventListener('change',updateEstimate));
 photo.addEventListener('change',()=>{
  selectedFiles=Array.from(photo.files||[]).slice(0,5);
