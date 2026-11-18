@@ -288,8 +288,6 @@
   productsIntro.innerHTML='<h2>Moja knižnica produktov</h2><p>Ulož produkty raz a použi ich znova v ďalších reklamných projektoch.</p>';
   const productsList=document.createElement('div');productsList.id='savedProductsList';
   productsList.innerHTML='<div class="projects-empty"><span class="empty-icon">▧</span><strong>Zatiaľ nemáš uložené produkty</strong><p>V štúdiu môžeš uložiť produkt spolu s jeho fotografiami.</p></div>';
-  projects.insertBefore(productsIntro,projectsIntro.nextSibling||projects.firstChild);
-  projects.insertBefore(productsList,projectsIntro.nextSibling);
 
   const projectActions=document.createElement('div');projectActions.className='project-actions';
   projectActions.innerHTML='<button type="button" id="createProjectButton" class="secondary">＋ Nový projekt</button>';
