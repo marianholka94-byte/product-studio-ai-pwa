@@ -564,6 +564,21 @@
   promptEditor.innerHTML=`
     <div class="prompt-editor-heading"><strong>Editor reklamného promptu</strong><span id="promptLength">0 / 1000</span></div>
     <p class="prompt-save-hint">Uprav jednotlivé časti reklamy a následne z nich zostav výsledný prompt.</p>
+    <div class="scene-library">
+      <label class="prompt-label" for="scenePreset">Knižnica reklamných scén</label>
+      <div class="scene-library-controls">
+        <select id="scenePreset">
+          <option value="luxury">Luxury Studio – luxusné tmavé štúdio</option>
+          <option value="golden">Golden Premium – zlaté svetlo</option>
+          <option value="water">Water &amp; Reflections – voda a odrazy</option>
+          <option value="smoke">Smoke &amp; Shadows – dym a tiene</option>
+          <option value="minimal">Minimalist – čistá produktová reklama</option>
+          <option value="dynamic">Dynamic Commercial – dynamická scéna</option>
+        </select>
+        <button type="button" id="applyScenePreset" class="secondary">Použiť scénu</button>
+      </div>
+      <p class="prompt-save-hint">Predvoľba upraví scénu, štýl, kameru a osvetlenie. Produkt, jeho fotografie a identita zostanú zachované.</p>
+    </div>
     <div class="prompt-parts">
       <label class="prompt-label" for="partScene">Prostredie a scéna</label><textarea id="partScene" rows="2" placeholder="Napr. luxusné tmavé štúdio"></textarea>
       <label class="prompt-label" for="partProduct">Produkt a jeho vzhľad</label><textarea id="partProduct" rows="2" placeholder="Napr. zachovať presný tvar, obal, logo a farby"></textarea>
@@ -592,6 +607,10 @@
     .prompt-label{display:block;margin:10px 0 6px;font-size:12px;color:#aab4c3}
     #promptEditor textarea{width:100%;box-sizing:border-box;background:#0b1017;color:#eef1f6;border:1px solid #354253;border-radius:11px;padding:11px;font:inherit;font-size:14px;resize:vertical;line-height:1.5;min-height:64px}
     #promptEditor #promptDraftText{min-height:150px}
+    .scene-library{margin:12px 0 16px;padding:12px;background:#171e28;border:1px solid #354253;border-radius:12px}
+    .scene-library-controls{display:grid;grid-template-columns:1fr;gap:8px}
+    #scenePreset{width:100%;min-height:46px;background:#0b1017;color:#eef1f6;border:1px solid #354253;border-radius:11px;padding:10px;font:inherit;font-size:13px}
+    #applyScenePreset{min-height:44px!important;margin:0}
     .prompt-parts{display:grid;grid-template-columns:1fr;gap:2px;margin:12px 0 16px}
     .prompt-editor-actions{display:grid;grid-template-columns:1fr;gap:8px;margin-top:10px}
     .prompt-editor-actions button,#composePrompt{margin:0;min-height:44px!important}
@@ -605,6 +624,44 @@
   const syncPromptLength=()=>{promptLength.textContent=promptDraft.value.length+' / 1000';};
   const partIds=['partScene','partProduct','partStyle','partCamera','partLighting','partExtra'];
   const promptParts=Object.fromEntries(partIds.map(id=>[id,document.getElementById(id)]));
+  const scenePresets={
+    luxury:{
+      scene:'A luxurious dark studio with a deep charcoal background, elegant reflective black surface and carefully controlled negative space.',
+      style:'High-end luxury campaign, photorealistic, refined, cinematic and sophisticated, with rich blacks and precise premium detail.',
+      camera:'Slow, smooth cinematic push-in with a subtle controlled orbit around the product. Stable camera, deliberate premium pacing.',
+      lighting:'A sculpted soft key light, narrow rim lights and subtle reflections that reveal the product shape without clipping highlights.'
+    },
+    golden:{
+      scene:'An elegant premium studio with a warm golden glow, subtle gold reflections and a rich dark-to-amber background.',
+      style:'Golden premium commercial aesthetic, photorealistic, luxurious, warm and polished, with restrained metallic accents.',
+      camera:'Slow cinematic dolly-in with a gentle lateral movement, keeping the product as the clear hero.',
+      lighting:'Warm golden key light, soft amber edge lighting and controlled highlights with realistic reflections.'
+    },
+    water:{
+      scene:'A refined studio scene with a shallow reflective water surface, delicate ripples and elegant reflections around the product.',
+      style:'Photorealistic cinematic product advertising, fresh, atmospheric and premium, with realistic water detail.',
+      camera:'Slow low-angle push-in with a subtle smooth orbit; keep the product stable and clearly readable.',
+      lighting:'Soft directional studio light with crisp controlled reflections on the water and gentle highlights on the product.'
+    },
+    smoke:{
+      scene:'A dramatic dark studio with thin atmospheric smoke drifting slowly behind the product, leaving the product fully unobstructed.',
+      style:'Dramatic cinematic commercial, photorealistic, bold contrast, deep shadows and premium editorial finish.',
+      camera:'Measured cinematic push-in with a subtle side-to-side parallax movement; no sudden moves or shake.',
+      lighting:'Directional side and back lighting through the smoke, with a soft controlled key light preserving all product details.'
+    },
+    minimal:{
+      scene:'A clean seamless studio with a simple neutral background, uncluttered composition and a subtle matte or softly reflective surface.',
+      style:'Minimalist modern product commercial, photorealistic, clean, precise and elegant, with no unnecessary decoration.',
+      camera:'A very slow straight push-in with a steady centered composition and smooth motion.',
+      lighting:'Even soft diffused lighting, gentle natural shadows and restrained highlights that show the true product colors.'
+    },
+    dynamic:{
+      scene:'A bold contemporary commercial set with layered depth, subtle environmental movement and a strong hero composition around the product.',
+      style:'Energetic high-impact commercial advertising, photorealistic, crisp, modern and visually engaging without looking artificial.',
+      camera:'A smooth controlled tracking move with a short dynamic arc, maintaining clear focus and stable product proportions.',
+      lighting:'Directional contrast lighting with defined highlights, subtle edge light and balanced exposure across the product.'
+    }
+  };
   const fillPromptParts=()=>{
     promptParts.partScene.value='A clean premium product-ad scene.';
     promptParts.partProduct.value='Product: '+(document.getElementById('product').value.trim()||'the uploaded product')+'. Preserve its exact identity, design, proportions, packaging, label, logo and original colors.';
@@ -629,6 +686,15 @@
     promptStatus.textContent='Prompt bol zostavený z upravených častí.';
   };
   const loadPartsFromSettings=()=>{fillPromptParts();};
+  document.getElementById('applyScenePreset').addEventListener('click',()=>{
+    const preset=scenePresets[document.getElementById('scenePreset').value];
+    if(!preset)return;
+    promptParts.partScene.value=preset.scene;
+    promptParts.partStyle.value=preset.style;
+    promptParts.partCamera.value=preset.camera;
+    promptParts.partLighting.value=preset.lighting;
+    promptStatus.textContent='Scéna bola použitá. Produkt a jeho fotografie zostali nezmenené.';
+  });
   document.getElementById('composePrompt').addEventListener('click',composePromptFromParts);
   document.getElementById('resetPromptParts').addEventListener('click',()=>{loadPartsFromSettings();composePromptFromParts();promptStatus.textContent='Časti promptu boli obnovené podľa nastavení reklamy.';});
   promptDraft.addEventListener('input',()=>{syncPromptLength();if(window.PSAIProjectBridge?.setPrompt)window.PSAIProjectBridge.setPrompt(promptDraft.value);});
