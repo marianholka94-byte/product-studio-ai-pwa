@@ -29,6 +29,18 @@ a{color:#174ea6;overflow-wrap:anywhere}
 .preview-item img{display:block;width:100%;height:150px;object-fit:contain;border-radius:9px}
 .preview-item span{display:block;text-align:center;font-size:16px;margin-top:8px;color:#c5cedb}
 @media(min-width:600px){.preview-gallery{grid-template-columns:repeat(3,minmax(0,1fr))}}
+
+.generation-progress{display:none;margin-top:14px;padding:14px;border:1px solid #d9d9d3;border-radius:13px;background:#fafaf8}
+.generation-progress.active{display:block}
+.progress-heading{display:flex;justify-content:space-between;gap:10px;align-items:center;font-size:14px;font-weight:700}
+.progress-track{height:9px;margin:12px 0 10px;background:#e6e6e1;border-radius:99px;overflow:hidden}
+.progress-bar{height:100%;width:35%;border-radius:99px;background:linear-gradient(90deg,#5c7cfa,#8b5cf6);animation:progressMove 1.5s ease-in-out infinite alternate}
+@keyframes progressMove{from{transform:translateX(-35%)}to{transform:translateX(190%)}}
+.progress-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-top:12px}
+.progress-step{padding:8px 5px;text-align:center;border-radius:8px;background:#eee;color:#777;font-size:11px;line-height:1.3}
+.progress-step.done{background:#e8f4eb;color:#246333}.progress-step.current{background:#e9edff;color:#3349a5;font-weight:700}
+.progress-detail{margin:9px 0 0;color:#666;font-size:12px;line-height:1.4}
+@media(prefers-reduced-motion:reduce){.progress-bar{animation:none;width:100%;opacity:.7}}
 </style>
 
 </head>
@@ -91,6 +103,12 @@ a{color:#174ea6;overflow-wrap:anywhere}
 <div id="prompt" class="output">Po výbere produktu sa tu zobrazí reklamný prompt.</div>
 <button id="generate">GENEROVAŤ VIDEO</button>
 <div id="status" class="status">Najskôr over backend a vyber fotografiu produktu.</div>
+<div id="generationProgress" class="generation-progress" role="status" aria-live="polite">
+ <div class="progress-heading"><span id="progressTitle">Pripravujem generovanie</span><span id="progressElapsed">0:00</span></div>
+ <div class="progress-track"><div class="progress-bar"></div></div>
+ <div class="progress-steps"><div class="progress-step" data-step="0">1. Odoslanie</div><div class="progress-step" data-step="1">2. AI spracovanie</div><div class="progress-step" data-step="2">3. Dokončovanie</div></div>
+ <p id="progressDetail" class="progress-detail">Po prijatí úlohy začne AI generovať video. Presné percento poskytovateľ neposkytuje.</p>
+</div>
 <div id="videoWrap"></div>
 </section>
 
@@ -111,6 +129,20 @@ if(apiUrl) apiUrl.value=API_BASE;
 if(appPassword) appPassword.value='';
 
 function setStatus(message,kind=''){const el=$('status');el.textContent=message;el.className='status '+kind}
+let progressStartedAt=0, progressClock=null;
+function formatElapsed(ms){const total=Math.floor(ms/1000);return Math.floor(total/60)+':'+String(total%60).padStart(2,'0');}
+function setGenerationProgress(stage,title,detail){
+ const panel=$('generationProgress');panel.classList.add('active');$('progressTitle').textContent=title;$('progressDetail').textContent=detail||'';
+ document.querySelectorAll('.progress-step').forEach((step,index)=>{step.classList.toggle('done',index<stage);step.classList.toggle('current',index===stage);});
+}
+function startGenerationProgress(detail){
+ progressStartedAt=Date.now();if(progressClock)clearInterval(progressClock);
+ $('generationProgress').classList.add('active');setGenerationProgress(0,'Odosielam požiadavku',detail||'Pripravujem súbory a pripájam sa ku generátoru.');
+ $('progressElapsed').textContent='0:00';progressClock=setInterval(()=>$('progressElapsed').textContent=formatElapsed(Date.now()-progressStartedAt),1000);
+}
+function stopGenerationProgress(){if(progressClock){clearInterval(progressClock);progressClock=null;}}
+function completeGenerationProgress(title,detail){stopGenerationProgress();setGenerationProgress(2,title,detail);document.querySelectorAll('.progress-step').forEach(step=>step.classList.add('done'));$('progressElapsed').textContent=formatElapsed(Date.now()-progressStartedAt);}
+
 function updateReadyStatus(){
   const hasBackend=!!localStorage.getItem('psai_session_token');
   const hasPhoto=selectedFiles.length>0;
@@ -247,7 +279,8 @@ $('generate').onclick=async()=>{
    return;
   }
   if(!promptText)buildPrompt();
-  setStatus('Pripravujem fotografie a odosielam požiadavku…');
+  startGenerationProgress('Pripravujem fotografie a odosielam požiadavku.');
+  setStatus('Odosielam požiadavku generátoru…');
   const images=await Promise.all(selectedFiles.map(imageToDataUri));
   const model=$('model').value;
   const ratios={
@@ -258,9 +291,10 @@ $('generate').onclick=async()=>{
   const created=await api('/api/generate',{image:images[0],images,prompt:promptText,model,ratio,duration:Number($('duration').value),});
   currentTask=created.id;
   $('history').textContent=`Úloha: ${created.id} · Model: ${model} · Stav: ${created.status||'odoslané'}`;
-  setStatus('Požiadavka prijatá. Video sa generuje. Nezatváraj zatiaľ túto stránku.');
+  setGenerationProgress(1,'AI generuje video','Požiadavka bola prijatá. Sledujem stav na serveri; môže to chvíľu trvať.');
+  setStatus('Požiadavka prijatá. Video sa generuje. Stránku zatiaľ nezatváraj.');
   await pollTask(created.id);
- }catch(err){setStatus(err.message,'err')}
+ }catch(err){stopGenerationProgress();$('generationProgress').classList.remove('active');setStatus(err.message,'err')}
  finally{btn.disabled=false}
 };
 async function downloadGeneratedVideo(id){
@@ -280,25 +314,34 @@ async function downloadGeneratedVideo(id){
  finally{if(button)button.disabled=false;}
 }
 async function pollTask(id, outputId='videoWrap', statusId='status'){
+ let lastProviderStatus='';
  for(let i=0;i<120;i++){
   await new Promise(r=>setTimeout(r,5000));
   const task=await api('/api/status/'+encodeURIComponent(id));
   const status=(task.status||'').toUpperCase();
   $('history').textContent=`Úloha: ${id} · Stav: ${status||'spracúva sa'}`;
+  if(status!==lastProviderStatus){
+   lastProviderStatus=status;
+   if(['PENDING','THROTTLED','QUEUED'].includes(status))setGenerationProgress(0,'Úloha čaká na spracovanie','Generátor prijal požiadavku a čaká na voľnú kapacitu.');
+   else if(['RUNNING','PROCESSING','IN_PROGRESS'].includes(status))setGenerationProgress(1,'AI generuje video','Model spracúva zábery. Priebeh sa obnovuje automaticky každých 5 sekúnd.');
+   else if(['FINALIZING','FINALISING'].includes(status))setGenerationProgress(2,'Dokončujem video','Generátor pripravuje finálny súbor.');
+  }
   if(status==='SUCCEEDED'){
    const outputs=task.output||task.outputs||[];
    const url=Array.isArray(outputs)?(typeof outputs[0]==='string'?outputs[0]:outputs[0]?.url||outputs[0]?.uri):outputs?.url;
    if(!url)throw new Error('Video je hotové, ale server nevrátil odkaz na výstup.');
    $(outputId).innerHTML=`<video controls playsinline src="${url}"></video><button type="button" id="downloadVideo">STIAHNUŤ MP4</button><p id="downloadInfo" class="note">Výstup: ${$('format').value} · ${$('resolution').value} · ${$('duration').value} s. FPS je podľa modelu Seedance. Veľkosť súboru sa zobrazí po stiahnutí.</p>`;
    $('downloadVideo').onclick=()=>downloadGeneratedVideo(id);
+   completeGenerationProgress('Video je hotové','Generovanie úspešne skončilo. Video si môžeš prehrať alebo stiahnuť.');
    $(statusId).textContent='Hotovo! Video je pripravené. Môžeš si ho prehrať a uložiť.';
    $(statusId).className='status ok';
    return;
   }
-  if(status==='FAILED'||status==='CANCELED')throw new Error(task.failure||task.error||'Generovanie zlyhalo. Skontroluj nastavenia a zostatok kreditov.');
+  if(status==='FAILED'||status==='CANCELED'){stopGenerationProgress();$('generationProgress').classList.remove('active');throw new Error(task.failure||task.error||'Generovanie zlyhalo. Skontroluj nastavenia a zostatok kreditov.');}
   $(statusId).textContent=`Generovanie prebieha… (${status||'čaká sa'}). Kontrola každých 5 sekúnd.`;
  }
- throw new Error('Generovanie trvá príliš dlho. Úloha môže stále bežať; skús neskôr skontrolovať jej stav.');
+ stopGenerationProgress();setGenerationProgress(1,'Generovanie stále prebieha','Automatické čakanie dosiahlo limit 10 minút. Úloha môže na serveri ďalej bežať; nespúšťaj ju znova, kým neoveríš jej stav.');
+ throw new Error('Automatické čakanie dosiahlo 10 minút. Úloha môže stále bežať; nespúšťaj ju znova, kým neoveríš jej stav.');
 }
 
 // Voliteľné vstupné video – v kombinácii s fotografiami tvorí jeden reklamný projekt.
@@ -344,7 +387,8 @@ async function generateFromCombinedInputs(){
  const prompt=buildPrompt();
  if(!selectedSourceVideo)return false;
  if(!selectedFiles.length)throw new Error('Pri generovaní z videa pridaj aspoň jednu fotografiu produktu ako referenciu.');
- $('status').textContent='Pripravujem fotografie a nahrávam video do Runway…';
+ startGenerationProgress('Pripravujem fotografie a nahrávam zdrojové video.');
+ $('status').textContent='Pripravujem fotografie a nahrávam video do generátora…';
  $('status').className='status';
  const references=await Promise.all(selectedFiles.map(imageToDataUri));
  const form=new FormData();
@@ -362,6 +406,7 @@ async function generateFromCombinedInputs(){
  const created=await uploadFormApi('/api/generate-video',form);
  currentTask=created.id;
  $('history').textContent=`Kombinovaná reklama: ${created.id} · Video + ${selectedFiles.length} fotografií · Stav: ${created.status||'odoslané'}`;
+ setGenerationProgress(1,'AI spracúva zdrojové video','Video a referenčné fotografie boli odoslané. Sledujem stav úlohy.');
  $('status').textContent='Video a referenčné fotografie boli odoslané. Prebieha AI spracovanie…';
  await pollTask(created.id);
  return true;
