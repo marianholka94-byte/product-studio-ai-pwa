@@ -66,10 +66,18 @@ export default {
 
     const url = new URL(request.url);
     const origin = request.headers.get("Origin");
-    if (origin && ![
+    // Allow the hosted PWA and the native Capacitor Android WebView.
+    // Capacitor's Android origin is https://localhost; localhost variants are
+    // included for development builds only.
+    const allowedOrigins = new Set([
       "https://product-studio-ai-frontend.marianholka94.workers.dev",
-      "https://product-studio-ai-pwa.pages.dev"
-    ].includes(origin)) {
+      "https://product-studio-ai-pwa.pages.dev",
+      "https://localhost",
+      "http://localhost",
+      "capacitor://localhost",
+      "ionic://localhost"
+    ]);
+    if (origin && !allowedOrigins.has(origin)) {
       return reply({ error: "Tento pôvod požiadavky nie je povolený." }, 403);
     }
     if (!env.RUNWAY_API_KEY || !env.APP_PASSWORD) {
