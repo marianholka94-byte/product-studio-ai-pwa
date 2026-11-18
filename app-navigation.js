@@ -284,10 +284,25 @@
   const projectsList=document.createElement('div');projectsList.id='savedProjectsList';
   projectsList.innerHTML='<div class="projects-empty"><span class="empty-icon">▣</span><strong>Zatiaľ tu nemáš žiadne projekty</strong><p>Vytvor projekt v štúdiu a ulož si fotografie, nastavenia aj reklamný prompt.</p></div>';
     const productsIntro=document.createElement('section');productsIntro.className='app-placeholder';productsIntro.dataset.sectionIcon='📦';
-  productsIntro.innerHTML='<h2>Moja knižnica produktov</h2><p>Ulož produkty raz a použi ich znova v ďalších reklamných projektoch.</p>';
+  productsIntro.innerHTML='<div class="library-title-row"><h2>Moja knižnica produktov</h2><button type="button" class="info-toggle" id="productLibraryInfoButton" aria-expanded="false" aria-controls="productLibraryInfo" aria-label="Zobraziť informáciu">i</button></div><p id="productLibraryInfo" class="collapsible-info" hidden>Ulož produkty raz a použi ich znova v ďalších reklamných projektoch.</p>';
   const productsList=document.createElement('div');productsList.id='savedProductsList';
   productsList.innerHTML='<div class="projects-empty"><span class="empty-icon">▧</span><strong>Zatiaľ nemáš uložené produkty</strong><p>V štúdiu môžeš uložiť produkt spolu s jeho fotografiami.</p></div>';
   projects.append(projectsIntro,productsIntro,productsList,history,projectsList);
+  productsIntro.querySelector('#productLibraryInfoButton').addEventListener('click',()=>{
+    const button=productsIntro.querySelector('#productLibraryInfoButton');
+    const info=productsIntro.querySelector('#productLibraryInfo');
+    const opening=info.hidden;info.hidden=!opening;button.setAttribute('aria-expanded',String(opening));
+  });
+  const historyContent=history.querySelector('#history');
+  if(historyContent&&historyContent.textContent.trim()==='Zatiaľ žiadne generovanie v tejto relácii.'){
+    const heading=history.querySelector('h2');
+    if(heading){
+      const historyInfo=document.createElement('button');historyInfo.type='button';historyInfo.className='info-toggle';historyInfo.textContent='i';historyInfo.setAttribute('aria-label','Zobraziť informáciu o histórii');historyInfo.setAttribute('aria-expanded','false');
+      const historyNote=document.createElement('div');historyNote.className='collapsible-info';historyNote.hidden=true;historyNote.textContent=historyContent.textContent.trim();historyContent.textContent='';
+      historyInfo.addEventListener('click',()=>{historyNote.hidden=!historyNote.hidden;historyInfo.setAttribute('aria-expanded',String(!historyNote.hidden));});
+      heading.append(historyInfo);historyContent.append(historyNote);
+    }
+  }
 
   const projectActions=document.createElement('div');projectActions.className='project-actions';
   projectActions.innerHTML='<button type="button" id="createProjectButton" class="secondary">＋ Nový projekt</button>';
@@ -307,6 +322,11 @@
     .studio-project-actions button,.project-actions button{margin:0;min-height:48px!important}
     .studio-project-actions #projectSaveStatus{grid-column:1/-1;margin:0;min-height:18px;font-size:12px;color:#9ce0b8}
     .project-actions{margin-top:14px}
+    .library-title-row{display:flex;align-items:center;justify-content:center;gap:10px}
+    .library-title-row h2{margin:0!important}
+    .info-toggle{display:inline-flex;align-items:center;justify-content:center;flex:0 0 25px;width:25px;min-width:25px!important;height:25px;min-height:25px!important;padding:0!important;border-radius:50%!important;background:#252e3a!important;border:1px solid #526176!important;color:#d9bd7d!important;font-size:15px!important;font-weight:800!important;line-height:1!important}
+    .collapsible-info{margin:12px 0 0!important;padding:10px 12px;background:#10151d;border:1px solid #303b49;border-radius:12px;color:#aeb8c7!important;font-size:13px!important;line-height:1.5!important}
+    .collapsible-info[hidden]{display:none!important}
     .library-section-heading{margin:24px 2px 8px;padding:0 2px;background:transparent;border:0;border-radius:0;box-shadow:none}
     .library-section-heading h2{display:flex;align-items:center;gap:10px;margin:0 0 5px!important;font-size:19px!important;color:#fff}
     .library-section-heading h2::before{content:attr(data-section-icon);font-size:21px}
