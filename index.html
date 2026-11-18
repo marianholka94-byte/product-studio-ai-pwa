@@ -97,13 +97,15 @@ a{color:#174ea6;overflow-wrap:anywhere}
 <script>
 const $=id=>document.getElementById(id);
 let promptText='', selectedFiles=[], currentTask=null;
-const apiUrl=$('apiUrl'), appPassword=$('appPassword'), photo=$('photo'), previewGallery=$('previewGallery');
-apiUrl.value=localStorage.getItem('psai_api_url')||'';
-appPassword.value=sessionStorage.getItem('psai_password')||'';
+const API_BASE='https://square-feather-4b83.marianholka94.workers.dev';
+const photo=$('photo'), previewGallery=$('previewGallery');
+const apiUrl=$('apiUrl'), appPassword=$('appPassword');
+if(apiUrl) apiUrl.value=API_BASE;
+if(appPassword) appPassword.value='';
 
 function setStatus(message,kind=''){const el=$('status');el.textContent=message;el.className='status '+kind}
 function updateReadyStatus(){
-  const hasBackend=!!(localStorage.getItem('psai_api_url') && sessionStorage.getItem('psai_password'));
+  const hasBackend=!!localStorage.getItem('psai_session_token');
   const hasPhoto=selectedFiles.length>0;
   if(hasBackend && hasPhoto) setStatus(`Pripravené: backend je nastavený a vybraných je ${selectedFiles.length} fotografií produktu.`);
   else if(!hasBackend && !hasPhoto) setStatus('Najskôr nastav backend a vyber fotografiu produktu.');
@@ -151,14 +153,23 @@ async function imageToDataUri(file){
  if(data.length>5*1024*1024)throw new Error('Jedna fotografia je príliš veľká. Vyber menší obrázok.');
  return data;
 }
+async function loginAndGetToken(){
+ let password=sessionStorage.getItem('psai_password')||'';
+ if(!password) password=window.prompt('Zadaj súkromný prístupový kód pre PRODUCT STUDIO AI:')||'';
+ if(!password) throw new Error('Prihlásenie bolo zrušené.');
+ const response=await fetch(API_BASE+'/api/session',{method:'POST',headers:{'X-App-Password':password}});
+ const data=await response.json().catch(()=>({}));
+ if(!response.ok) throw new Error(data.error||'Prihlásenie sa nepodarilo.');
+ localStorage.setItem('psai_session_token',data.token);
+ sessionStorage.removeItem('psai_password');
+ return data.token;
+}
 async function api(path,body){
- const base=localStorage.getItem('psai_api_url')||'';
- const password=sessionStorage.getItem('psai_password')||'';
- if(!base)throw new Error('Najskôr zadaj adresu backendu.');
- if(!password)throw new Error('Najskôr zadaj súkromný prístupový kód.');
- const headers={'X-App-Password':password};
- if(body)headers['Content-Type']='application/json';
- const res=await fetch(base+path,{method:body?'POST':'GET',headers,body:body?JSON.stringify(body):undefined});
+ let token=localStorage.getItem('psai_session_token')||'';
+ if(!token) token=await loginAndGetToken();
+ const send=async current=>fetch(API_BASE+path,{method:body?'POST':'GET',headers:{'Authorization':'Bearer '+current,...(body?{'Content-Type':'application/json'}:{})},body:body?JSON.stringify(body):undefined});
+ let res=await send(token);
+ if(res.status===401){localStorage.removeItem('psai_session_token');token=await loginAndGetToken();res=await send(token);}
  const data=await res.json().catch(()=>({error:'Server vrátil nečitateľnú odpoveď.'}));
  if(!res.ok)throw new Error(data.error||`Chyba servera ${res.status}`);
  return data;
@@ -236,11 +247,10 @@ sourceVideo.addEventListener('change',()=>{
  };
 };
 async function uploadFormApi(path,form){
- const base=localStorage.getItem('psai_api_url')||'';
- const password=sessionStorage.getItem('psai_password')||'';
- if(!base)throw new Error('Najskôr zadaj adresu backendu.');
- if(!password)throw new Error('Najskôr zadaj súkromný prístupový kód.');
- const response=await fetch(base+path,{method:'POST',headers:{'X-App-Password':password},body:form});
+ let token=localStorage.getItem('psai_session_token')||'';
+ if(!token) token=await loginAndGetToken();
+ let response=await fetch(API_BASE+path,{method:'POST',headers:{'Authorization':'Bearer '+token},body:form});
+ if(response.status===401){localStorage.removeItem('psai_session_token');token=await loginAndGetToken();response=await fetch(API_BASE+path,{method:'POST',headers:{'Authorization':'Bearer '+token},body:form});}
  const data=await response.json().catch(()=>({error:'Server vrátil nečitateľnú odpoveď.'}));
  if(!response.ok)throw new Error(data.error||`Chyba servera ${response.status}`);
  return data;
