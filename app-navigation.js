@@ -1019,7 +1019,7 @@
     `;
     document.head.appendChild(splashStyle);
     let splashEl=document.getElementById('psai-splash');
-    if(!splashEl){splashEl=document.createElement('div');splashEl.id='psai-splash';splashEl.innerHTML='<img class="psai-mark" src="/splash.gif" alt="PRODUCT STUDIO AI"><div class="psai-wordmark">PRODUCT<span>STUDIO <b>AI</b></span></div>';document.body.appendChild(splashEl);}
+    if(!splashEl){splashEl=document.createElement('div');splashEl.id='psai-splash';splashEl.innerHTML='<div class="psai-orbit"></div><div class="psai-spark"></div><img class="psai-mark" src="/icon.svg" alt="PRODUCT STUDIO AI"><div class="psai-wordmark">PRODUCT<span>STUDIO <b>AI</b></span></div>';document.body.appendChild(splashEl);}
     let splashClosed=false;
     const closeSplash=()=>{if(splashClosed)return;splashClosed=true;splashEl.classList.add('psai-leave');window.setTimeout(()=>splashEl.remove(),500);};
     window.setTimeout(closeSplash,2350);
