@@ -61,7 +61,7 @@ public class MainActivity extends Activity {
     private void createWebView() {
         if (isFinishing() || webView != null) return;
         try {
-            webView = new WebView(getApplicationContext());
+            webView = new WebView(this);
             webView.setBackgroundColor(Color.WHITE);
             WebSettings s = webView.getSettings();
             s.setJavaScriptEnabled(true);
