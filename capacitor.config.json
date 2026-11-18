@@ -2,6 +2,11 @@
   "appId": "com.marianholka.productstudioai",
   "appName": "PRODUCT STUDIO AI",
   "webDir": "www",
+  "server": {
+    "url": "https://product-studio-ai-pwa.pages.dev/?native=1",
+    "cleartext": false,
+    "allowNavigation": ["product-studio-ai-pwa.pages.dev"]
+  },
   "plugins": {
     "SystemBars": {
       "insetsHandling": "auto"
