@@ -999,7 +999,7 @@
   renderProjects().catch(error=>{projectsList.textContent='Knižnicu projektov sa nepodarilo načítať: '+error.message;});
 
   // Lightweight startup splash: CSS-only motion, no GIF/video download.
-  if (!document.getElementById('psai-splash')) {
+  {
     const splashStyle=document.createElement('style');
     splashStyle.textContent=`
       #psai-splash{position:fixed;inset:0;z-index:999999;background:radial-gradient(ellipse at 50% 43%,#242017 0%,#0b0e13 48%,#050609 100%);display:flex;align-items:center;justify-content:center;flex-direction:column;overflow:hidden;opacity:1;transition:opacity .45s ease}
@@ -1018,10 +1018,8 @@
       @media(prefers-reduced-motion:reduce){#psai-splash *{animation-duration:.01ms!important;animation-iteration-count:1!important}}
     `;
     document.head.appendChild(splashStyle);
-    const splashEl=document.createElement('div');
-    splashEl.id='psai-splash';
-    splashEl.innerHTML='<div class="psai-orbit"></div><div class="psai-spark"></div><img class="psai-mark" src="/icon.svg" alt="PRODUCT STUDIO AI"><div class="psai-wordmark">PRODUCT<span>STUDIO <b>AI</b></span></div>';
-    document.body.appendChild(splashEl);
+    let splashEl=document.getElementById('psai-splash');
+    if(!splashEl){splashEl=document.createElement('div');splashEl.id='psai-splash';splashEl.innerHTML='<div class="psai-orbit"></div><div class="psai-spark"></div><img class="psai-mark" src="/icon.svg" alt="PRODUCT STUDIO AI"><div class="psai-wordmark">PRODUCT<span>STUDIO <b>AI</b></span></div>';document.body.appendChild(splashEl);}
     let splashClosed=false;
     const closeSplash=()=>{if(splashClosed)return;splashClosed=true;splashEl.classList.add('psai-leave');window.setTimeout(()=>splashEl.remove(),500);};
     window.setTimeout(closeSplash,2350);
