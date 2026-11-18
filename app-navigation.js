@@ -565,8 +565,9 @@
     /* Android PWA v rezime standalone: systemova navigacna lista ma vlastny priestor.
        Navigaciu aplikacie preto ukotvime na spodok okna a respektujeme safe-area. */
     #appBottomNav {
-      bottom: 0 !important;
-      padding-bottom: calc(14px + env(safe-area-inset-bottom)) !important;
+      bottom: env(safe-area-inset-bottom, 0px) !important;
+      padding-bottom: 14px !important;
+      box-sizing: border-box !important;
     }
     #appViews {
       margin-bottom: calc(190px + env(safe-area-inset-bottom)) !important;
