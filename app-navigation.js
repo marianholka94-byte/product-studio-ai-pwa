@@ -246,4 +246,93 @@
     });
   });
   document.body.appendChild(nav);
+
+  // Local project library backed by IndexedDB (project metadata + original image files).
+  const projectDbName='product-studio-ai-projects', projectStoreName='projects';
+  let activeProjectId=null, projectDbPromise=null;
+  const openProjectDb=()=>{
+    if(projectDbPromise)return projectDbPromise;
+    projectDbPromise=new Promise((resolve,reject)=>{
+      const request=indexedDB.open(projectDbName,1);
+      request.onupgradeneeded=()=>{const db=request.result;if(!db.objectStoreNames.contains(projectStoreName)){const store=db.createObjectStore(projectStoreName,{keyPath:'id'});store.createIndex('updatedAt','updatedAt');}};
+      request.onsuccess=()=>resolve(request.result);
+      request.onerror=()=>reject(request.error||new Error('Databázu projektov sa nepodarilo otvoriť.'));
+    });return projectDbPromise;
+  };
+  const projectRequest=(mode,operation)=>openProjectDb().then(db=>new Promise((resolve,reject)=>{
+    const tx=db.transaction(projectStoreName,mode);let request;
+    try{request=operation(tx.objectStore(projectStoreName));}catch(error){reject(error);return;}
+    tx.oncomplete=()=>resolve(request?.result);tx.onerror=()=>reject(tx.error||new Error('Operácia s projektom zlyhala.'));
+    tx.onabort=()=>reject(tx.error||new Error('Operácia s projektom bola prerušená.'));
+  }));
+  const getAllProjects=()=>projectRequest('readonly',store=>store.getAll());
+  const getProject=id=>projectRequest('readonly',store=>store.get(id));
+  const putProject=project=>projectRequest('readwrite',store=>store.put(project));
+  const removeProject=id=>projectRequest('readwrite',store=>store.delete(id));
+
+  const projectsList=document.createElement('div');projectsList.id='savedProjectsList';
+  projectsList.innerHTML='<div class="projects-empty"><span class="empty-icon">▣</span><strong>Zatiaľ tu nemáš žiadne projekty</strong><p>Vytvor projekt v štúdiu a ulož si fotografie, nastavenia aj reklamný prompt.</p></div>';
+  projects.append(projectsList);
+  const projectActions=document.createElement('div');projectActions.className='project-actions';
+  projectActions.innerHTML='<button type="button" id="createProjectButton" class="secondary">＋ Nový projekt</button>';
+  projectsIntro.append(projectActions);
+  const studioActions=document.createElement('div');studioActions.className='studio-project-actions';
+  studioActions.innerHTML='<button type="button" id="saveProjectButton">Uložiť projekt</button><button type="button" id="newProjectButton" class="secondary">Nový projekt</button><p id="projectSaveStatus" role="status"></p>';
+  welcome.after(studioActions);
+
+  const projectStyle=document.createElement('style');
+  projectStyle.textContent=`
+    .studio-project-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:0 0 14px}
+    .studio-project-actions button,.project-actions button{margin:0;min-height:48px!important}
+    .studio-project-actions #projectSaveStatus{grid-column:1/-1;margin:0;min-height:18px;font-size:12px;color:#9ce0b8}
+    .project-actions{margin-top:14px}
+    .projects-empty{display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;padding:34px 18px;background:#10151d;border:1px dashed #354253;border-radius:18px;color:#e8edf5}
+    .projects-empty .empty-icon{font-size:34px;color:#d9bd7d}
+    .projects-empty p{margin:0;max-width:260px;color:#8995a6;font-size:13px;line-height:1.5}
+    .saved-project-card{display:grid;grid-template-columns:76px minmax(0,1fr);gap:12px;padding:12px;margin:10px 0;background:#10151d;border:1px solid #303b49;border-radius:16px}
+    .saved-project-thumb{width:76px;height:88px;object-fit:cover;border-radius:10px;background:#202936}
+    .saved-project-info{min-width:0}
+    .saved-project-info strong{display:block;color:#f3f5f8;font-size:15px;overflow-wrap:anywhere}
+    .saved-project-info small{display:block;color:#8995a6;font-size:12px;line-height:1.5;margin-top:5px}
+    .saved-project-buttons{display:flex;gap:7px;margin-top:9px}
+    .saved-project-buttons button{min-height:38px!important;padding:8px!important;margin:0!important;font-size:12px!important;flex:1}
+    .saved-project-buttons .delete-project{background:#302126!important;color:#ffb5b5!important;border:1px solid #663139!important}
+  `;
+  document.head.appendChild(projectStyle);
+  const setProjectMessage=(message,isError=false)=>{const status=document.getElementById('projectSaveStatus');if(status){status.textContent=message;status.style.color=isError?'#ffb5b5':'#9ce0b8';}};
+  const formatProjectDate=value=>new Intl.DateTimeFormat('sk-SK',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}).format(new Date(value));
+  const renderProjects=async()=>{
+    const records=(await getAllProjects()).sort((a,b)=>b.updatedAt-a.updatedAt);projectsList.innerHTML='';
+    if(!records.length){projectsList.innerHTML='<div class="projects-empty"><span class="empty-icon">▣</span><strong>Zatiaľ tu nemáš žiadne projekty</strong><p>Vytvor projekt v štúdiu a ulož si fotografie, nastavenia aj reklamný prompt.</p></div>';return;}
+    records.forEach(record=>{
+      const card=document.createElement('article');card.className='saved-project-card';
+      const thumb=document.createElement('img');thumb.className='saved-project-thumb';thumb.alt='';
+      const firstImage=record.images?.[0]?.blob;if(firstImage)thumb.src=URL.createObjectURL(firstImage);
+      const info=document.createElement('div');info.className='saved-project-info';
+      const title=document.createElement('strong');title.textContent=record.name||'Nepomenovaný projekt';
+      const meta=document.createElement('small');meta.textContent=(record.images?.length||0)+' fotografií · '+formatProjectDate(record.updatedAt);
+      const buttons=document.createElement('div');buttons.className='saved-project-buttons';
+      const open=document.createElement('button');open.type='button';open.className='secondary';open.textContent='Otvoriť';
+      open.addEventListener('click',async()=>{try{const latest=await getProject(record.id);if(!latest)throw new Error('Projekt sa už nenašiel.');await window.PSAIProjectBridge.restore(latest);activeProjectId=latest.id;setProjectMessage('Otvorený projekt: '+latest.name);nav.querySelector('[data-screen="screenStudio"]').click();}catch(error){alert(error.message||'Projekt sa nepodarilo otvoriť.');}});
+      const remove=document.createElement('button');remove.type='button';remove.className='delete-project';remove.textContent='Vymazať';
+      remove.addEventListener('click',async()=>{if(!confirm('Naozaj chceš vymazať projekt „'+(record.name||'Nepomenovaný projekt')+'“?'))return;try{await removeProject(record.id);if(activeProjectId===record.id)activeProjectId=null;await renderProjects();}catch(error){alert(error.message||'Projekt sa nepodarilo vymazať.');}});
+      buttons.append(open,remove);info.append(title,meta,buttons);card.append(thumb,info);projectsList.append(card);
+    });
+  };
+  const saveCurrentProject=async()=>{
+    const state=window.PSAIProjectBridge?.capture();if(!state)throw new Error('Editor projektu ešte nie je pripravený.');
+    if(!state.product.trim()&&!state.images.length)throw new Error('Najskôr zadaj názov produktu alebo pridaj fotografiu.');
+    if(!state.images.length)throw new Error('Projekt musí obsahovať aspoň jednu fotografiu produktu.');
+    const now=Date.now(),existing=activeProjectId?await getProject(activeProjectId):null;
+    const record={id:activeProjectId||('project-'+now+'-'+Math.random().toString(36).slice(2,8)),name:state.product.trim()||'Nový produkt',createdAt:existing?.createdAt||now,updatedAt:now,product:state.product,style:state.style,format:state.format,motion:state.motion,duration:state.duration,lighting:state.lighting,extra:state.extra,prompt:state.prompt,images:state.images};
+    await putProject(record);activeProjectId=record.id;setProjectMessage('Projekt „'+record.name+'“ bol uložený v tomto zariadení.');return record;
+  };
+  const startNewProject=async()=>{
+    if(!confirm('Začať nový projekt? Neuložené zmeny v aktuálnom projekte sa stratia.'))return;
+    activeProjectId=null;await window.PSAIProjectBridge.restore({});setProjectMessage('Nový projekt je pripravený. Po pridaní fotografie ho môžeš uložiť.');nav.querySelector('[data-screen="screenStudio"]').click();
+  };
+  document.getElementById('saveProjectButton').addEventListener('click',async()=>{const button=document.getElementById('saveProjectButton');button.disabled=true;try{await saveCurrentProject();}catch(error){setProjectMessage(error.message||'Projekt sa nepodarilo uložiť.',true);}finally{button.disabled=false;}});
+  document.getElementById('newProjectButton').addEventListener('click',startNewProject);
+  document.getElementById('createProjectButton').addEventListener('click',startNewProject);
+  renderProjects().catch(error=>{projectsList.textContent='Knižnicu projektov sa nepodarilo načítať: '+error.message;});
 })();
