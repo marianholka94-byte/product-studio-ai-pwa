@@ -297,10 +297,12 @@
   if(historyContent&&historyContent.textContent.trim()==='Zatiaľ žiadne generovanie v tejto relácii.'){
     const heading=history.querySelector('h2');
     if(heading){
+      history.classList.add('history-compact');
       const historyInfo=document.createElement('button');historyInfo.type='button';historyInfo.className='info-toggle';historyInfo.textContent='i';historyInfo.setAttribute('aria-label','Zobraziť informáciu o histórii');historyInfo.setAttribute('aria-expanded','false');
       const historyNote=document.createElement('div');historyNote.className='collapsible-info';historyNote.hidden=true;historyNote.textContent=historyContent.textContent.trim();historyContent.textContent='';
+      const historyTitle=document.createElement('span');historyTitle.className='history-title';historyTitle.textContent='História generovania';heading.textContent='';heading.append(historyTitle,historyInfo);
       historyInfo.addEventListener('click',()=>{historyNote.hidden=!historyNote.hidden;historyInfo.setAttribute('aria-expanded',String(!historyNote.hidden));});
-      heading.append(historyInfo);historyContent.append(historyNote);
+      historyContent.append(historyNote);
     }
   }
 
@@ -322,11 +324,17 @@
     .studio-project-actions button,.project-actions button{margin:0;min-height:48px!important}
     .studio-project-actions #projectSaveStatus{grid-column:1/-1;margin:0;min-height:18px;font-size:12px;color:#9ce0b8}
     .project-actions{margin-top:14px}
-    .library-title-row{display:flex;align-items:center;justify-content:center;gap:10px}
-    .library-title-row h2{margin:0!important}
-    .info-toggle{display:inline-flex;align-items:center;justify-content:center;flex:0 0 25px;width:25px;min-width:25px!important;height:25px;min-height:25px!important;padding:0!important;border-radius:50%!important;background:#252e3a!important;border:1px solid #526176!important;color:#d9bd7d!important;font-size:15px!important;font-weight:800!important;line-height:1!important}
+    .library-title-row{display:flex;align-items:center;justify-content:center;gap:10px;min-height:30px}
+    .library-title-row h2{margin:0!important;line-height:1.2!important}
+    .library-title-row .info-toggle{transform:translateY(-1px)}
+    .info-toggle{display:inline-flex;align-items:center;justify-content:center;flex:0 0 25px;width:25px;min-width:25px!important;height:25px;min-height:25px!important;padding:0!important;margin:0!important;border-radius:50%!important;background:#252e3a!important;border:1px solid #526176!important;color:#d9bd7d!important;font-size:15px!important;font-weight:800!important;line-height:1!important}
     .collapsible-info{margin:12px 0 0!important;padding:10px 12px;background:#10151d;border:1px solid #303b49;border-radius:12px;color:#aeb8c7!important;font-size:13px!important;line-height:1.5!important}
     .collapsible-info[hidden]{display:none!important}
+    .history-compact{padding:16px!important}
+    .history-compact h2{display:flex!important;align-items:center!important;gap:10px!important;margin:0!important;font-size:18px!important;line-height:1.25!important}
+    .history-compact h2 .history-title{flex:1;min-width:0}
+    .history-compact h2 .info-toggle{margin-left:auto!important;flex:0 0 25px!important}
+    .history-compact .collapsible-info{margin-top:10px!important}
     .library-section-heading{margin:24px 2px 8px;padding:0 2px;background:transparent;border:0;border-radius:0;box-shadow:none}
     .library-section-heading h2{display:flex;align-items:center;gap:10px;margin:0 0 5px!important;font-size:19px!important;color:#fff}
     .library-section-heading h2::before{content:attr(data-section-icon);font-size:21px}
