@@ -315,8 +315,11 @@
   const saveProductButton=document.createElement('button');
   saveProductButton.type='button';saveProductButton.className='secondary';saveProductButton.id='saveProductToLibrary';
   saveProductButton.textContent='＋ Uložiť produkt do knižnice';
-  saveProductButton.style.cssText='width:100%;margin:0 0 16px;min-height:46px!important;';
-  studioActions.after(saveProductButton);
+  saveProductButton.style.cssText='width:100%;margin:14px 0 18px;min-height:50px!important;';
+  const productSection=sections.find(section=>section.querySelector('h2')?.textContent.trim().startsWith('Produkt'));
+  const productNameLabel=productSection?.querySelector('label[for="product"]');
+  if(productNameLabel)productNameLabel.before(saveProductButton);
+  else productSection?.append(saveProductButton);
 
   const projectStyle=document.createElement('style');
   projectStyle.textContent=`
