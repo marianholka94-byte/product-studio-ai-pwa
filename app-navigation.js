@@ -579,12 +579,12 @@
   const promptEditor=document.createElement('section');promptEditor.id='promptEditor';
   promptEditor.innerHTML=`
     <div class="prompt-editor-heading"><strong>Editor reklamného promptu</strong><span id="promptLength">0 / 1000</span></div>
-    <p class="prompt-save-hint">Opíš svoju predstavu po slovensky. AI ju spojí s nastaveniami reklamy a pripraví profesionálny anglický prompt.</p>
+    <p class="prompt-save-hint">Bezplatný lokálny pomocník. Napíš predstavu po slovensky a aplikácia ju rozdelí do správnych častí promptu podľa tvojich nastavení. Nepoužíva externé AI API.</p>
     <div class="ai-prompt-builder">
       <label class="prompt-label" for="aiPromptIdea">Tvoja predstava o reklame</label>
       <textarea id="aiPromptIdea" rows="4" maxlength="3000" placeholder="Napr. Produkt stojí na čiernom mramorovom podstavci. Za ním sa pomaly vznáša jemný dym a zlaté svetlo zvýrazňuje jeho hrany. Kamera sa pomaly približuje…"></textarea>
-      <button type="button" id="createAiPrompt" class="secondary">✦ Vytvoriť profesionálny prompt pomocou AI</button>
-      <p class="prompt-save-hint">AI zohľadní produkt, vybranú scénu, štýl, kameru aj osvetlenie. Táto funkcia negeneruje video a nemíňa Runway kredity.</p>
+      <button type="button" id="createAiPrompt" class="secondary">✦ Rozdeliť zadanie do častí</button>
+      <p class="prompt-save-hint">Tvoje zadanie sa spracuje priamo v zariadení. Známe pokyny sa prevedú do anglických formulácií; ostatný text zostane zachovaný, aby sa nestratil tvoj zámer.</p>
     </div>
     <div class="prompt-parts">
       <div class="prompt-part">
@@ -763,37 +763,67 @@
       promptStatus.textContent='✓ '+label+' bola pridaná do výsledného promptu.';
     });
   });
-  document.getElementById('createAiPrompt').addEventListener('click',async()=>{
+  document.getElementById('createAiPrompt').addEventListener('click',()=>{
     const button=document.getElementById('createAiPrompt');
     const idea=document.getElementById('aiPromptIdea').value.trim();
     if(!idea){promptStatus.textContent='Najskôr opíš svoju predstavu o reklame.';return;}
-    const token=localStorage.getItem('psai_session_token')||'';
-    if(!token){promptStatus.textContent='Najskôr over pripojenie v Nastaveniach.';return;}
-    const selectedScene=scenePresets[document.getElementById('scenePreset')?.value];
-    const context={
-      product:document.getElementById('product').value.trim(),
-      visualStyle:document.getElementById('style').value,
-      scene:selectedScene?.scene||'',
-      camera:selectedScene?.camera||document.getElementById('motion').value,
-      lighting:selectedScene?.lighting||document.getElementById('lighting').value,
-      duration:document.getElementById('duration').value,
-      aspectRatio:document.getElementById('format').value,
-      extra:document.getElementById('extra').value.trim()
-    };
-    button.disabled=true;button.textContent='AI pripravuje reklamný prompt…';promptStatus.textContent='Spracúvam tvoju predstavu. Generovanie videa sa nespúšťa.';
-    try{
-      const response=await fetch('https://square-feather-4b83.marianholka94.workers.dev/api/create-prompt',{
-        method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
-        body:JSON.stringify({idea,context})
-      });
-      const result=await response.json().catch(()=>({}));
-      if(!response.ok)throw new Error(result.error||'AI prompt sa nepodarilo vytvoriť.');
-      promptDraft.value=String(result.prompt||'').slice(0,1000);syncPromptLength();
-      if(window.PSAIProjectBridge?.setPrompt)window.PSAIProjectBridge.setPrompt(promptDraft.value);
-      promptEditor.querySelectorAll('.add-prompt-part').forEach(item=>{item.classList.remove('added');item.textContent='Pridať do promptu';});
-      promptStatus.textContent='✓ AI vytvorila anglický reklamný prompt. Môžeš ho upraviť alebo skopírovať.';
-    }catch(error){promptStatus.textContent=error.message||'AI prompt sa nepodarilo vytvoriť.';}
-    finally{button.disabled=false;button.textContent='✦ Vytvoriť profesionálny prompt pomocou AI';}
+    const translations=[
+      [/čierny mramorový podstavec/gi,'a black marble pedestal'],
+      [/mramorový podstavec/gi,'a marble pedestal'],
+      [/čierny mramor/gi,'black marble'],
+      [/jemný dym/gi,'subtle drifting smoke'],
+      [/pomaly vznáša dym/gi,'smoke slowly drifting'],
+      [/zlaté svetlo/gi,'warm golden lighting'],
+      [/zlaté odlesky/gi,'subtle golden reflections'],
+      [/mäkké svetlo/gi,'soft diffused lighting'],
+      [/bočné svetlo/gi,'directional side lighting'],
+      [/produkt stojí/gi,'the product stands'],
+      [/produkt leží/gi,'the product rests'],
+      [/produkt umiestni/gi,'place the product'],
+      [/kamera sa pomaly približuje/gi,'the camera slowly pushes in'],
+      [/pomalý približovací záber/gi,'a slow cinematic push-in'],
+      [/kamera sa otáča/gi,'the camera slowly orbits around the product'],
+      [/kamera obieha/gi,'the camera makes a smooth orbit around the product'],
+      [/pomalý pohyb kamery/gi,'slow, smooth camera movement'],
+      [/zachovaj/gi,'preserve'],
+      [/pôvodný vzhľad/gi,'the original appearance'],
+      [/logo/gi,'logo'],
+      [/farby/gi,'colors'],
+      [/obal/gi,'packaging'],
+      [/luxusná reklama/gi,'luxury commercial aesthetic'],
+      [/luxusný/gi,'luxurious'],
+      [/fotorealistický/gi,'photorealistic'],
+      [/realistický/gi,'realistic'],
+      [/tmavé štúdio/gi,'a dark studio'],
+      [/čisté pozadie/gi,'a clean background'],
+      [/odraz(y|ov)?/gi,'reflections'],
+      [/bez otrasov/gi,'without camera shake']
+    ];
+    const translateKnown=text=>translations.reduce((value,[pattern,replacement])=>value.replace(pattern,replacement),text);
+    const sentences=idea.split(/(?<=[.!?])\s+|\n+/).map(value=>value.trim()).filter(Boolean);
+    const buckets={scene:[],product:[],style:[],camera:[],lighting:[],extra:[]};
+    for(const sentence of sentences){
+      const lower=sentence.toLocaleLowerCase('sk');
+      const translated=translateKnown(sentence);
+      if(/kamera|záber|pohyb|otáč|približ|orbit|uhol/.test(lower))buckets.camera.push(translated);
+      else if(/svetl|osvet|zlat|tieň|odlesk|reflex|žiaren/.test(lower))buckets.lighting.push(translated);
+      else if(/produkt|logo|obal|farb|tvar|materiál|značk/.test(lower))buckets.product.push(translated);
+      else if(/štýl|luxus|minimal|cinematic|fotoreal|reklam/.test(lower))buckets.style.push(translated);
+      else if(/pozad|prostred|scén|dym|mramor|podstavec|voda|povrch|stojí|leží|umiestni/.test(lower))buckets.scene.push(translated);
+      else buckets.extra.push(translated);
+    }
+    const join=bucket=>bucket.join(' ');
+    if(buckets.scene.length)promptParts.partScene.value=[promptParts.partScene.value.trim(),join(buckets.scene)].filter(Boolean).join(' ');
+    if(buckets.product.length)promptParts.partProduct.value=[promptParts.partProduct.value.trim(),join(buckets.product)].filter(Boolean).join(' ');
+    if(buckets.style.length)promptParts.partStyle.value=[promptParts.partStyle.value.trim(),join(buckets.style)].filter(Boolean).join(' ');
+    if(buckets.camera.length)promptParts.partCamera.value=[promptParts.partCamera.value.trim(),join(buckets.camera)].filter(Boolean).join(' ');
+    if(buckets.lighting.length)promptParts.partLighting.value=[promptParts.partLighting.value.trim(),join(buckets.lighting)].filter(Boolean).join(' ');
+    if(buckets.extra.length)promptParts.partExtra.value=[promptParts.partExtra.value.trim(),join(buckets.extra)].filter(Boolean).join(' ');
+    composePromptFromParts();
+    promptEditor.querySelectorAll('.add-prompt-part').forEach(item=>{item.classList.remove('added');item.textContent='Pridať do promptu';});
+    promptStatus.textContent='✓ Zadanie bolo lokálne rozdelené do častí a vložené do promptu. Skontroluj najmä formulácie, ktoré neboli automaticky preložené.';
+    button.textContent='✓ Zadanie rozdelené';
+    window.setTimeout(()=>{button.textContent='✦ Rozdeliť zadanie do častí';},1800);
   });
   document.getElementById('composePrompt').addEventListener('click',composePromptFromParts);
   document.getElementById('resetPromptParts').addEventListener('click',()=>{loadPartsFromSettings();composePromptFromParts();promptStatus.textContent='Časti promptu boli obnovené podľa nastavení reklamy.';});
