@@ -1006,7 +1006,7 @@
       #psai-splash.psai-leave{opacity:0;pointer-events:none}
       #psai-splash .psai-orbit{position:absolute;width:min(78vw,360px);aspect-ratio:1;border:1px solid transparent;border-top-color:rgba(231,184,91,.95);border-bottom-color:rgba(231,184,91,.32);border-radius:50%;filter:drop-shadow(0 0 8px rgba(224,169,68,.65));animation:psaiOrbit 2.2s cubic-bezier(.4,0,.2,1) both}
       #psai-splash .psai-orbit:after{content:"";position:absolute;inset:13px;border:1px solid rgba(224,184,105,.22);border-radius:50%}
-      #psai-splash .psai-mark{width:min(62vw,260px);height:auto;z-index:1;filter:drop-shadow(0 0 18px rgba(220,164,68,.24));animation:psaiReveal 1.15s cubic-bezier(.16,1,.3,1) both}
+      #psai-splash .psai-mark{width:min(78vw,320px);height:auto;z-index:1;filter:drop-shadow(0 0 18px rgba(220,164,68,.24));animation:psaiReveal 1.15s cubic-bezier(.16,1,.3,1) both}
       #psai-splash .psai-wordmark{z-index:1;margin-top:28px;text-align:center;letter-spacing:.22em;color:#e9e9e9;font-size:clamp(19px,5vw,27px);font-weight:800;opacity:0;animation:psaiText .5s ease 1s forwards}
       #psai-splash .psai-wordmark span{display:block;margin-top:8px;font-size:12px;letter-spacing:.42em;font-weight:500;color:#d4d7dc}
       #psai-splash .psai-wordmark b{color:#e3b65f}
@@ -1019,7 +1019,7 @@
     `;
     document.head.appendChild(splashStyle);
     let splashEl=document.getElementById('psai-splash');
-    if(!splashEl){splashEl=document.createElement('div');splashEl.id='psai-splash';splashEl.innerHTML='<div class="psai-orbit"></div><div class="psai-spark"></div><img class="psai-mark" src="/icon.svg" alt="PRODUCT STUDIO AI"><div class="psai-wordmark">PRODUCT<span>STUDIO <b>AI</b></span></div>';document.body.appendChild(splashEl);}
+    if(!splashEl){splashEl=document.createElement('div');splashEl.id='psai-splash';splashEl.innerHTML='<img class="psai-mark" src="/splash.gif" alt="PRODUCT STUDIO AI"><div class="psai-wordmark">PRODUCT<span>STUDIO <b>AI</b></span></div>';document.body.appendChild(splashEl);}
     let splashClosed=false;
     const closeSplash=()=>{if(splashClosed)return;splashClosed=true;splashEl.classList.add('psai-leave');window.setTimeout(()=>splashEl.remove(),500);};
     window.setTimeout(closeSplash,2350);
