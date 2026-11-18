@@ -26,6 +26,7 @@ public class MainActivity extends Activity {
     private ValueCallback<Uri[]> fileChooserCallback;
     private FrameLayout root;
     private ImageView introLogo;
+    private boolean introDismissScheduled = false;
 
     @Override public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -76,6 +77,11 @@ public class MainActivity extends Activity {
                     return host != null && !host.equals("product-studio-ai-pwa.pages.dev");
                 }
                 @Override
+                public void onPageCommitVisible(WebView view, android.webkit.WebResourceRequest request) {
+                    super.onPageCommitVisible(view, request);
+                    scheduleIntroDismiss();
+                }
+                @Override
                 public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
                     super.onReceivedError(view, request, error);
                     if (request.isForMainFrame()) {
@@ -97,17 +103,13 @@ public class MainActivity extends Activity {
             introLogo.setPadding(18, 18, 18, 18);
             root.addView(introLogo, new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
-            introLogo.setAlpha(0f);
-            introLogo.animate().alpha(1f).setDuration(350).withEndAction(() ->
-                introLogo.postDelayed(() -> {
-                    if (introLogo != null) {
-                        introLogo.animate().alpha(0f).setDuration(350).withEndAction(() -> {
-                            if (root != null && introLogo != null) root.removeView(introLogo);
-                            introLogo = null;
-                        }).start();
-                    }
-                }, 1300)
-            ).start();
+            // Keep the logo fully visible until the WebView has committed its first page.
+            // A timeout below prevents a failed/slow connection from trapping the user.
+            introLogo.setAlpha(1f);
+            introLogo.setScaleX(0.96f);
+            introLogo.setScaleY(0.96f);
+            introLogo.animate().scaleX(1f).scaleY(1f).setDuration(550).start();
+            introLogo.postDelayed(() -> scheduleIntroDismiss(), 5000);
         } catch (Throwable error) {
             TextView message = new TextView(this);
             message.setText("PRODUCT STUDIO AI sa nepodarilo spustiť.\n\n" + error.getClass().getSimpleName() + "\n\nSkontroluj aktualizáciu Android System WebView a skús aplikáciu znovu.");
@@ -117,6 +119,18 @@ public class MainActivity extends Activity {
             message.setPadding(32, 32, 32, 32);
             setContentView(message);
         }
+    }
+
+    private void scheduleIntroDismiss() {
+        if (introDismissScheduled || introLogo == null) return;
+        introDismissScheduled = true;
+        introLogo.postDelayed(() -> {
+            if (introLogo == null) return;
+            introLogo.animate().alpha(0f).setDuration(450).withEndAction(() -> {
+                if (root != null && introLogo != null) root.removeView(introLogo);
+                introLogo = null;
+            }).start();
+        }, 900);
     }
 
     @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
