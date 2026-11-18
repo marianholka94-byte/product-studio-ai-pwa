@@ -1,5 +1,5 @@
-const CACHE = "product-studio-ai-v25-no-skip-20261118";
-const FILES = ["/", "/index.html", "/manifest.webmanifest", "/icon.svg", "/app-navigation.js?v=animated-splash-no-skip-20261118"];
+const CACHE = "product-studio-ai-v26-early-splash-20261118";
+const FILES = ["/", "/index.html", "/manifest.webmanifest", "/icon.svg", "/app-navigation.js?v=startup-splash-early-render-20261118"];
 self.addEventListener("install", event => event.waitUntil(
   caches.open(CACHE).then(cache => cache.addAll(FILES)).then(() => self.skipWaiting())
 ));
