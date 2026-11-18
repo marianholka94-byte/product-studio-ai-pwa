@@ -242,7 +242,7 @@
       const target=button.dataset.screen;
       document.querySelectorAll('.app-screen').forEach(screen=>screen.classList.toggle('active',screen.id===target));
       nav.querySelectorAll('button').forEach(item=>item.classList.toggle('active',item===button));
-      if(target==='screenProjects') renderProjects().catch(error=>{projectsList.textContent='Knižnicu projektov sa nepodarilo načítať: '+error.message;});
+      if(target==='screenProjects'){renderProjects().catch(error=>{projectsList.textContent='Knižnicu projektov sa nepodarilo načítať: '+error.message;});renderProducts().catch(error=>{productsList.textContent='Knižnicu produktov sa nepodarilo načítať: '+error.message;});}renderProducts().catch(error=>{productsList.textContent='Knižnicu produktov sa nepodarilo načítať: '+error.message;});
       window.scrollTo({top:0,behavior:'smooth'});
     });
   });
@@ -254,8 +254,8 @@
   const openProjectDb=()=>{
     if(projectDbPromise)return projectDbPromise;
     projectDbPromise=new Promise((resolve,reject)=>{
-      const request=indexedDB.open(projectDbName,1);
-      request.onupgradeneeded=()=>{const db=request.result;if(!db.objectStoreNames.contains(projectStoreName)){const store=db.createObjectStore(projectStoreName,{keyPath:'id'});store.createIndex('updatedAt','updatedAt');}};
+      const request=indexedDB.open(projectDbName,2);
+      request.onupgradeneeded=()=>{const db=request.result;if(!db.objectStoreNames.contains(projectStoreName)){const store=db.createObjectStore(projectStoreName,{keyPath:'id'});store.createIndex('updatedAt','updatedAt');}if(!db.objectStoreNames.contains('products')){const products=db.createObjectStore('products',{keyPath:'id'});products.createIndex('updatedAt','updatedAt');}};
       request.onsuccess=()=>resolve(request.result);
       request.onerror=()=>reject(request.error||new Error('Databázu projektov sa nepodarilo otvoriť.'));
     });return projectDbPromise;
@@ -267,6 +267,16 @@
     tx.onabort=()=>reject(tx.error||new Error('Operácia s projektom bola prerušená.'));
   }));
   const getAllProjects=()=>projectRequest('readonly',store=>store.getAll());
+  const productRequest=(mode,operation)=>openProjectDb().then(db=>new Promise((resolve,reject)=>{
+    const tx=db.transaction('products',mode);let request;
+    try{request=operation(tx.objectStore('products'));}catch(error){reject(error);return;}
+    tx.oncomplete=()=>resolve(request?.result);tx.onerror=()=>reject(tx.error||new Error('Operácia s produktom zlyhala.'));
+    tx.onabort=()=>reject(tx.error||new Error('Operácia s produktom bola prerušená.'));
+  }));
+  const getAllProducts=()=>productRequest('readonly',store=>store.getAll());
+  const getProduct=id=>productRequest('readonly',store=>store.get(id));
+  const putProduct=product=>productRequest('readwrite',store=>store.put(product));
+  const removeProduct=id=>productRequest('readwrite',store=>store.delete(id));
   const getProject=id=>projectRequest('readonly',store=>store.get(id));
   const putProject=project=>projectRequest('readwrite',store=>store.put(project));
   const removeProject=id=>projectRequest('readwrite',store=>store.delete(id));
@@ -274,12 +284,24 @@
   const projectsList=document.createElement('div');projectsList.id='savedProjectsList';
   projectsList.innerHTML='<div class="projects-empty"><span class="empty-icon">▣</span><strong>Zatiaľ tu nemáš žiadne projekty</strong><p>Vytvor projekt v štúdiu a ulož si fotografie, nastavenia aj reklamný prompt.</p></div>';
   projects.append(projectsList);
+  const productsIntro=document.createElement('section');productsIntro.className='app-placeholder';productsIntro.dataset.sectionIcon='📦';
+  productsIntro.innerHTML='<h2>Moja knižnica produktov</h2><p>Ulož produkty raz a použi ich znova v ďalších reklamných projektoch.</p>';
+  const productsList=document.createElement('div');productsList.id='savedProductsList';
+  productsList.innerHTML='<div class="projects-empty"><span class="empty-icon">▧</span><strong>Zatiaľ nemáš uložené produkty</strong><p>V štúdiu môžeš uložiť produkt spolu s jeho fotografiami.</p></div>';
+  projects.insertBefore(productsIntro,projectsIntro.nextSibling||projects.firstChild);
+  projects.insertBefore(productsList,projectsIntro.nextSibling);
+
   const projectActions=document.createElement('div');projectActions.className='project-actions';
   projectActions.innerHTML='<button type="button" id="createProjectButton" class="secondary">＋ Nový projekt</button>';
   projectsIntro.append(projectActions);
   const studioActions=document.createElement('div');studioActions.className='studio-project-actions';
   studioActions.innerHTML='<button type="button" id="saveProjectButton">Uložiť projekt</button><button type="button" id="newProjectButton" class="secondary">Nový projekt</button><p id="projectSaveStatus" role="status"></p>';
   welcome.after(studioActions);
+  const saveProductButton=document.createElement('button');
+  saveProductButton.type='button';saveProductButton.className='secondary';saveProductButton.id='saveProductToLibrary';
+  saveProductButton.textContent='＋ Uložiť produkt do knižnice';
+  saveProductButton.style.cssText='width:100%;margin:0 0 16px;min-height:46px!important;';
+  studioActions.after(saveProductButton);
 
   const projectStyle=document.createElement('style');
   projectStyle.textContent=`
@@ -298,6 +320,14 @@
     .saved-project-buttons{display:flex;gap:7px;margin-top:9px}
     .saved-project-buttons button{min-height:38px!important;padding:8px!important;margin:0!important;font-size:12px!important;flex:1}
     .saved-project-buttons .delete-project{background:#302126!important;color:#ffb5b5!important;border:1px solid #663139!important}
+    .saved-product-card{display:grid;grid-template-columns:76px minmax(0,1fr);gap:12px;padding:12px;margin:10px 0;background:#10151d;border:1px solid #303b49;border-radius:16px}
+    .saved-product-thumb{width:76px;height:88px;object-fit:cover;border-radius:10px;background:#202936}
+    .saved-product-info{min-width:0}
+    .saved-product-info strong{display:block;color:#f3f5f8;font-size:15px;overflow-wrap:anywhere}
+    .saved-product-info small{display:block;color:#8995a6;font-size:12px;line-height:1.5;margin-top:5px}
+    .saved-product-buttons{display:flex;gap:7px;margin-top:9px}
+    .saved-product-buttons button{min-height:38px!important;padding:8px!important;margin:0!important;font-size:12px!important;flex:1}
+
   `;
   document.head.appendChild(projectStyle);
   const setProjectMessage=(message,isError=false)=>{const status=document.getElementById('projectSaveStatus');if(status){status.textContent=message;status.style.color=isError?'#ffb5b5':'#9ce0b8';}};
@@ -320,6 +350,62 @@
       buttons.append(open,remove);info.append(title,meta,buttons);card.append(thumb,info);projectsList.append(card);
     });
   };
+
+  const renderProducts=async()=>{
+    const records=(await getAllProducts()).sort((a,b)=>b.updatedAt-a.updatedAt);productsList.innerHTML='';
+    if(!records.length){productsList.innerHTML='<div class="projects-empty"><span class="empty-icon">▧</span><strong>Zatiaľ nemáš uložené produkty</strong><p>V štúdiu môžeš uložiť produkt spolu s jeho fotografiami.</p></div>';return;}
+    records.forEach(record=>{
+      const card=document.createElement('article');card.className='saved-product-card';
+      const thumb=document.createElement('img');thumb.className='saved-product-thumb';thumb.alt='';
+      const first=record.images?.[0]?.blob;if(first)thumb.src=URL.createObjectURL(first);
+      const info=document.createElement('div');info.className='saved-product-info';
+      const title=document.createElement('strong');title.textContent=record.name;
+      const meta=document.createElement('small');meta.textContent=(record.images?.length||0)+' fotografií · '+formatProjectDate(record.updatedAt);
+      const buttons=document.createElement('div');buttons.className='saved-product-buttons';
+      const use=document.createElement('button');use.type='button';use.className='secondary';use.textContent='Použiť v reklame';
+      use.addEventListener('click',async()=>{
+        try{
+          if(!confirm('Načítať produkt „'+record.name+'“ do štúdia? Aktuálne neuložené zmeny v editore sa prepíšu.'))return;
+          const latest=await getProduct(record.id);if(!latest)throw new Error('Produkt sa už nenašiel.');
+          activeProjectId=null;
+          await window.PSAIProjectBridge.restore({product:latest.name,images:latest.images});
+          syncPromptEditor('');
+          setProjectMessage('Produkt „'+latest.name+'“ je pripravený na novú reklamu.');
+          nav.querySelector('[data-screen="screenStudio"]').click();
+        }catch(error){alert(error.message||'Produkt sa nepodarilo načítať.');}
+      });
+      const rename=document.createElement('button');rename.type='button';rename.className='secondary';rename.textContent='Premenovať';
+      rename.addEventListener('click',async()=>{
+        const name=prompt('Nový názov produktu:',record.name);if(name===null)return;
+        if(!name.trim()){alert('Názov produktu nemôže byť prázdny.');return;}
+        try{const latest=await getProduct(record.id);latest.name=name.trim();latest.updatedAt=Date.now();await putProduct(latest);await renderProducts();}
+        catch(error){alert(error.message||'Produkt sa nepodarilo premenovať.');}
+      });
+      const remove=document.createElement('button');remove.type='button';remove.className='secondary';remove.textContent='Vymazať';
+      remove.addEventListener('click',async()=>{
+        if(!confirm('Naozaj chceš odstrániť produkt „'+record.name+'“ z knižnice? Uložené projekty zostanú zachované.'))return;
+        try{await removeProduct(record.id);await renderProducts();}
+        catch(error){alert(error.message||'Produkt sa nepodarilo vymazať.');}
+      });
+      buttons.append(use,rename,remove);info.append(title,meta,buttons);card.append(thumb,info);productsList.append(card);
+    });
+  };
+  const saveProductToLibrary=async()=>{
+    const state=window.PSAIProjectBridge?.capture();if(!state)throw new Error('Editor ešte nie je pripravený.');
+    const name=state.product.trim();if(!name)throw new Error('Najskôr zadaj názov produktu.');
+    if(!state.images.length)throw new Error('Na uloženie produktu pridaj aspoň jednu fotografiu.');
+    const records=await getAllProducts();
+    const existing=records.find(item=>item.name.toLowerCase()===name.toLowerCase());
+    const now=Date.now();
+    const record={id:existing?.id||('product-'+now+'-'+Math.random().toString(36).slice(2,8)),name,createdAt:existing?.createdAt||now,updatedAt:now,images:state.images};
+    await putProduct(record);await renderProducts();
+    setProjectMessage('Produkt „'+name+'“ bol uložený v knižnici.');
+  };
+  document.getElementById('saveProductToLibrary').addEventListener('click',async()=>{
+    const button=document.getElementById('saveProductToLibrary');button.disabled=true;
+    try{await saveProductToLibrary();}catch(error){setProjectMessage(error.message||'Produkt sa nepodarilo uložiť.',true);}
+    finally{button.disabled=false;}
+  });
   const saveCurrentProject=async()=>{
     const state=window.PSAIProjectBridge?.capture();if(!state)throw new Error('Editor projektu ešte nie je pripravený.');
     if(!state.product.trim()&&!state.images.length)throw new Error('Najskôr zadaj názov produktu alebo pridaj fotografiu.');
