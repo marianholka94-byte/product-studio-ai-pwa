@@ -242,6 +242,7 @@
       const target=button.dataset.screen;
       document.querySelectorAll('.app-screen').forEach(screen=>screen.classList.toggle('active',screen.id===target));
       nav.querySelectorAll('button').forEach(item=>item.classList.toggle('active',item===button));
+      if(target==='screenProjects') renderProjects().catch(error=>{projectsList.textContent='Knižnicu projektov sa nepodarilo načítať: '+error.message;});
       window.scrollTo({top:0,behavior:'smooth'});
     });
   });
@@ -325,7 +326,7 @@
     if(!state.images.length)throw new Error('Projekt musí obsahovať aspoň jednu fotografiu produktu.');
     const now=Date.now(),existing=activeProjectId?await getProject(activeProjectId):null;
     const record={id:activeProjectId||('project-'+now+'-'+Math.random().toString(36).slice(2,8)),name:state.product.trim()||'Nový produkt',createdAt:existing?.createdAt||now,updatedAt:now,product:state.product,style:state.style,format:state.format,motion:state.motion,duration:state.duration,lighting:state.lighting,extra:state.extra,prompt:state.prompt,images:state.images};
-    await putProject(record);activeProjectId=record.id;setProjectMessage('Projekt „'+record.name+'“ bol uložený v tomto zariadení.');return record;
+    await putProject(record);activeProjectId=record.id;await renderProjects();setProjectMessage('Projekt „'+record.name+'“ bol uložený v tomto zariadení.');return record;
   };
   const startNewProject=async()=>{
     if(!confirm('Začať nový projekt? Neuložené zmeny v aktuálnom projekte sa stratia.'))return;
