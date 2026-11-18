@@ -1,5 +1,5 @@
-const CACHE = "product-studio-ai-v22-product-project-links-20261118";
-const FILES = ["/", "/index.html", "/manifest.webmanifest"];
+const CACHE = "product-studio-ai-v23-logo-splash-20261118";
+const FILES = ["/", "/index.html", "/manifest.webmanifest", "/icon.svg", "/app-navigation.js?v=animated-splash-logo-20261118"];
 self.addEventListener("install", event => event.waitUntil(
   caches.open(CACHE).then(cache => cache.addAll(FILES)).then(() => self.skipWaiting())
 ));
