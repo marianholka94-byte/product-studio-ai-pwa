@@ -579,7 +579,13 @@
   const promptEditor=document.createElement('section');promptEditor.id='promptEditor';
   promptEditor.innerHTML=`
     <div class="prompt-editor-heading"><strong>Editor reklamného promptu</strong><span id="promptLength">0 / 1000</span></div>
-    <p class="prompt-save-hint">Uprav jednotlivé časti reklamy a následne z nich zostav výsledný prompt.</p>
+    <p class="prompt-save-hint">Opíš svoju predstavu po slovensky. AI ju spojí s nastaveniami reklamy a pripraví profesionálny anglický prompt.</p>
+    <div class="ai-prompt-builder">
+      <label class="prompt-label" for="aiPromptIdea">Tvoja predstava o reklame</label>
+      <textarea id="aiPromptIdea" rows="4" maxlength="3000" placeholder="Napr. Produkt stojí na čiernom mramorovom podstavci. Za ním sa pomaly vznáša jemný dym a zlaté svetlo zvýrazňuje jeho hrany. Kamera sa pomaly približuje…"></textarea>
+      <button type="button" id="createAiPrompt" class="secondary">✦ Vytvoriť profesionálny prompt pomocou AI</button>
+      <p class="prompt-save-hint">AI zohľadní produkt, vybranú scénu, štýl, kameru aj osvetlenie. Táto funkcia negeneruje video a nemíňa Runway kredity.</p>
+    </div>
     <div class="prompt-parts">
       <div class="prompt-part">
         <button type="button" class="prompt-part-toggle" aria-expanded="false" aria-controls="partScenePanel">Prostredie a scéna <span>＋</span></button>
@@ -627,6 +633,9 @@
     #promptEditor textarea{width:100%;box-sizing:border-box;background:#0b1017;color:#eef1f6;border:1px solid #354253;border-radius:11px;padding:11px;font:inherit;font-size:14px;resize:vertical;line-height:1.5;min-height:64px}
     #promptEditor #promptDraftText{min-height:150px}
     #scenePreset{width:100%;min-height:48px;background:#0e131a;color:#f3f5f8;border:1px solid #303b49;border-radius:16px;padding:12px;font:inherit;font-size:15px}
+    .ai-prompt-builder{margin:12px 0 16px;padding:12px;background:#171e28;border:1px solid #354253;border-radius:12px}
+    #aiPromptIdea{width:100%;min-height:112px;box-sizing:border-box;background:#0b1017;color:#eef1f6;border:1px solid #354253;border-radius:11px;padding:11px;font:inherit;font-size:14px;line-height:1.5;resize:vertical}
+    #createAiPrompt{width:100%;margin:10px 0 8px;min-height:48px!important}
     .prompt-parts{display:grid;grid-template-columns:1fr;gap:8px;margin:12px 0 16px}
     .prompt-part{overflow:hidden;border:1px solid #303b49;border-radius:12px;background:#151c26}
     .prompt-part-toggle{width:100%;min-height:48px!important;display:flex;align-items:center;justify-content:space-between;text-align:left;background:#1a222e!important;color:#e8edf5!important;border:0!important;border-radius:0!important;padding:12px 14px!important}
@@ -753,6 +762,38 @@
       const label=button.closest('.prompt-part')?.querySelector('.prompt-part-toggle')?.textContent.trim()||'Časť';
       promptStatus.textContent='✓ '+label+' bola pridaná do výsledného promptu.';
     });
+  });
+  document.getElementById('createAiPrompt').addEventListener('click',async()=>{
+    const button=document.getElementById('createAiPrompt');
+    const idea=document.getElementById('aiPromptIdea').value.trim();
+    if(!idea){promptStatus.textContent='Najskôr opíš svoju predstavu o reklame.';return;}
+    const token=localStorage.getItem('psai_session_token')||'';
+    if(!token){promptStatus.textContent='Najskôr over pripojenie v Nastaveniach.';return;}
+    const selectedScene=scenePresets[document.getElementById('scenePreset')?.value];
+    const context={
+      product:document.getElementById('product').value.trim(),
+      visualStyle:document.getElementById('style').value,
+      scene:selectedScene?.scene||'',
+      camera:selectedScene?.camera||document.getElementById('motion').value,
+      lighting:selectedScene?.lighting||document.getElementById('lighting').value,
+      duration:document.getElementById('duration').value,
+      aspectRatio:document.getElementById('format').value,
+      extra:document.getElementById('extra').value.trim()
+    };
+    button.disabled=true;button.textContent='AI pripravuje reklamný prompt…';promptStatus.textContent='Spracúvam tvoju predstavu. Generovanie videa sa nespúšťa.';
+    try{
+      const response=await fetch('https://square-feather-4b83.marianholka94.workers.dev/api/create-prompt',{
+        method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+        body:JSON.stringify({idea,context})
+      });
+      const result=await response.json().catch(()=>({}));
+      if(!response.ok)throw new Error(result.error||'AI prompt sa nepodarilo vytvoriť.');
+      promptDraft.value=String(result.prompt||'').slice(0,1000);syncPromptLength();
+      if(window.PSAIProjectBridge?.setPrompt)window.PSAIProjectBridge.setPrompt(promptDraft.value);
+      promptEditor.querySelectorAll('.add-prompt-part').forEach(item=>{item.classList.remove('added');item.textContent='Pridať do promptu';});
+      promptStatus.textContent='✓ AI vytvorila anglický reklamný prompt. Môžeš ho upraviť alebo skopírovať.';
+    }catch(error){promptStatus.textContent=error.message||'AI prompt sa nepodarilo vytvoriť.';}
+    finally{button.disabled=false;button.textContent='✦ Vytvoriť profesionálny prompt pomocou AI';}
   });
   document.getElementById('composePrompt').addEventListener('click',composePromptFromParts);
   document.getElementById('resetPromptParts').addEventListener('click',()=>{loadPartsFromSettings();composePromptFromParts();promptStatus.textContent='Časti promptu boli obnovené podľa nastavení reklamy.';});
