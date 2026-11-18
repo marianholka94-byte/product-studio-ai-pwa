@@ -561,6 +561,17 @@
     .app-screen.active {
       display: block !important;
     }
+
+    /* PWA Android: nech spodna navigacia aplikacie nelezi nad systemovymi tlacidlami Androidu. */
+    @media (display-mode: standalone) {
+      #appBottomNav {
+        bottom: 44px !important;
+        padding-bottom: 14px !important;
+      }
+      #appViews {
+        margin-bottom: 230px !important;
+      }
+    }
   `;
   document.head.appendChild(style);
 
