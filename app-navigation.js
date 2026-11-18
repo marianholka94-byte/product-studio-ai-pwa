@@ -549,11 +549,24 @@
   const promptEditor=document.createElement('section');promptEditor.id='promptEditor';
   promptEditor.innerHTML=`
     <div class="prompt-editor-heading"><strong>Editor reklamného promptu</strong><span id="promptLength">0 / 1000</span></div>
-    <label class="prompt-label" for="promptDraftText">Text promptu</label>
-    <textarea id="promptDraftText" rows="7" maxlength="1000" placeholder="Najskôr vytvor reklamný prompt alebo sem vlož vlastný text…"></textarea>
-    <div class="prompt-editor-actions"><button type="button" id="copyPromptDraft" class="secondary">Kopírovať prompt</button></div>
+    <p class="prompt-save-hint">Uprav jednotlivé časti reklamy a následne z nich zostav výsledný prompt.</p>
+    <div class="prompt-parts">
+      <label class="prompt-label" for="partScene">Prostredie a scéna</label><textarea id="partScene" rows="2" placeholder="Napr. luxusné tmavé štúdio"></textarea>
+      <label class="prompt-label" for="partProduct">Produkt a jeho vzhľad</label><textarea id="partProduct" rows="2" placeholder="Napr. zachovať presný tvar, obal, logo a farby"></textarea>
+      <label class="prompt-label" for="partStyle">Vizuálny štýl</label><textarea id="partStyle" rows="2" placeholder="Napr. prémiový, fotorealistický, cinematic"></textarea>
+      <label class="prompt-label" for="partCamera">Kamera a pohyb</label><textarea id="partCamera" rows="2" placeholder="Napr. pomalý plynulý orbit"></textarea>
+      <label class="prompt-label" for="partLighting">Osvetlenie</label><textarea id="partLighting" rows="2" placeholder="Napr. dramatické mäkké bočné svetlo"></textarea>
+      <label class="prompt-label" for="partExtra">Ďalšie pokyny</label><textarea id="partExtra" rows="2" placeholder="Čomu sa má reklama vyhnúť? Čo má zdôrazniť?"></textarea>
+      <button type="button" id="composePrompt" class="secondary">Zostaviť prompt z častí</button>
+    </div>
+    <label class="prompt-label" for="promptDraftText">Výsledný prompt – môžeš ho upraviť aj ručne</label>
+    <textarea id="promptDraftText" rows="7" maxlength="1000" placeholder="Najskôr vytvor reklamný prompt alebo zostav ho z jednotlivých častí…"></textarea>
+    <div class="prompt-editor-actions">
+      <button type="button" id="copyPromptDraft" class="secondary">Kopírovať prompt</button>
+      <button type="button" id="resetPromptParts" class="secondary">Obnoviť podľa nastavení reklamy</button>
+    </div>
     <div id="promptEditorStatus" role="status"></div>
-    <p class="prompt-save-hint">Prompt sa uloží spolu s celým projektom tlačidlom „Uložiť projekt“.</p>
+    <p class="prompt-save-hint">Prompt sa uloží spolu s projektom po stlačení „Uložiť projekt“.</p>
   `;
   promptBox.after(promptEditor);
   const promptStyle=document.createElement('style');
@@ -561,11 +574,13 @@
     #promptEditor{margin:12px 0 18px;padding:14px;background:#10151d;border:1px solid #303b49;border-radius:16px;color:#e8edf5}
     .prompt-editor-heading{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:12px}
     .prompt-editor-heading strong{font-size:14px;color:#f2f4f8;font-weight:750}
-    #promptLength{font-size:11px;color:#8995a6}
+    #promptLength{font-size:11px;color:#d6b66e}
     .prompt-label{display:block;margin:10px 0 6px;font-size:12px;color:#aab4c3}
-    #promptDraftText{width:100%;box-sizing:border-box;background:#0b1017;color:#eef1f6;border:1px solid #354253;border-radius:11px;padding:11px;font:inherit;font-size:14px;resize:vertical;line-height:1.5;min-height:150px}
+    #promptEditor textarea{width:100%;box-sizing:border-box;background:#0b1017;color:#eef1f6;border:1px solid #354253;border-radius:11px;padding:11px;font:inherit;font-size:14px;resize:vertical;line-height:1.5;min-height:64px}
+    #promptEditor #promptDraftText{min-height:150px}
+    .prompt-parts{display:grid;grid-template-columns:1fr;gap:2px;margin:12px 0 16px}
     .prompt-editor-actions{display:grid;grid-template-columns:1fr;gap:8px;margin-top:10px}
-    .prompt-editor-actions button{margin:0;min-height:44px!important}
+    .prompt-editor-actions button,#composePrompt{margin:0;min-height:44px!important}
     #promptEditorStatus{min-height:18px;margin-top:8px;color:#9ce0b8;font-size:12px}
     .prompt-save-hint{margin:2px 0 0;color:#8995a6;font-size:12px;line-height:1.5}
   `;
@@ -574,8 +589,36 @@
   const promptStatus=document.getElementById('promptEditorStatus');
   const promptLength=document.getElementById('promptLength');
   const syncPromptLength=()=>{promptLength.textContent=promptDraft.value.length+' / 1000';};
+  const partIds=['partScene','partProduct','partStyle','partCamera','partLighting','partExtra'];
+  const promptParts=Object.fromEntries(partIds.map(id=>[id,document.getElementById(id)]));
+  const fillPromptParts=()=>{
+    promptParts.partScene.value='A clean premium product-ad scene.';
+    promptParts.partProduct.value='Product: '+(document.getElementById('product').value.trim()||'the uploaded product')+'. Preserve its exact identity, design, proportions, packaging, label, logo and original colors.';
+    promptParts.partStyle.value='Photorealistic '+document.getElementById('style').value+' premium commercial style.';
+    promptParts.partCamera.value='Camera movement: '+document.getElementById('motion').value+'. Smooth, stable motion without camera shake.';
+    promptParts.partLighting.value='Lighting: '+document.getElementById('lighting').value+'. Use natural reflections and cinematic highlights.';
+    promptParts.partExtra.value=document.getElementById('extra').value.trim();
+  };
   const syncPromptEditor=(textValue='')=>{promptDraft.value=textValue||'';syncPromptLength();promptStatus.textContent='';};
-  promptDraft.addEventListener('input',syncPromptLength);
+  const composePromptFromParts=()=>{
+    const duration=document.getElementById('duration').value;
+    const format=document.getElementById('format').value;
+    const pieces=[
+      'Create a photorealistic '+duration+'-second premium product advertisement using all uploaded reference photos of the same product.',
+      promptParts.partScene.value.trim(),promptParts.partProduct.value.trim(),promptParts.partStyle.value.trim(),
+      promptParts.partCamera.value.trim(),promptParts.partLighting.value.trim(),
+      'Aspect ratio: '+format+'. Keep the product sharp and consistent across all frames. Avoid extra objects, altered branding, distorted details and flicker.',
+      promptParts.partExtra.value.trim()
+    ].filter(Boolean);
+    promptDraft.value=pieces.join(' ').slice(0,1000);syncPromptLength();
+    if(window.PSAIProjectBridge?.setPrompt)window.PSAIProjectBridge.setPrompt(promptDraft.value);
+    promptStatus.textContent='Prompt bol zostavený z upravených častí.';
+  };
+  const loadPartsFromSettings=()=>{fillPromptParts();};
+  document.getElementById('composePrompt').addEventListener('click',composePromptFromParts);
+  document.getElementById('resetPromptParts').addEventListener('click',()=>{loadPartsFromSettings();composePromptFromParts();promptStatus.textContent='Časti promptu boli obnovené podľa nastavení reklamy.';});
+  promptDraft.addEventListener('input',()=>{syncPromptLength();if(window.PSAIProjectBridge?.setPrompt)window.PSAIProjectBridge.setPrompt(promptDraft.value);});
+  loadPartsFromSettings();
   document.getElementById('copyPromptDraft').addEventListener('click',async()=>{
     const value=promptDraft.value.trim();if(!value){promptStatus.textContent='Nie je čo kopírovať.';return;}
     try{await navigator.clipboard.writeText(value);promptStatus.textContent='Prompt bol skopírovaný.';}
