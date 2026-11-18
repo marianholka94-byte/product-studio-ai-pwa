@@ -767,63 +767,193 @@
     const button=document.getElementById('createAiPrompt');
     const idea=document.getElementById('aiPromptIdea').value.trim();
     if(!idea){promptStatus.textContent='Najskôr opíš svoju predstavu o reklame.';return;}
-    const translations=[
+
+    // Offline Slovak-to-English phrasebook. No network request or API key is used.
+    const phraseRules=[
       [/čierny mramorový podstavec/gi,'a black marble pedestal'],
+      [/biely mramorový podstavec/gi,'a white marble pedestal'],
       [/mramorový podstavec/gi,'a marble pedestal'],
+      [/na čiernom mramore/gi,'on black marble'],
       [/čierny mramor/gi,'black marble'],
-      [/jemný dym/gi,'subtle drifting smoke'],
-      [/pomaly vznáša dym/gi,'smoke slowly drifting'],
+      [/biely mramor/gi,'white marble'],
+      [/drevený podstavec/gi,'a wooden pedestal'],
+      [/sklenený podstavec/gi,'a glass pedestal'],
+      [/na otočnom podstavci/gi,'on a rotating display pedestal'],
+      [/na podstavci/gi,'on a display pedestal'],
+      [/na stole/gi,'on a table'],
+      [/na kamennom povrchu/gi,'on a stone surface'],
+      [/na lesklom povrchu/gi,'on a glossy surface'],
+      [/na tmavom povrchu/gi,'on a dark surface'],
+      [/v tmavom štúdiu/gi,'in a dark studio'],
+      [/v luxusnom štúdiu/gi,'in a luxurious studio'],
+      [/v minimalistickom štúdiu/gi,'in a minimalist studio'],
+      [/v čistom štúdiu/gi,'in a clean studio'],
+      [/v prírode/gi,'in a natural outdoor setting'],
+      [/v lese/gi,'in a forest setting'],
+      [/pri vode/gi,'beside water'],
+      [/na vodnej hladine/gi,'on a reflective water surface'],
+      [/vo vzduchu/gi,'suspended in mid-air'],
+      [/na čiernom pozadí/gi,'against a black background'],
+      [/na bielom pozadí/gi,'against a white background'],
+      [/na neutrálnom pozadí/gi,'against a neutral background'],
+      [/na farebnom pozadí/gi,'against a colored background'],
+      [/v pozadí/gi,'in the background'],
+      [/jemný dym/gi,'subtle atmospheric smoke'],
+      [/hustý dym/gi,'dense atmospheric smoke'],
+      [/dym sa pomaly vznáša/gi,'smoke slowly drifts through the scene'],
+      [/dym pomaly stúpa/gi,'smoke slowly rises'],
+      [/dym/gi,'smoke'],
+      [/vodná para/gi,'water vapor'],
+      [/kvapky vody/gi,'water droplets'],
+      [/striekajúca voda/gi,'splashing water'],
+      [/jemné vlny/gi,'gentle ripples'],
+      [/lietajúce častice/gi,'floating particles'],
+      [/padajúce kvapky/gi,'falling droplets'],
       [/zlaté svetlo/gi,'warm golden lighting'],
       [/zlaté odlesky/gi,'subtle golden reflections'],
+      [/zlaté okrajové svetlo/gi,'golden rim lighting'],
+      [/teplé svetlo/gi,'warm lighting'],
+      [/studené svetlo/gi,'cool-toned lighting'],
       [/mäkké svetlo/gi,'soft diffused lighting'],
+      [/jemné svetlo/gi,'soft gentle lighting'],
       [/bočné svetlo/gi,'directional side lighting'],
+      [/protisvetlo/gi,'backlighting'],
+      [/dramatic(ké|kého)? svetlo/gi,'dramatic lighting'],
+      [/farebné svetlá/gi,'colored accent lights'],
+      [/neónové svetlo/gi,'neon lighting'],
+      [/svetelné lúče/gi,'visible light rays'],
+      [/odrazy svetla/gi,'light reflections'],
+      [/hlboké tiene/gi,'deep shadows'],
+      [/jemné tiene/gi,'soft shadows'],
+      [/kontrastné osvetlenie/gi,'high-contrast lighting'],
+      [/prirodzené osvetlenie/gi,'natural lighting'],
       [/produkt stojí/gi,'the product stands'],
       [/produkt leží/gi,'the product rests'],
+      [/produkt pláva/gi,'the product floats'],
+      [/produkt sa vznáša/gi,'the product is suspended in mid-air'],
       [/produkt umiestni/gi,'place the product'],
+      [/umiestni produkt/gi,'place the product'],
+      [/zvýrazni produkt/gi,'emphasize the product'],
+      [/zvýrazni jeho hrany/gi,'highlight its edges'],
+      [/detail produktu/gi,'a detailed product shot'],
+      [/detailný záber/gi,'a close-up detail shot'],
+      [/detailné zábery/gi,'close-up detail shots'],
+      [/záber na produkt/gi,'a shot of the product'],
+      [/produkt zblízka/gi,'the product in close-up'],
       [/kamera sa pomaly približuje/gi,'the camera slowly pushes in'],
+      [/kamera sa približuje/gi,'the camera moves closer'],
+      [/kamera sa vzďaľuje/gi,'the camera slowly pulls back'],
+      [/kamera sa otáča okolo produktu/gi,'the camera slowly orbits around the product'],
+      [/kamera obieha produkt/gi,'the camera makes a smooth orbit around the product'],
+      [/kamera sa otáča/gi,'the camera slowly rotates'],
+      [/kamera obieha/gi,'the camera makes a smooth orbit'],
+      [/kamera ide zľava doprava/gi,'the camera moves smoothly from left to right'],
+      [/kamera ide sprava doľava/gi,'the camera moves smoothly from right to left'],
+      [/kamera ide zhora nadol/gi,'the camera moves from top to bottom'],
+      [/kamera ide zdola nahor/gi,'the camera moves from bottom to top'],
       [/pomalý približovací záber/gi,'a slow cinematic push-in'],
-      [/kamera sa otáča/gi,'the camera slowly orbits around the product'],
-      [/kamera obieha/gi,'the camera makes a smooth orbit around the product'],
       [/pomalý pohyb kamery/gi,'slow, smooth camera movement'],
+      [/plynulý pohyb kamery/gi,'smooth, controlled camera movement'],
+      [/kamera obíde/gi,'the camera orbits around'],
+      [/otočný záber/gi,'a smooth rotating camera shot'],
+      [/záber z nízkeho uhla/gi,'a low-angle shot'],
+      [/záber zhora/gi,'a top-down shot'],
+      [/záber spredu/gi,'a front-facing shot'],
+      [/záber zboku/gi,'a side-angle shot'],
+      [/makro záber/gi,'a macro close-up shot'],
+      [/spomalený záber/gi,'a slow-motion shot'],
+      [/rýchly pohyb kamery/gi,'a fast camera movement'],
+      [/bez pohybu kamery/gi,'with a locked-off camera'],
+      [/bez otrasov/gi,'without camera shake'],
       [/zachovaj/gi,'preserve'],
+      [/zachovať/gi,'preserve'],
+      [/musí zostať zachovaný/gi,'must remain unchanged'],
       [/pôvodný vzhľad/gi,'the original appearance'],
+      [/pôvodné farby/gi,'the original colors'],
+      [/pôvodný tvar/gi,'the original shape'],
+      [/presný tvar/gi,'the exact shape'],
       [/logo/gi,'logo'],
-      [/farby/gi,'colors'],
       [/obal/gi,'packaging'],
+      [/farby/gi,'colors'],
+      [/materiál/gi,'material'],
+      [/text na obale/gi,'text on the packaging'],
+      [/nápisy/gi,'printed text'],
+      [/značku/gi,'brand'],
+      [/bez zmeny/gi,'without alteration'],
+      [/nič nepridávaj/gi,'do not add anything'],
+      [/nepridávaj ďalšie predmety/gi,'do not add extra objects'],
+      [/bez ďalších predmetov/gi,'with no additional objects'],
+      [/bez ľudí/gi,'with no people'],
+      [/bez rúk/gi,'with no hands'],
+      [/bez textu/gi,'with no added text'],
+      [/bez nápisov/gi,'with no added lettering'],
+      [/bez deformácií/gi,'with no distortion'],
+      [/bez blikania/gi,'with no flicker'],
       [/luxusná reklama/gi,'luxury commercial aesthetic'],
+      [/prémiová reklama/gi,'premium commercial aesthetic'],
+      [/minimalistická reklama/gi,'minimalist product commercial'],
+      [/dynamická reklama/gi,'dynamic commercial style'],
       [/luxusný/gi,'luxurious'],
+      [/minimalistický/gi,'minimalist'],
+      [/moderný/gi,'modern'],
+      [/elegantný/gi,'elegant'],
+      [/dramatický/gi,'dramatic'],
+      [/filmový/gi,'cinematic'],
       [/fotorealistický/gi,'photorealistic'],
       [/realistický/gi,'realistic'],
+      [/umelecký/gi,'artistic'],
+      [/čistý/gi,'clean'],
       [/tmavé štúdio/gi,'a dark studio'],
       [/čisté pozadie/gi,'a clean background'],
-      [/odraz(y|ov)?/gi,'reflections'],
-      [/bez otrasov/gi,'without camera shake']
+      [/odlesky/gi,'reflections'],
+      [/odrazy/gi,'reflections'],
+      [/plynulo/gi,'smoothly'],
+      [/pomaly/gi,'slowly'],
+      [/jemne/gi,'gently'],
+      [/realisticky/gi,'realistically'],
+      [/výrazne/gi,'boldly']
     ];
-    const translateKnown=text=>translations.reduce((value,[pattern,replacement])=>value.replace(pattern,replacement),text);
-    const sentences=idea.split(/(?<=[.!?])\s+|\n+/).map(value=>value.trim()).filter(Boolean);
+    const translateKnown=text=>phraseRules.reduce((value,[pattern,replacement])=>value.replace(pattern,replacement),text)
+      .replace(/\s+/g,' ').replace(/\s+([,.!?])/g,'$1').trim();
+
+    const splitClauses=text=>text
+      .replace(/\s+(a zároveň|a potom|potom|pričom|zatiaľ čo)\s+/gi,'. ')
+      .split(/(?<=[.!?;])\s+|[,;\n]+/).map(value=>value.trim()).filter(Boolean);
     const buckets={scene:[],product:[],style:[],camera:[],lighting:[],extra:[]};
-    for(const sentence of sentences){
-      const lower=sentence.toLocaleLowerCase('sk');
-      const translated=translateKnown(sentence);
-      if(/kamera|záber|pohyb|otáč|približ|orbit|uhol/.test(lower))buckets.camera.push(translated);
-      else if(/svetl|osvet|zlat|tieň|odlesk|reflex|žiaren/.test(lower))buckets.lighting.push(translated);
-      else if(/produkt|logo|obal|farb|tvar|materiál|značk/.test(lower))buckets.product.push(translated);
-      else if(/štýl|luxus|minimal|cinematic|fotoreal|reklam/.test(lower))buckets.style.push(translated);
-      else if(/pozad|prostred|scén|dym|mramor|podstavec|voda|povrch|stojí|leží|umiestni/.test(lower))buckets.scene.push(translated);
+    const untranslated=[];
+    for(const clause of splitClauses(idea)){
+      const lower=clause.toLocaleLowerCase('sk');
+      const translated=translateKnown(clause);
+      const hasEnglish=translated!==clause;
+      if(/kamera|záber|pohyb|otáč|približ|orbit|uhol|spomalen/.test(lower))buckets.camera.push(translated);
+      else if(/svetl|osvet|zlat|tieň|odlesk|reflex|žiaren|neón|kontrast/.test(lower))buckets.lighting.push(translated);
+      else if(/produkt|logo|obal|farb|tvar|materiál|značk|nápis|text/.test(lower))buckets.product.push(translated);
+      else if(/štýl|luxus|minimal|modern|elegant|dramat|filmov|fotoreal|realist|reklam|umeleck/.test(lower))buckets.style.push(translated);
+      else if(/pozad|prostred|scén|dym|mramor|podstavec|voda|povrch|stojí|leží|pláva|vznáša|stôl|les|prírod|kvapk|para|častic/.test(lower))buckets.scene.push(translated);
       else buckets.extra.push(translated);
+      if(!hasEnglish && /[áäčďéíĺľňóôŕšťúýž]/i.test(clause))untranslated.push(clause);
     }
-    const join=bucket=>bucket.join(' ');
-    if(buckets.scene.length)promptParts.partScene.value=[promptParts.partScene.value.trim(),join(buckets.scene)].filter(Boolean).join(' ');
-    if(buckets.product.length)promptParts.partProduct.value=[promptParts.partProduct.value.trim(),join(buckets.product)].filter(Boolean).join(' ');
-    if(buckets.style.length)promptParts.partStyle.value=[promptParts.partStyle.value.trim(),join(buckets.style)].filter(Boolean).join(' ');
-    if(buckets.camera.length)promptParts.partCamera.value=[promptParts.partCamera.value.trim(),join(buckets.camera)].filter(Boolean).join(' ');
-    if(buckets.lighting.length)promptParts.partLighting.value=[promptParts.partLighting.value.trim(),join(buckets.lighting)].filter(Boolean).join(' ');
-    if(buckets.extra.length)promptParts.partExtra.value=[promptParts.partExtra.value.trim(),join(buckets.extra)].filter(Boolean).join(' ');
+
+    const appendUnique=(field,values)=>{
+      const current=promptParts[field].value.trim();
+      const additions=values.filter(value=>value&&!current.toLocaleLowerCase().includes(value.toLocaleLowerCase()));
+      if(additions.length)promptParts[field].value=[current,...additions].filter(Boolean).join(' ');
+    };
+    appendUnique('partScene',buckets.scene);
+    appendUnique('partProduct',buckets.product);
+    appendUnique('partStyle',buckets.style);
+    appendUnique('partCamera',buckets.camera);
+    appendUnique('partLighting',buckets.lighting);
+    appendUnique('partExtra',buckets.extra);
     composePromptFromParts();
     promptEditor.querySelectorAll('.add-prompt-part').forEach(item=>{item.classList.remove('added');item.textContent='Pridať do promptu';});
-    promptStatus.textContent='✓ Zadanie bolo lokálne rozdelené do častí a vložené do promptu. Skontroluj najmä formulácie, ktoré neboli automaticky preložené.';
+    const retained=untranslated.length;
+    promptStatus.textContent=retained
+      ? '✓ Zadanie bolo rozdelené. Niektoré menej bežné formulácie zostali v pôvodnom jazyku, aby sa nestratil ich význam. Skontroluj výsledok.'
+      : '✓ Zadanie bolo rozdelené do častí a vložené do promptu. Skontroluj a podľa potreby uprav výsledok.';
     button.textContent='✓ Zadanie rozdelené';
-    window.setTimeout(()=>{button.textContent='✦ Rozdeliť zadanie do častí';},1800);
+    button.disabled=true;
+    window.setTimeout(()=>{button.textContent='✦ Rozdeliť zadanie do častí';button.disabled=false;},1400);
   });
   document.getElementById('composePrompt').addEventListener('click',composePromptFromParts);
   document.getElementById('resetPromptParts').addEventListener('click',()=>{loadPartsFromSettings();composePromptFromParts();promptStatus.textContent='Časti promptu boli obnovené podľa nastavení reklamy.';});
