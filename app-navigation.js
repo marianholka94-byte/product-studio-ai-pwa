@@ -566,11 +566,11 @@
        Nepodmienujeme to display-mode, pretoze niektore instalacie PWA ho nerozpoznaju rovnako. */
     @media (max-width: 600px) {
       #appBottomNav {
-        bottom: 64px !important;
-        padding-bottom: 14px !important;
+        bottom: 96px !important;
+        padding-bottom: 18px !important;
       }
       #appViews {
-        margin-bottom: 250px !important;
+        margin-bottom: 290px !important;
       }
     }
   `;
