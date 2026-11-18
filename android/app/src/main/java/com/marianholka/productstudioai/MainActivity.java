@@ -13,6 +13,7 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceError;
 import android.widget.FrameLayout;
 import android.widget.TextView;
 
@@ -48,9 +49,16 @@ public class MainActivity extends Activity {
                 return host != null && !host.equals("product-studio-ai-pwa.pages.dev");
             }
             @Override public void onPageFinished(WebView view, String url) {
+                super.onPageFinished(view, url);
+                view.setVisibility(View.VISIBLE);
                 dismissSplash();
             }
+            @Override public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
+                super.onReceivedError(view, request, error);
+                if (request.isForMainFrame()) dismissSplash();
+            }
         });
+        webView.setVisibility(View.VISIBLE);
         root.addView(webView, new FrameLayout.LayoutParams(-1, -1));
 
         // Native splash is drawn immediately, before WebView starts rendering,
@@ -78,6 +86,7 @@ public class MainActivity extends Activity {
         brand.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(650)
             .setInterpolator(new AccelerateDecelerateInterpolator()).start();
 
+        splashOverlay.postDelayed(() -> dismissSplash(), 4500);
         webView.loadUrl("https://product-studio-ai-pwa.pages.dev/?native=1&app=android-v3");
     }
 
