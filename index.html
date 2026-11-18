@@ -69,8 +69,9 @@ a{color:#174ea6;overflow-wrap:anywhere}
 <div><label for="motion">Pohyb kamery</label><select id="motion"><option>Pomalé približovanie (push-in)</option><option>Plynulý pohyb zľava doprava</option><option>Jemný orbit okolo produktu</option><option>Detailný makro záber</option><option>Statická kamera</option></select></div>
 <div><label for="duration">Dĺžka klipu</label><select id="duration"><option value="5">5 sekúnd</option><option value="10">10 sekúnd</option><option value="15">15 sekúnd</option></select></div>
 </div>
-<label>Rozlíšenie</label>
-<input value="720p – prvá testovacia verzia" disabled>
+<label for="resolution">Rozlíšenie výstupu</label>
+<select id="resolution"><option value="720p">720p – vyššia kvalita</option><option value="480p">480p – menší súbor</option></select>
+<p class="note">Pomer strán a rozlíšenie sa nastavia priamo pri generovaní. FPS určuje model Seedance; aplikácia ho zatiaľ nemení ani neprepočítava.</p>
 <label for="lighting">Svetlo a prostredie</label>
 <select id="lighting"><option>Tmavé štúdio, jemné zlaté okrajové svetlo</option><option>Svetlé čisté štúdio, mäkké svetlo</option><option>Dramatické bočné svetlo a tiene</option><option>Vonkajšie prirodzené svetlo</option></select>
 <label for="extra">Dodatočné požiadavky</label>
@@ -128,13 +129,14 @@ function buildPrompt(){
 }
 function updateEstimate(){
  const sec=Number($('duration').value);
+ if($('resolution').value!=='720p'){$('estimate').textContent='Cena 480p: overí poskytovateľ';return;}
  const rate=15; // Seedance 2.0 Mini, 720p: 15 credits/second
  const minimum=28;
  const credits=Math.max(minimum,sec*rate);
- $('estimate').textContent=`Odhad: ${(credits/100).toFixed(2)} (${credits} kreditov)`;
+ $('estimate').textContent=`Odhad: ${(credits/100).toFixed(2)} USD (${credits} kreditov)`;
 }
 $('makePrompt').onclick=buildPrompt;
-['duration'].forEach(id=>$(id).addEventListener('change',updateEstimate));
+['duration','resolution'].forEach(id=>$(id).addEventListener('change',updateEstimate));
 photo.addEventListener('change',()=>{
  selectedFiles=Array.from(photo.files||[]).slice(0,5);
  if((photo.files||[]).length>5) setStatus('Môžeš nahrať najviac 5 fotografií. Vybral som prvých 5.','err');
@@ -207,7 +209,8 @@ $('generate').onclick=async()=>{
   setStatus('Pripravujem fotografie a odosielam požiadavku…');
   const images=await Promise.all(selectedFiles.map(imageToDataUri));
   const model='seedance2_mini';
-  const ratio=$('format').value==='9:16'?'720:1280':$('format').value==='1:1'?'960:960':'1280:720';
+  const ratios={ '720p':{'9:16':'720:1280','1:1':'960:960','16:9':'1280:720'}, '480p':{'9:16':'496:864','1:1':'640:640','16:9':'864:496'} };
+  const ratio=ratios[$('resolution').value][$('format').value];
   const created=await api('/api/generate',{image:images[0],images,prompt:promptText,model,ratio,duration:Number($('duration').value),});
   currentTask=created.id;
   $('history').textContent=`Úloha: ${created.id} · Model: ${model} · Stav: ${created.status||'odoslané'}`;
@@ -216,6 +219,21 @@ $('generate').onclick=async()=>{
  }catch(err){setStatus(err.message,'err')}
  finally{btn.disabled=false}
 };
+async function downloadGeneratedVideo(id){
+ const button=$('downloadVideo');if(button)button.disabled=true;
+ try{
+  let token=localStorage.getItem('psai_session_token')||'';
+  if(!token)token=await loginAndGetToken();
+  let response=await fetch(API_BASE+'/api/download/'+encodeURIComponent(id),{headers:{'Authorization':'Bearer '+token}});
+  if(response.status===401){localStorage.removeItem('psai_session_token');token=await loginAndGetToken();response=await fetch(API_BASE+'/api/download/'+encodeURIComponent(id),{headers:{'Authorization':'Bearer '+token}});}
+  if(!response.ok){const data=await response.json().catch(()=>({}));throw new Error(data.error||'Video sa nepodarilo stiahnuť.');}
+  const blob=await response.blob();const objectUrl=URL.createObjectURL(blob);
+  const link=document.createElement('a');link.href=objectUrl;
+  link.download=`product-studio-${$('format').value.replace(':','x')}-${$('resolution').value}-${$('duration').value}s.mp4`;
+  document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(objectUrl),60000);
+ }catch(error){setStatus(error.message,'err');}
+ finally{if(button)button.disabled=false;}
+}
 async function pollTask(id, outputId='videoWrap', statusId='status'){
  for(let i=0;i<120;i++){
   await new Promise(r=>setTimeout(r,5000));
@@ -226,7 +244,8 @@ async function pollTask(id, outputId='videoWrap', statusId='status'){
    const outputs=task.output||task.outputs||[];
    const url=Array.isArray(outputs)?(typeof outputs[0]==='string'?outputs[0]:outputs[0]?.url||outputs[0]?.uri):outputs?.url;
    if(!url)throw new Error('Video je hotové, ale server nevrátil odkaz na výstup.');
-   $(outputId).innerHTML=`<video controls playsinline src="${url}"></video><p><a href="${url}" target="_blank" rel="noopener">Otvoriť / stiahnuť hotové MP4</a></p>`;
+   $(outputId).innerHTML=`<video controls playsinline src="${url}"></video><button type="button" id="downloadVideo">STIAHNUŤ MP4</button><p class="note">Výstup: ${$('format').value} · ${$('resolution').value} · ${$('duration').value} s. FPS je podľa modelu Seedance.</p>`;
+   $('downloadVideo').onclick=()=>downloadGeneratedVideo(id);
    $(statusId).textContent='Hotovo! Video je pripravené. Môžeš si ho prehrať a uložiť.';
    $(statusId).className='status ok';
    return;
@@ -287,7 +306,8 @@ async function generateFromCombinedInputs(){
  form.append('video',selectedSourceVideo,selectedSourceVideo.name);
  form.append('references',JSON.stringify(references));
  form.append('prompt',prompt+' Strongly enhance the original footage into a premium cinematic product advertisement. Use the uploaded product photos as visual references to preserve the exact product identity, shape, packaging, label, logo, lettering and brand colors. Preserve the main action and camera movement from the source video while upgrading lighting, atmosphere, color grade and production value. Do not invent or distort branding.');
- const ratio=$('format').value==='9:16'?'720:1280':$('format').value==='1:1'?'960:960':'1280:720';
+ const ratios={ '720p':{'9:16':'720:1280','1:1':'960:960','16:9':'1280:720'}, '480p':{'9:16':'496:864','1:1':'640:640','16:9':'864:496'} };
+ const ratio=ratios[$('resolution').value][$('format').value];
  form.append('ratio',ratio);
  form.append('duration',$('duration').value);
  const created=await uploadFormApi('/api/generate-video',form);
@@ -311,6 +331,7 @@ window.PSAIProjectBridge = {
       format: $('format').value,
       motion: $('motion').value,
       duration: $('duration').value,
+      resolution: $('resolution').value,
       lighting: $('lighting').value,
       extra: $('extra').value,
       prompt: promptText || $('prompt').textContent || '',
@@ -324,6 +345,7 @@ window.PSAIProjectBridge = {
     $('format').value = project.format || '9:16';
     $('motion').value = project.motion || $('motion').options[0].value;
     $('duration').value = project.duration || '5';
+    $('resolution').value = project.resolution || '720p';
     $('lighting').value = project.lighting || $('lighting').options[0].value;
     $('extra').value = project.extra || '';
     selectedFiles = (project.images || []).map((item,index) =>
