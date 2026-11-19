@@ -1,0 +1,51 @@
+name: Validate commercial D1 schema
+
+on:
+  pull_request:
+    branches:
+      - feature/social-export-presets-2026-11-18
+    paths:
+      - "migrations/**"
+      - ".github/workflows/validate-commercial-schema.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-d1-schema:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Validate migration with SQLite
+        run: |
+          python3 - <<'PY'
+          import sqlite3
+          from pathlib import Path
+
+          migration = Path("migrations/0001_commercial_foundation.sql").read_text(encoding="utf-8")
+          db = sqlite3.connect(":memory:")
+          db.execute("PRAGMA foreign_keys = ON")
+          db.executescript(migration)
+
+          expected = {
+              "users", "sessions", "products", "projects", "assets",
+              "product_images", "generations", "credit_ledger", "plans",
+              "subscriptions", "payment_events", "audit_log",
+          }
+          actual = {
+              row[0] for row in db.execute(
+                  "SELECT name FROM sqlite_master WHERE type='table'"
+              )
+          }
+          missing = expected - actual
+          if missing:
+              raise SystemExit(f"Missing schema tables: {sorted(missing)}")
+
+          violations = list(db.execute("PRAGMA foreign_key_check"))
+          if violations:
+              raise SystemExit(f"Foreign key violations: {violations}")
+
+          print(f"Commercial D1 schema valid: {len(expected)} tables created; no FK violations.")
+          PY
