@@ -506,7 +506,7 @@
         try{
           const latest=await getProject(record.id);if(!latest)throw new Error('Lokálny projekt sa už nenašiel.');
           const result=await window.PSAICloudLibrary.saveLocalProject(latest,async sync=>{
-            latest.cloudSync=sync;latest.updatedAt=Date.now();await putProject(latest);
+            latest.cloudSyncByAccount={...(latest.cloudSyncByAccount||{}),[sync.accountId]:sync};latest.updatedAt=Date.now();await putProject(latest);
           });
           latest.cloudSync=result;latest.updatedAt=Date.now();await putProject(latest);
           saveCloud.textContent='Uložené v cloude';saveCloud.disabled=true;
