@@ -207,6 +207,12 @@ function publicProject(row) {
   try { settings = JSON.parse(row.settings_json || "{}"); } catch {}
   return { id: row.id, productId: row.product_id, name: row.name, status: row.status, prompt: row.prompt, settings, exportPreset: row.export_preset, createdAt: row.created_at, updatedAt: row.updated_at, archivedAt: row.archived_at };
 }
+function matchesImageSignature(bytes, contentType) {
+  if (contentType === "image/jpeg") return bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
+  if (contentType === "image/png") return bytes.length >= 8 && [0x89,0x50,0x4e,0x47,0x0d,0x0a,0x1a,0x0a].every((value,index)=>bytes[index]===value);
+  if (contentType === "image/webp") return bytes.length >= 12 && String.fromCharCode(...bytes.slice(0,4)) === "RIFF" && String.fromCharCode(...bytes.slice(8,12)) === "WEBP";
+  return false;
+}
 
 
 export default {
@@ -318,6 +324,7 @@ export default {
             ).bind(productId, user.id).first();
             if (Number(current?.count || 0) >= 5) return json({ error: "Produkt môže obsahovať najviac 5 fotografií." }, 409, origin);
             const bytes = await readBytes(request, 10 * 1024 * 1024);
+            if (!matchesImageSignature(bytes, contentType)) return json({ error: "Obsah súboru nezodpovedá deklarovanému formátu fotografie." }, 415, origin);
             const assetId = crypto.randomUUID();
             const r2Key = `users/${user.id}/products/${productId}/${assetId}`;
             const checksum = await sha256(b64url(bytes));
