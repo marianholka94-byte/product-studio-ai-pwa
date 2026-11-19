@@ -715,7 +715,14 @@ export default {
           .bind(mapped, mapped === "failed" ? String(task.failure || task.error || "Generovanie zlyhalo.").slice(0,500) : null, ["succeeded","failed","cancelled"].includes(mapped) ? 1 : 0, now, now, generation.id, user.id).run();
         if (mapped === "succeeded") await settleGenerationCredits(env, user.id, generation.id, "capture", now);
         else if (mapped === "failed" || mapped === "cancelled") await settleGenerationCredits(env, user.id, generation.id, "release", now);
-        return json({ ...task, providerStatus: task.status, status: mapped, id: generation.id }, 200, origin);
+        // Provider video URLs are temporary bearer-like links. Keep them server-side;
+        // clients should only download through the authenticated R2-backed route.
+        const safeTask = { ...task };
+        if (safeTask.content && typeof safeTask.content === "object" && !Array.isArray(safeTask.content)) {
+          safeTask.content = { ...safeTask.content };
+          delete safeTask.content.video_url;
+        }
+        return json({ ...safeTask, providerStatus: task.status, status: mapped, id: generation.id }, 200, origin);
       }
 
       const generationDownloadMatch = /^\/api\/download\/([0-9a-f-]{36})$/i.exec(url.pathname);
