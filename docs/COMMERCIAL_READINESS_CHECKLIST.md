@@ -21,6 +21,8 @@ This document tracks readiness work on the isolated commercial preview. It is no
 - [x] Manual cloud-library product and project creation persist account-scoped idempotency checkpoints in session storage, reuse the same key after a lost response, and prevent overlapping submissions.
 - [x] Cloud library ignores stale refresh/save responses after account changes, prevents an old 401 response from clearing a newer session, serializes sign-in attempts, and revokes temporary image preview URLs.
 - [x] Cloud uploads capture the initiating account before asynchronous image hashing; an account switch during hashing stops the upload instead of silently saving into the newly signed-in account. Overlapping refreshes are sequenced and temporary previews are released on refresh.
+- [x] Commercial preview generation API requires a D1 customer session, stores generation requests per owner, prevents duplicate submissions with a per-account idempotency key and payload fingerprint, and enforces a three-generation UTC-day preview quota at the database layer.
+- [x] Generation status and download endpoints resolve the local generation ID through the authenticated owner; provider task IDs are never accepted as authorization. A separate `RUNWAY_API_KEY_PREVIEW` repository secret can configure the isolated preview Worker without reusing production credentials.
 - [x] Resumed cloud uploads compare ordered SHA-256 checksums against the remote image manifest before continuing.
 - [x] Schema and integration checks cover both idempotency columns and unique per-account constraints.
 - [x] Integration checks cover checksum-verified recovery of partially uploaded images.
