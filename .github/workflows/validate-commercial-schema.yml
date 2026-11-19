@@ -12,6 +12,7 @@ on:
     branches:
       - feature/social-export-presets-2026-11-18
       - feature/commercial-foundation-schema
+      - feature/commercial-worker-preview
     paths:
       - "migrations/**"
       - ".github/workflows/validate-commercial-schema.yml"
