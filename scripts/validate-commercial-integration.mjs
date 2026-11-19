@@ -84,6 +84,7 @@ assert.ok(nav.includes("const cloudLibraryPanel=document.getElementById('commerc
 assert.ok(nav.includes("if(target==='screenProjects'){") && !nav.includes("}renderProducts().catch"), "Local libraries must not be reloaded on unrelated bottom-navigation switches.");
 assert.ok(nav.includes("clearLocalProductObjectUrls();") && nav.includes("localProductObjectUrls.add(objectUrl)"), "Local product thumbnails must release object URLs before re-rendering.");
 assert.ok(nav.includes("request.onblocked=()=>{projectDbPromise=null;") && nav.includes("request.onerror=()=>{projectDbPromise=null;"), "IndexedDB open failures and blocked upgrades must allow a later retry.");
+assert.ok(nav.includes("Cloudový účet a pripojenie generátora spravuješ") && !nav.includes("square-feather-4b83.marianholka94.workers.dev") && !nav.includes("psai_session_token"), "Settings must point to the current cloud account and must not expose the retired legacy backend login.");
 
 console.log("Commercial cloud integration contract checks passed.");
 
