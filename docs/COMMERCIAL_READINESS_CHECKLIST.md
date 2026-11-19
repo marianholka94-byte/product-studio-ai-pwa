@@ -14,6 +14,7 @@ This document tracks readiness work on the isolated commercial preview. It is no
 - [x] Cloud product and project creation use persisted per-account idempotency keys, so retrying after a lost response returns the existing records instead of creating duplicates.
 - [x] Cloud project edits use an atomic `updated_at` precondition; stale edits return HTTP 409 with the current project instead of overwriting newer work.
 - [x] Cloud project editor preserves typed text after a conflict and updates its baseline version before the user retries.
+- [x] Cloud project conflict recovery offers explicit reload-latest, retry-with-my-edits, and idempotent save-as-copy actions.
 - [x] Reusing a product or project idempotency key with a different payload is rejected.
 - [x] Resumed cloud uploads compare ordered SHA-256 checksums against the remote image manifest before continuing.
 - [x] Schema and integration checks cover both idempotency columns and unique per-account constraints.
