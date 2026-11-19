@@ -569,17 +569,20 @@
     addProject.click();
   });
   saveProjectAsCopy.addEventListener("click", async () => {
-    if (!editingProjectId || !conflictLatestProject || !user?.id) return;
+    if (!editingProjectId || !conflictLatestProject || !user?.id || saveProjectAsCopy.disabled) return;
+    const accountId = user.id;
+    const requestEpoch = accountEpoch;
     if (!pendingCopyPayload) {
-      copyOperationId = crypto.randomUUID();
-      pendingCopyPayload = {
+      const payload = {
         name: (projectName.el.value.trim() || "Reklamný projekt") + " (kópia)",
         prompt: projectPrompt.el.value,
         productId: projectProduct.value || null,
         settings: editingProjectRecord?.settings || {},
-        exportPreset: editingProjectRecord?.exportPreset ?? null,
-        idempotencyKey: copyOperationId
+        exportPreset: editingProjectRecord?.exportPreset ?? null
       };
+      copyOperationId = await operationFor("project-copy", payload);
+      if (requestEpoch !== accountEpoch || accountId !== user?.id) return;
+      pendingCopyPayload = { ...payload, idempotencyKey: copyOperationId };
     }
     saveProjectAsCopy.disabled = true;
     try {
@@ -587,10 +590,12 @@
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify(pendingCopyPayload)
       });
+      if (requestEpoch !== accountEpoch || accountId !== user?.id) return;
       editingProjectId = result.project.id;
       editingProjectRecord = result.project;
       projectName.el.value = result.project.name;
       conflictLatestProject = null;
+      clearOperation("project-copy", accountId);
       copyOperationId = null;
       pendingCopyPayload = null;
       projectConflict.hidden = true;
@@ -598,9 +603,10 @@
       setStatus("Tvoje zmeny boli uložené ako samostatný projekt. Pôvodná cloudová verzia zostala zachovaná.");
       await refresh();
     } catch (error) {
+      if (requestEpoch !== accountEpoch || accountId !== user?.id) return;
       setStatus(error.message + " Opakovaním tejto akcie sa použije rovnaký bezpečný kľúč a nevytvorí sa duplicitný projekt.", true);
     } finally {
-      saveProjectAsCopy.disabled = false;
+      if (requestEpoch === accountEpoch && accountId === user?.id) saveProjectAsCopy.disabled = false;
     }
   });
   window.PSAICloudLibrary = {
