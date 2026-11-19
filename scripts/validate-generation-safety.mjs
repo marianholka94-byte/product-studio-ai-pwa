@@ -46,6 +46,7 @@ assert.match(worker, /provider_submission_unknown/);
 assert.match(worker, /recoveryRequired: true/);
 assert.ok(worker.includes("BytePlus may") && worker.includes("already have accepted and billed the task"));
 assert.ok(worker.includes("recoveryRequired: uncertain"));
+assert.match(worker, /const ambiguous = upstream\.status >= 500 \|\| upstream\.ok/);
 assert.ok(worker.includes("if (!prior.provider_task_id)") && worker.includes("neposielam znova"));
 
 // Status and download use the ModelArk task endpoint.
