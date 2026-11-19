@@ -61,6 +61,13 @@ assert.ok(cloud.includes("async saveLocalProject(record, onProgress"), "Cloud sa
 assert.ok(cloud.includes('api("/api/products", {'), "Cloud save must create an account-scoped product before uploading media");
 assert.ok(cloud.includes('api("/api/products/" + encodeURIComponent(sync.productId) + "/images"'), "Cloud save must upload images through the authenticated product media API");
 assert.ok(cloud.includes("await onProgress({ ...sync })"), "Cloud save must persist every upload checkpoint before continuing");
+
+assert.ok(cloud.includes("if (!sync.idempotencyKey)"), "Cloud save must create a stable idempotency key before project creation.");
+assert.ok(cloud.includes("idempotencyKey: sync.idempotencyKey"), "Cloud project creation must send the persisted idempotency key.");
+assert.ok(worker.includes("client_operation_id"), "Cloud project creation must persist its idempotency key server-side.");
+assert.ok(worker.includes("idx_projects_owner_operation"), "Cloud project idempotency must be unique per account.");
+assert.ok(worker.includes("Kľúč operácie už bol použitý pre iný projekt."), "Reusing an idempotency key with a different payload must be rejected.");
+
 assert.ok(cloud.includes('api("/api/projects", {'), "Cloud save must create a cloud project only after product media upload");
 assert.ok(cloud.includes("settings,\n          exportPreset"), "Cloud project save must preserve mapped Studio settings and export preset");
 assert.ok(cloud.includes("if (sync && sync.fingerprint !== fingerprint)"), "Cloud save must stop if the local project changes during a partial upload");
