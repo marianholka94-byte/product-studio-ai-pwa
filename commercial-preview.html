@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="sk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111720">
+<title>PRODUCT STUDIO AI · Commercial Preview</title>
+<style>
+:root{color-scheme:dark;font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;background:#0b1017;color:#eef2f7}
+*{box-sizing:border-box}body{margin:0;padding:24px 16px 48px;background:radial-gradient(ellipse at top,#202a38 0,#0b1017 55%);min-height:100vh}
+main{width:min(760px,100%);margin:auto}.brand{font-size:12px;letter-spacing:.2em;color:#d8bd82;font-weight:800}.sub{color:#9eacbd;line-height:1.55}
+h1{font-size:clamp(26px,6vw,38px);margin:10px 0 4px}h2{font-size:19px;margin:0 0 14px}
+.panel{background:#151d28;border:1px solid #2b394a;border-radius:18px;padding:18px;margin:16px 0;box-shadow:0 12px 32px #0003}
+label{display:block;font-size:13px;color:#aebaca;margin:12px 0 6px}
+input,textarea,button{font:inherit}input,textarea{width:100%;padding:12px 13px;border:1px solid #39495d;border-radius:10px;background:#0d141d;color:#fff;outline:none}
+textarea{min-height:90px;resize:vertical}button{border:0;border-radius:10px;padding:12px 16px;background:#d9bd7d;color:#17130b;font-weight:750;cursor:pointer;margin:8px 6px 0 0}
+button.secondary{background:#293647;color:#e8edf5;border:1px solid #40516a}button:disabled{opacity:.5;cursor:wait}
+.row{display:flex;gap:10px;flex-wrap:wrap}.row>*{flex:1;min-width:180px}
+.status{padding:10px 12px;border-radius:10px;background:#0e151e;color:#aebaca;font-size:13px;white-space:pre-wrap;overflow-wrap:anywhere}
+.hidden{display:none!important}.item{padding:13px;border:1px solid #334155;border-radius:13px;margin:10px 0;background:#101720}
+.item strong{display:block}.item small{color:#9eacbd}.thumbs{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.thumb{width:88px;height:88px;object-fit:cover;border-radius:9px;border:1px solid #3b4a5d}
+@media(min-width:600px){body{padding-top:38px}.panel{padding:22px}}
+</style>
+</head>
+<body><main>
+<div class="brand">PRODUCT STUDIO AI</div><h1>Commercial Preview</h1>
+<p class="sub">Izolované testovacie prostredie účtov, cloudovej knižnice a súkromného úložiska. Nezasahuje do produkčnej aplikácie ani nespúšťa platené generovanie videí.</p>
+<section class="panel" id="authPanel">
+<h2>Prihlásenie do testovacieho účtu</h2>
+<div id="loginFields">
+<label for="email">E-mail</label><input id="email" type="email" autocomplete="username" maxlength="254">
+<label for="password">Heslo (min. 12 znakov pri registrácii)</label><input id="password" type="password" autocomplete="current-password" maxlength="128">
+<div class="row"><button id="loginButton">Prihlásiť sa</button><button id="showRegister" class="secondary">Vytvoriť testovací účet</button></div>
+</div>
+<div id="registerFields" class="hidden">
+<label for="displayName">Meno (nepovinné)</label><input id="displayName" maxlength="80">
+<label for="inviteCode">Pozývací kód</label><input id="inviteCode" type="password" autocomplete="off">
+<div class="row"><button id="registerButton">Vytvoriť účet</button><button id="showLogin" class="secondary">Späť na prihlásenie</button></div>
+</div>
+<div id="authStatus" class="status" role="status" style="margin-top:12px">Registrácia je uzavretá, kým vlastník testovacieho prostredia nenastaví pozývací kód.</div>
+</section>
+<section id="workspace" class="hidden">
+<div class="panel"><div class="row" style="align-items:center"><div><h2 id="welcome">Cloudový pracovný priestor</h2><div class="sub" id="accountEmail"></div></div><button id="logoutButton" class="secondary">Odhlásiť sa</button></div><div id="workspaceStatus" class="status">Účet je prihlásený.</div></div>
+<section class="panel">
+<h2>Moja cloudová knižnica produktov</h2>
+<label for="productName">Názov produktu</label><input id="productName" maxlength="120" placeholder="Napr. Prémiová káva">
+<label for="productDescription">Popis</label><textarea id="productDescription" maxlength="2000" placeholder="Voliteľný popis produktu"></textarea>
+<button id="createProduct">＋ Vytvoriť produkt</button>
+<div id="products"></div>
+</section>
+<section class="panel">
+<h2>Reklamné projekty</h2>
+<label for="projectName">Názov projektu</label><input id="projectName" maxlength="120" placeholder="Napr. Letná kampaň">
+<label for="projectProduct">Prepojiť s produktom</label><select id="projectProduct" style="width:100%;padding:12px;border-radius:10px;background:#0d141d;color:#fff;border:1px solid #39495d"><option value="">Bez prepojeného produktu</option></select>
+<label for="projectPrompt">Prompt</label><textarea id="projectPrompt" maxlength="8000" placeholder="Zadanie reklamného videa"></textarea>
+<button id="createProject">＋ Vytvoriť projekt</button>
+<div id="projects"></div>
+</section>
+</section>
+</main>
+<script>
+(() => {
+const API='https://product-studio-ai-commercial-preview.marianholka94.workers.dev';
+const $=id=>document.getElementById(id);
+let token=sessionStorage.getItem('psai_preview_token')||'', user=null, products=[];
+const status=(id,message)=>$(id).textContent=message;
+async function request(path,options={}){
+ const headers={...(options.headers||{})};
+ if(token)headers.Authorization='Bearer '+token;
+ const response=await fetch(API+path,{...options,headers});
+ if(response.status===401){token='';sessionStorage.removeItem('psai_preview_token');showAuth();}
+ const type=response.headers.get('Content-Type')||'';
+ if(type.includes('application/json')){
+  const data=await response.json();
+  if(!response.ok)throw new Error(data.error||'Požiadavka zlyhala.');
+  return data;
+ }
+ if(!response.ok)throw new Error('Požiadavka zlyhala ('+response.status+').');
+ return response;
+}
+function showAuth(){ $('authPanel').classList.remove('hidden');$('workspace').classList.add('hidden'); }
+function showWorkspace(){ $('authPanel').classList.add('hidden');$('workspace').classList.remove('hidden');$('accountEmail').textContent=user?.email||''; }
+async function loadMe(){const data=await request('/api/auth/me');user=data.user;showWorkspace();await loadProducts();await loadProjects();}
+async function login(){
+ const email=$('email').value.trim(),password=$('password').value;
+ if(!email||!password)throw new Error('Vyplň e-mail a heslo.');
+ const data=await request('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password})});
+ token=data.token;sessionStorage.setItem('psai_preview_token',token);user=data.user;await loadMe();
+}
+async function register(){
+ const email=$('email').value.trim(),password=$('password').value,inviteCode=$('inviteCode').value;
+ if(!email||!password||!inviteCode)throw new Error('Vyplň e-mail, heslo a pozývací kód.');
+ const data=await request('/api/auth/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password,inviteCode,displayName:$('displayName').value.trim()})});
+ token=data.token;sessionStorage.setItem('psai_preview_token',token);user=data.user;await loadMe();
+}
+async function loadProducts(){
+ const data=await request('/api/products');products=data.products||[];
+ $('projectProduct').innerHTML='<option value="">Bez prepojeného produktu</option>';
+ products.filter(p=>!p.archivedAt).forEach(p=>{const o=document.createElement('option');o.value=p.id;o.textContent=p.name;$('projectProduct').append(o);});
+ const root=$('products');root.replaceChildren();
+ if(!products.length){root.textContent='Zatiaľ nemáš uložené produkty.';return;}
+ for(const product of products){
+  const card=document.createElement('article');card.className='item';
+  const title=document.createElement('strong');title.textContent=product.name;
+  const desc=document.createElement('small');desc.textContent=product.description||'Bez popisu';
+  const upload=document.createElement('input');upload.type='file';upload.accept='image/jpeg,image/png,image/webp';upload.multiple=false;upload.setAttribute('aria-label','Nahrať fotografiu produktu');
+  const button=document.createElement('button');button.className='secondary';button.textContent='Nahrať fotografiu';
+  const thumbs=document.createElement('div');thumbs.className='thumbs';
+  button.addEventListener('click',async()=>{
+   const file=upload.files?.[0];if(!file){status('workspaceStatus','Najskôr vyber fotografiu.');return;}
+   button.disabled=true;
+   try{await request('/api/products/'+product.id+'/images',{method:'POST',headers:{'Content-Type':file.type},body:file});status('workspaceStatus','Fotografia bola bezpečne uložená do súkromného R2 úložiska.');await loadImages(product.id,thumbs);}
+   catch(e){status('workspaceStatus',e.message);}finally{button.disabled=false;}
+  });
+  card.append(title,desc,upload,button,thumbs);root.append(card);await loadImages(product.id,thumbs);
+ }
+}
+async function loadImages(productId,container){
+ container.replaceChildren();
+ try{
+  const data=await request('/api/products/'+productId+'/images');
+  for(const image of data.images||[]){
+   const response=await request(image.url);const blob=await response.blob();const img=document.createElement('img');img.className='thumb';img.alt='Uložená fotografia produktu';img.src=URL.createObjectURL(blob);container.append(img);
+  }
+ }catch(e){status('workspaceStatus',e.message);}
+}
+async function loadProjects(){
+ const data=await request('/api/projects');const root=$('projects');root.replaceChildren();
+ if(!(data.projects||[]).length){root.textContent='Zatiaľ nemáš uložené reklamné projekty.';return;}
+ data.projects.forEach(project=>{
+  const card=document.createElement('article');card.className='item';
+  const title=document.createElement('strong');title.textContent=project.name;
+  const detail=document.createElement('small');detail.textContent=(project.status||'draft')+' · '+(project.productId?'Prepojený produkt':'Bez produktu');
+  const prompt=document.createElement('p');prompt.className='sub';prompt.textContent=project.prompt||'Bez promptu';
+  card.append(title,detail,prompt);root.append(card);
+ });
+}
+$('loginButton').addEventListener('click',async()=>{const b=$('loginButton');b.disabled=true;try{await login();}catch(e){status('authStatus',e.message);}finally{b.disabled=false;}});
+$('registerButton').addEventListener('click',async()=>{const b=$('registerButton');b.disabled=true;try{await register();}catch(e){status('authStatus',e.message);}finally{b.disabled=false;}});
+$('showRegister').addEventListener('click',()=>{$('loginFields').classList.add('hidden');$('registerFields').classList.remove('hidden');});
+$('showLogin').addEventListener('click',()=>{$('registerFields').classList.add('hidden');$('loginFields').classList.remove('hidden');});
+$('logoutButton').addEventListener('click',async()=>{try{await request('/api/auth/logout',{method:'POST'});}catch{}token='';user=null;sessionStorage.removeItem('psai_preview_token');showAuth();status('authStatus','Bol si odhlásený.');});
+$('createProduct').addEventListener('click',async()=>{try{const name=$('productName').value.trim();if(!name)throw new Error('Zadaj názov produktu.');await request('/api/products',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,description:$('productDescription').value})});$('productName').value='';$('productDescription').value='';await loadProducts();status('workspaceStatus','Produkt bol uložený v cloudovej knižnici.');}catch(e){status('workspaceStatus',e.message);}});
+$('createProject').addEventListener('click',async()=>{try{const name=$('projectName').value.trim();if(!name)throw new Error('Zadaj názov projektu.');await request('/api/projects',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,productId:$('projectProduct').value||null,prompt:$('projectPrompt').value,settings:{}})});$('projectName').value='';$('projectPrompt').value='';await loadProjects();status('workspaceStatus','Projekt bol uložený do cloudu.');}catch(e){status('workspaceStatus',e.message);}});
+if(token){loadMe().catch(e=>{status('authStatus',e.message);showAuth();});}else showAuth();
+})();
+</script>
+</body></html>
