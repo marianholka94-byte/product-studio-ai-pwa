@@ -3,6 +3,9 @@ main = "worker-preview.js"
 compatibility_date = "2026-11-19"
 workers_dev = true
 
+[vars]
+PREVIEW_ADMIN_EMAIL = "18laky81@gmail.com"
+
 [[d1_databases]]
 binding = "DB"
 database_name = "product-studio-ai-db-preview"
