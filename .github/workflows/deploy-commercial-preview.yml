@@ -33,6 +33,8 @@ jobs:
         run: node --check worker-preview.js
       - name: Check cloud library JavaScript syntax
         run: node --check cloud-library.js
+      - name: Check two-account acceptance test syntax
+        run: node --check scripts/test-preview-tenant-isolation.mjs
       - name: Validate commercial cloud integration contract
         run: node scripts/validate-commercial-integration.mjs
       - name: Validate tenant isolation and private media access
