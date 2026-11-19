@@ -31,7 +31,8 @@ async function login(account) {
   const data = await response.json().catch(() => ({}));
   assert.equal(response.status, 200, "Test account " + account.label + " could not sign in (HTTP " + response.status + ").");
   assert.ok(data.token, "Test account " + account.label + " did not receive a session token.");
-  return data.token;
+  assert.ok(data.user?.id, "Test account " + account.label + " did not return an account identity.");
+  return { token: data.token, userId: data.user.id };
 }
 async function expectStatus(label, response, expected) {
   assert.equal(response.status, expected, label + " returned HTTP " + response.status + "; expected " + expected + ".");
@@ -40,8 +41,11 @@ async function expectStatus(label, response, expected) {
 let tokenA = "";
 let tokenB = "";
 try {
-  tokenA = await login(credentials[0]);
-  tokenB = await login(credentials[1]);
+  const accountA = await login(credentials[0]);
+  tokenA = accountA.token;
+  const accountB = await login(credentials[1]);
+  tokenB = accountB.token;
+  assert.notEqual(accountA.userId, accountB.userId, "The two test logins must resolve to different customer accounts.");
   const [productsAResponse, projectsAResponse, productsBResponse, projectsBResponse] = await Promise.all([
     request("/api/products", { token: tokenA }),
     request("/api/projects", { token: tokenA }),
