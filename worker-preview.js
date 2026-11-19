@@ -349,12 +349,17 @@ export default {
         const declaredLength = Number(request.headers.get("Content-Length") || 0);
         if (declaredLength > maxInputBytes) return json({ error: "Zdrojové video môže mať najviac 50 MB." }, 413, origin);
         const prior = await env.DB.prepare(
-          "SELECT id, content_type, byte_size, duration_seconds FROM generation_input_videos WHERE user_id = ? AND client_upload_id = ? AND generation_id IS NULL AND expires_at > ? LIMIT 1"
+          "SELECT id, content_type, byte_size, duration_seconds FROM generation_input_videos WHERE user_id = ? AND client_upload_id = ? AND expires_at > ? LIMIT 1"
         ).bind(user.id, uploadId, Math.floor(Date.now() / 1000)).first();
         if (prior) {
           if (prior.content_type !== contentType || Number(prior.duration_seconds) !== duration) return json({ error: "Identifikátor nahrávania už bol použitý pre iné video." }, 409, origin);
           return json({ videoId: prior.id, byteSize: Number(prior.byte_size), replayed: true }, 200, origin);
         }
+        const nowForUpload = Math.floor(Date.now() / 1000);
+        const uploadDayStart = Math.floor(nowForUpload / 86400) * 86400;
+        const uploadUsage = await env.DB.prepare("SELECT COUNT(*) AS count FROM generation_input_videos WHERE user_id = ? AND created_at >= ?")
+          .bind(user.id, uploadDayStart).first();
+        if (Number(uploadUsage?.count || 0) >= PREVIEW_DAILY_GENERATION_LIMIT) return json({ error: "Dosiahol si denný limit " + PREVIEW_DAILY_GENERATION_LIMIT + " zdrojových videí. Skús to znova zajtra." }, 429, origin);
         if (!request.body) return json({ error: "Súbor je prázdny." }, 400, origin);
         const id = crypto.randomUUID();
         const r2Key = `users/${user.id}/generation-inputs/${id}/source`;
