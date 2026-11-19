@@ -15,7 +15,7 @@
   const panel = $("section", { class: "panel", id: "commercialCloudPanel" });
   panel.style.cssText = "border:1px solid #b99b5e!important;background:#151a22!important;color:#f3f5f8!important";
   const heading = $("h2", {}, "☁️ Cloudová knižnica");
-  const intro = $("p", { class: "muted" }, "Samostatný komerčný účet, produkty, fotografie a reklamné projekty. Táto funkcia je zatiaľ v testovacom režime.");
+  const intro = $("p", { class: "muted" }, "Tvoj súkromný cloudový pracovný priestor pre produkty, fotografie a reklamné projekty.");
   const status = $("div", { class: "status", role: "status" }, "Nie si prihlásený do cloudovej knižnice.");
   const auth = $("div");
   const workspace = $("div");
