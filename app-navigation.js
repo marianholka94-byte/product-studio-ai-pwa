@@ -324,19 +324,47 @@
     tx.oncomplete=()=>resolve(request?.result);tx.onerror=()=>reject(tx.error||new Error('Operácia s projektom zlyhala.'));
     tx.onabort=()=>reject(tx.error||new Error('Operácia s projektom bola prerušená.'));
   }));
-  const getAllProjects=()=>projectRequest('readonly',store=>store.getAll());
+  // Chromium on some Android devices can reject File/Blob structured clones with
+  // "Failed to write blobs (InvalidBlob)". Persist image bytes as ArrayBuffers
+  // and reconstruct Blob objects only when records are read.
+  const serializeImageRecord=async image=>{
+    const copy={...image};
+    const source=image?.blob;
+    if(source instanceof Blob){
+      copy.blobBytes=await source.arrayBuffer();
+      copy.blobType=image.type||source.type||'application/octet-stream';
+      delete copy.blob;
+    } else if(image?.blobBytes instanceof ArrayBuffer || ArrayBuffer.isView(image?.blobBytes)){
+      copy.blobBytes=image.blobBytes instanceof ArrayBuffer?image.blobBytes:image.blobBytes.buffer.slice(image.blobBytes.byteOffset,image.blobBytes.byteOffset+image.blobBytes.byteLength);
+      copy.blobType=image.blobType||image.type||'application/octet-stream';
+      delete copy.blob;
+    } else if(source!=null) throw new Error('Fotografiu sa nepodarilo bezpečne pripraviť na lokálne uloženie.');
+    return copy;
+  };
+  const deserializeImageRecord=image=>{
+    if(!image||image.blob instanceof Blob)return image;
+    if(image.blobBytes instanceof ArrayBuffer || ArrayBuffer.isView(image.blobBytes)){
+      const bytes=image.blobBytes instanceof ArrayBuffer?image.blobBytes:image.blobBytes.buffer.slice(image.blobBytes.byteOffset,image.blobBytes.byteOffset+image.blobBytes.byteLength);
+      const {blobBytes,...rest}=image;
+      return {...rest,blob:new Blob([bytes],{type:image.blobType||image.type||'application/octet-stream'})};
+    }
+    return image;
+  };
+  const hydrateRecord=record=>record?{...record,images:Array.isArray(record.images)?record.images.map(deserializeImageRecord):record.images}:record;
+  const prepareRecord=async record=>({...record,images:Array.isArray(record.images)?await Promise.all(record.images.map(serializeImageRecord)):record.images});
+  const getAllProjects=async()=>((await projectRequest('readonly',store=>store.getAll()))||[]).map(hydrateRecord);
   const productRequest=(mode,operation)=>openProjectDb().then(db=>new Promise((resolve,reject)=>{
     const tx=db.transaction('products',mode);let request;
     try{request=operation(tx.objectStore('products'));}catch(error){reject(error);return;}
     tx.oncomplete=()=>resolve(request?.result);tx.onerror=()=>reject(tx.error||new Error('Operácia s produktom zlyhala.'));
     tx.onabort=()=>reject(tx.error||new Error('Operácia s produktom bola prerušená.'));
   }));
-  const getAllProducts=()=>productRequest('readonly',store=>store.getAll());
-  const getProduct=id=>productRequest('readonly',store=>store.get(id));
-  const putProduct=product=>productRequest('readwrite',store=>store.put(product));
+  const getAllProducts=async()=>((await productRequest('readonly',store=>store.getAll()))||[]).map(hydrateRecord);
+  const getProduct=async id=>hydrateRecord(await productRequest('readonly',store=>store.get(id)));
+  const putProduct=async product=>{const stored=await prepareRecord(product);return productRequest('readwrite',store=>store.put(stored));};
   const removeProduct=id=>productRequest('readwrite',store=>store.delete(id));
-  const getProject=id=>projectRequest('readonly',store=>store.get(id));
-  const putProject=project=>projectRequest('readwrite',store=>store.put(project));
+  const getProject=async id=>hydrateRecord(await projectRequest('readonly',store=>store.get(id)));
+  const putProject=async project=>{const stored=await prepareRecord(project);return projectRequest('readwrite',store=>store.put(stored));};
   const removeProject=id=>projectRequest('readwrite',store=>store.delete(id));
 
   const projectsList=document.createElement('div');projectsList.id='savedProjectsList';
