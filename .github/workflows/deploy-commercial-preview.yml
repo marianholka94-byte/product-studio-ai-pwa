@@ -28,6 +28,8 @@ jobs:
         run: node --check worker-preview.js
       - name: Check cloud library JavaScript syntax
         run: node --check cloud-library.js
+      - name: Validate commercial cloud integration contract
+        run: node scripts/validate-commercial-integration.mjs
       - name: Validate preview Worker bundle without deploying
         run: npx --yes wrangler@4 deploy --dry-run --config wrangler.preview.toml
         env:
