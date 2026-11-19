@@ -431,7 +431,7 @@ async function refreshGenerationHistory(){
     const download=document.createElement('button');download.type='button';download.textContent='STIAHNUŤ VIDEO';
     download.addEventListener('click',()=>downloadHistoryGeneration(item,download));
     actions.append(download);
-   }else if(['queued','processing'].includes(item.status)){
+   }else if(['queued','processing'].includes(item.status)&&item.errorCode!=='provider_submission_unknown'){
     const resume=document.createElement('button');resume.type='button';resume.className='secondary';resume.textContent='POKRAČOVAŤ V SLEDOVANÍ';
     resume.addEventListener('click',()=>resumeHistoryGeneration(item.id,resume));
     actions.append(resume);
