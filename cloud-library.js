@@ -32,6 +32,7 @@
   let user = null;
   let editingProductId = null;
   let editingProjectId = null;
+  let editingProjectRecord = null;
   const setStatus = (message, error = false) => {
     status.textContent = message;
     status.className = "status" + (error ? " err" : " ok");
@@ -272,6 +273,7 @@
       const archiveButton = $("button", { class: "secondary" }, "Archivovať");
       editButton.addEventListener("click", () => {
         editingProjectId = project.id;
+        editingProjectRecord = project;
         projectName.el.value = project.name;
         projectPrompt.el.value = project.prompt || "";
         projectProduct.value = project.productId || "";
@@ -331,8 +333,14 @@
     try {
       const isEditing = !!editingProjectId;
       const path = isEditing ? "/api/projects/" + encodeURIComponent(editingProjectId) : "/api/projects";
-      await api(path, { method: isEditing ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: projectName.el.value.trim(), prompt: projectPrompt.el.value, productId: projectProduct.value || null, settings: {} }) });
+      const payload = { name: projectName.el.value.trim(), prompt: projectPrompt.el.value, productId: projectProduct.value || null };
+      if (isEditing) {
+        payload.settings = editingProjectRecord?.settings || {};
+        payload.exportPreset = editingProjectRecord?.exportPreset ?? null;
+      }
+      await api(path, { method: isEditing ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
       editingProjectId = null;
+      editingProjectRecord = null;
       projectName.el.value = ""; projectPrompt.el.value = "";
       addProject.textContent = "＋ Vytvoriť projekt";
       setStatus(isEditing ? "Reklamný projekt bol upravený." : "Reklamný projekt bol uložený.");
