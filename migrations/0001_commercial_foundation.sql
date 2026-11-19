@@ -125,6 +125,7 @@ CREATE TABLE IF NOT EXISTS generations (
   updated_at INTEGER NOT NULL,
   completed_at INTEGER,
   UNIQUE(provider, provider_task_id),
+  UNIQUE(id, user_id),
   FOREIGN KEY (project_id, user_id) REFERENCES projects(id, user_id) ON DELETE RESTRICT
 );
 CREATE INDEX IF NOT EXISTS idx_generations_owner_created ON generations(user_id, created_at DESC);
