@@ -37,6 +37,10 @@ jobs:
         run: node --check scripts/test-preview-tenant-isolation.mjs
       - name: Validate commercial cloud integration contract
         run: node scripts/validate-commercial-integration.mjs
+      - name: Validate generation provider readiness and paid-request safety
+        run: |
+          node --check scripts/validate-generation-safety.mjs
+          node scripts/validate-generation-safety.mjs
       - name: Validate credit ledger foundation
         run: |
           node --check scripts/validate-credit-ledger.mjs
