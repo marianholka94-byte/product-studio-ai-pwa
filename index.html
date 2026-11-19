@@ -40,6 +40,18 @@ a{color:#174ea6;overflow-wrap:anywhere}
 .preview-item span{display:block;text-align:center;font-size:16px;margin-top:8px;color:#c5cedb}
 @media(min-width:600px){.preview-gallery{grid-template-columns:repeat(3,minmax(0,1fr))}}
 
+.account-dashboard{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:14px 0}
+.account-metric{min-width:0;padding:12px;border:1px solid #e4e5e7;border-radius:12px;background:#fafaf9}
+.account-metric-label{font-size:11px;color:#666;display:block;margin-bottom:6px}
+.account-metric-value{font-size:17px;font-weight:750;display:block;overflow-wrap:anywhere}
+.account-metric-note{font-size:11px;color:#777;line-height:1.35;margin-top:5px}
+.account-progress{height:7px;background:#e8e8e5;border-radius:99px;overflow:hidden;margin-top:9px}
+.account-progress-fill{height:100%;width:0;background:#343434;border-radius:99px;transition:width .25s ease}
+.account-account-line{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.account-pill{font-size:11px;font-weight:700;border-radius:99px;padding:5px 8px;background:#eee;color:#555;white-space:nowrap}
+.account-pill.ready{background:#e7f4e9;color:#236132}
+.account-footnote{font-size:12px;color:#666;line-height:1.45;margin:10px 0 0}
+@media(max-width:430px){.account-dashboard{gap:7px}.account-metric{padding:10px 8px}.account-metric-value{font-size:15px}.account-metric-label{font-size:10px}}
 .generation-history-list{display:grid;gap:10px;margin-top:12px}.generation-history-item{padding:12px;border:1px solid var(--border,#d8dce3);border-radius:10px}.generation-history-item p{margin:6px 0 0}
 .generation-progress{display:none;margin-top:14px;padding:14px;border:1px solid #303b49;border-radius:13px;background:#171d27;color:#f3f5f8;max-width:100%;overflow:hidden}
 .generation-progress .progress-heading{color:#f3f5f8}
@@ -65,10 +77,15 @@ a{color:#174ea6;overflow-wrap:anywhere}
 <header><div><h1>PRODUCT STUDIO AI</h1><div class="muted">Súkromné štúdio produktových reklám</div></div><span class="muted">V2 · AI video</span></header>
 
 <section class="panel">
-<h2>1. Zákaznícky účet a generátor</h2>
-<p class="note">Generovanie je prepojené s tvojím samostatným zákazníckym účtom v cloudovej knižnici. Spoločné prístupové heslo aplikácie sa už na tejto preview verzii nepoužíva.</p>
+<div class="account-account-line"><h2>1. Môj účet a prehľad</h2><span id="accountBadge" class="account-pill">NEPRIHLÁSENÝ</span></div>
+<p class="note">Tvoj osobný prehľad používania PRODUCT STUDIO AI.</p>
+<div class="account-dashboard">
+ <div class="account-metric"><span class="account-metric-label">ZÁKAZNÍCKY ÚČET</span><strong id="accountEmail" class="account-metric-value">Neprihlásený</strong><div id="accountStateNote" class="account-metric-note">Prihlás sa v Cloudovej knižnici.</div></div>
+ <div class="account-metric"><span class="account-metric-label">DNES VYUŽITÉ</span><strong id="dailyUsageValue" class="account-metric-value">— / 3</strong><div id="dailyUsageMeta" class="account-metric-note">Denný skúšobný limit</div><div class="account-progress"><div id="dailyUsageBar" class="account-progress-fill"></div></div></div>
+ <div class="account-metric"><span class="account-metric-label">KREDITOVÝ ÚČET</span><strong id="creditState" class="account-metric-value">Pripravujeme</strong><div class="account-metric-note">Kredity zatiaľ nie sú aktívne ani účtované.</div></div>
+</div>
 <div id="connectionStatus" class="status">Prihlás sa do svojho zákazníckeho účtu v paneli Cloudová knižnica.</div>
-<p id="generationUsage" class="note">Skúšobný limit: najviac 3 generovania denne na jeden účet.</p>
+<p id="generationUsage" class="account-footnote">Skúšobný limit: najviac 3 generovania denne na jeden účet.</p>
 </section>
 
 <section class="panel">
@@ -163,9 +180,28 @@ function updateReadyStatus(){
   else if(!hasAccount) setStatus('Najskôr sa prihlás do zákazníckeho účtu v paneli Cloudová knižnica.');
   else setStatus('Zákaznícky účet je prihlásený. Teraz vyber fotografiu produktu.');
 }
+function renderAccountOverview(account,usage=null,health=null){
+ const badge=$('accountBadge'),email=$('accountEmail'),state=$('accountStateNote');
+ if(!account){
+  badge.textContent='NEPRIHLÁSENÝ';badge.className='account-pill';
+  email.textContent='Neprihlásený';state.textContent='Prihlás sa v Cloudovej knižnici.';
+  $('dailyUsageValue').textContent='— / 3';$('dailyUsageMeta').textContent='Čaká sa na prihlásenie';$('dailyUsageBar').style.width='0%';
+  $('creditState').textContent='Pripravujeme';return;
+ }
+ badge.textContent='ÚČET AKTÍVNY';badge.className='account-pill ready';
+ email.textContent=account.email||'Prihlásený';state.textContent='Osobný zákaznícky účet';
+ if(usage){
+  const limit=Math.max(1,Number(usage.dailyLimit)||3),used=Math.max(0,Number(usage.usedToday)||0),remaining=Math.max(0,Number(usage.remainingToday)||0);
+  $('dailyUsageValue').textContent=used+' / '+limit;
+  $('dailyUsageMeta').textContent='Zostáva '+remaining+' generovaní dnes';
+  $('dailyUsageBar').style.width=Math.min(100,used/limit*100)+'%';
+ }
+ $('creditState').textContent=health?.creditSchema?.enabled?'Aktívny':'Pripravujeme';
+}
 async function refreshCommercialConnection(){
   const account=window.PSAICloudLibrary?.getCurrentUser();
   const status=$('connectionStatus'), usageLabel=$('generationUsage');
+  renderAccountOverview(account);
   if(!account){
     status.textContent='Nie si prihlásený. Prihlás sa v paneli Cloudová knižnica.';
     usageLabel.textContent='Skúšobný limit: najviac 3 generovania denne na jeden účet.';
@@ -178,11 +214,13 @@ async function refreshCommercialConnection(){
       window.PSAICloudLibrary.request('/api/generation/usage')
     ]);
     if(window.PSAICloudLibrary?.getCurrentUser()?.id!==account.id)return;
+    renderAccountOverview(account,usage,health);
     status.textContent=health.generation?.configured
       ? 'Účet '+account.email+' je pripojený. Generátor je pripravený.'
       : 'Účet '+account.email+' je pripojený. Čaká sa na samostatný API kľúč preview generátora.';
     usageLabel.textContent=`Dnešné skúšobné generovania: ${usage.usedToday} / ${usage.dailyLimit}. Zostáva: ${usage.remainingToday}.`;
   }catch(error){
+    if(window.PSAICloudLibrary?.getCurrentUser()?.id!==account.id)return;
     status.textContent='Účet '+account.email+' je prihlásený, ale stav generátora sa nepodarilo overiť.';
     usageLabel.textContent=error.message;
   }
