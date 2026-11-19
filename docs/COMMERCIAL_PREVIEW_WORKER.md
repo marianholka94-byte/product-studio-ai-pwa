@@ -24,6 +24,9 @@ All library routes require `Authorization: Bearer <session-token>`. The Worker d
 
 - `GET /api/products` and `GET /api/products/:id`: list or read the signed-in user's products.
 - `POST /api/products`: create a product from `{ "name": "...", "description": "..." }`.
+- `GET /api/products/:id/images`: list the signed-in user's private product image metadata.
+- `POST /api/products/:id/images`: upload one JPG, PNG or WebP image as the raw request body with its matching `Content-Type`; maximum 10 MB per image and five images per product. The first image becomes primary.
+- `GET /api/assets/:id`: stream an image only after checking that its D1 asset record belongs to the signed-in user.
 - `PATCH /api/products/:id`: update the name and/or description.
 - `DELETE /api/products/:id`: archive the product; it does not physically erase linked history.
 - `GET /api/projects` and `GET /api/projects/:id`: list or read the signed-in user's projects.
@@ -31,7 +34,7 @@ All library routes require `Authorization: Bearer <session-token>`. The Worker d
 - `PATCH /api/projects/:id`: update project metadata and settings.
 - `DELETE /api/projects/:id`: archive the project and preserve its history.
 
-Lists are capped at 100 records. Product names are capped at 120 characters, descriptions at 2,000, prompts at 8,000, and serialized settings at 12,000 characters. Binary image/video upload and cross-device sync from the current browser library are not yet implemented; these routes are the metadata foundation only.
+Lists are capped at 100 records. Product names are capped at 120 characters, descriptions at 2,000, prompts at 8,000, and serialized settings at 12,000 characters. Product image bytes can now be uploaded to private R2 and retrieved through owner-checked routes. The current browser library is still local-only: automatic migration of existing IndexedDB products/projects and cross-device sync in the PWA interface are not yet connected. Project image/video uploads are also not yet implemented.
 
 Passwords are stored as PBKDF2-SHA256 hashes (310,000 iterations); session bearer tokens are stored only as SHA-256 hashes. Login attempts are throttled per hashed IP/email pair: five failed attempts trigger a 15-minute block. Request JSON is size-limited while streaming, even when the client omits Content-Length. This is an initial preview authentication layer, not yet production-ready: email verification, abuse/rate limiting, password reset, account deletion, and a full privacy/security review remain required before public launch.
 
