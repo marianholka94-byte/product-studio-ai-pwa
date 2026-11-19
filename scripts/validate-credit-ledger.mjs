@@ -21,7 +21,7 @@ assert.match(worker, /creditSchema[\s\S]*?enabled: false/, "Credit ledger must b
 assert.match(worker, /credit_ledger[\s\S]*?trg_credit_ledger_no_update[\s\S]*?trg_credit_ledger_no_delete/, "Health endpoint must report ledger tables and immutability triggers.");
 assert.doesNotMatch(worker, /INSERT INTO credit_accounts|INSERT INTO credit_ledger|UPDATE credit_accounts|UPDATE generation_credit_reservations/, "Preview generation must not mutate the foundation tables before reservation logic is implemented.");
 assert.match(workflow, /node scripts\/validate-credit-ledger\.mjs/, "Preview deployment must run the credit ledger validator.");
-assert.match(workflow, /'creditSchema'/, "Deployment smoke test must verify credit schema readiness.");
-assert.match(workflow, /'appendOnly':true/, "Deployment smoke test must verify append-only ledger protection.");
+assert.match(workflow, /creditSchema.*accounts.*ledger.*reservations/, "Deployment smoke test must verify credit schema readiness.");
+assert.match(workflow, /appendOnly.*enabled/, "Deployment smoke test must verify append-only ledger protection and disabled accounting.");
 
 console.log("Credit ledger foundation validation passed; accounting remains disabled.");
