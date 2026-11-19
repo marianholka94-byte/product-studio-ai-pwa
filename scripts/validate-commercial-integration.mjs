@@ -39,4 +39,11 @@ assert.ok(worker.includes("s.revoked_at IS NULL AND s.expires_at > ? AND u.statu
 assert.ok(worker.includes("ALLOWED_ORIGINS.has(origin)"), "Worker must reject origins outside the allowlist");
 assert.ok(cloud.includes("sessionStorage.removeItem(TOKEN_KEY)"), "Logout and expired sessions must clear the cloud token");
 
+assert.ok(cloud.includes('"Použiť v štúdiu"'), "Cloud products must offer an explicit read-only Studio import action");
+assert.ok(cloud.includes('api("/api/products/" + encodeURIComponent(product.id) + "/images")'), "Studio import must load the product's private image manifest");
+assert.ok(cloud.includes('headers: { Authorization: "Bearer " + token }'), "Studio import must fetch private assets with the cloud session");
+assert.ok(cloud.includes("window.PSAIProjectBridge.restore({ product: product.name, images: files })"), "Studio import must use the existing project bridge");
+assert.ok(cloud.includes("Cloudový originál zostal nezmenený."), "Studio import must preserve the cloud source record");
+assert.ok(cloud.includes("if (!confirm("), "Studio import must confirm before replacing unsaved editor state");
+
 console.log("Commercial cloud integration contract checks passed.");
