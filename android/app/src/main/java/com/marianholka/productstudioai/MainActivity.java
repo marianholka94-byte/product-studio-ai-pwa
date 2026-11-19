@@ -102,7 +102,9 @@ public class MainActivity extends Activity {
                 }
             });
             setContentView(webView);
-            webView.loadUrl(BuildConfig.WEB_APP_URL);
+            if (savedInstanceState == null || webView.restoreState(savedInstanceState) == null) {
+                webView.loadUrl(BuildConfig.WEB_APP_URL);
+            }
         } catch (Throwable error) {
             TextView message = new TextView(this);
             message.setText("PRODUCT STUDIO AI sa nepodarilo spustiť.\n\n" + error.getClass().getSimpleName() + "\n\nSkontroluj aktualizáciu Android System WebView a skús aplikáciu znovu.");
@@ -112,6 +114,21 @@ public class MainActivity extends Activity {
             message.setPadding(32, 32, 32, 32);
             setContentView(message);
         }
+    }
+
+    @Override protected void onSaveInstanceState(Bundle outState) {
+        if (webView != null) webView.saveState(outState);
+        super.onSaveInstanceState(outState);
+    }
+
+    @Override protected void onResume() {
+        super.onResume();
+        if (webView != null) webView.onResume();
+    }
+
+    @Override protected void onPause() {
+        if (webView != null) webView.onPause();
+        super.onPause();
     }
 
     @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
