@@ -441,7 +441,7 @@ export default {
       if (url.pathname === "/api/generation/usage" && request.method === "GET") {
         const user = await currentUser(request, env);
         if (!user) return json({ error: "Prihlásenie vypršalo. Prihlás sa znova." }, 401, origin);
-        const dayStart = Math.floor(Date.now() / 86400) * 86400;
+        const dayStart = Math.floor(Date.now() / 86400000) * 86400;
         const row = await env.DB.prepare("SELECT COUNT(*) AS count FROM generations WHERE user_id = ? AND created_at >= ?")
           .bind(user.id, dayStart).first();
         const used = Number(row?.count || 0);
@@ -462,8 +462,8 @@ export default {
         if (!upstream.ok) return json({ error: task.error?.message || task.error || "Stav generovania sa nepodarilo načítať.", providerStatus: upstream.status }, 502, origin);
         const mapped = generationStatus(task.status);
         const now = Math.floor(Date.now() / 1000);
-        await env.DB.prepare("UPDATE generations SET status = ?, error_message = ?, completed_at = ?, updated_at = ? WHERE id = ? AND user_id = ?")
-          .bind(mapped, mapped === "failed" ? String(task.failure || task.error || "Generovanie zlyhalo.").slice(0,500) : null, ["succeeded","failed","cancelled"].includes(mapped) ? now : null, now, generation.id, user.id).run();
+        await env.DB.prepare("UPDATE generations SET status = ?, error_message = ?, completed_at = CASE WHEN ? = 1 THEN COALESCE(completed_at, ?) ELSE completed_at END, updated_at = ? WHERE id = ? AND user_id = ? AND status NOT IN ('succeeded','failed','cancelled')")
+          .bind(mapped, mapped === "failed" ? String(task.failure || task.error || "Generovanie zlyhalo.").slice(0,500) : null, ["succeeded","failed","cancelled"].includes(mapped) ? 1 : 0, now, now, generation.id, user.id).run();
         return json({ ...task, id: generation.id }, 200, origin);
       }
 
