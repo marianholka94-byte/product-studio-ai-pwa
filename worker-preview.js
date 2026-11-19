@@ -239,6 +239,35 @@ function matchesImageSignature(bytes, contentType) {
 }
 
 
+
+async function reserveGenerationCredits(env, userId, generationId, units, now) {
+  const reservationId = crypto.randomUUID();
+  const idempotencyKey = "generation:" + generationId + ":reserve";
+  const fingerprint = await sha256(JSON.stringify({ userId, generationId, units, action: "reserve" }));
+  await env.DB.prepare("INSERT INTO credit_accounts (user_id, available_units, reserved_units, version, created_at, updated_at) VALUES (?, 0, 0, 0, ?, ?) ON CONFLICT(user_id) DO NOTHING").bind(userId, now, now).run();
+  await env.DB.batch([
+    env.DB.prepare("UPDATE credit_accounts SET available_units = available_units - ?, reserved_units = reserved_units + ?, version = version + 1, updated_at = ? WHERE user_id = ? AND available_units >= ?").bind(units, units, now, userId, units),
+    env.DB.prepare("INSERT INTO generation_credit_reservations (id, user_id, generation_id, reserved_units, captured_units, state, reserve_idempotency_key, reserve_fingerprint, created_at, updated_at) SELECT ?, ?, ?, ?, 0, 'reserved', ?, ?, ?, ? WHERE changes() = 1").bind(reservationId, userId, generationId, units, idempotencyKey, fingerprint, now, now),
+    env.DB.prepare("INSERT INTO credit_ledger (id, user_id, entry_type, units, reference_type, reference_id, idempotency_key, payload_fingerprint, note, created_at) SELECT ?, ?, 'reserve', ?, 'generation', ?, ?, ?, 'Rezervácia kreditov pre generovanie', ? WHERE EXISTS (SELECT 1 FROM generation_credit_reservations WHERE user_id = ? AND generation_id = ? AND state = 'reserved')").bind(crypto.randomUUID(), userId, units, generationId, idempotencyKey, fingerprint, now, userId, generationId)
+  ]);
+  return env.DB.prepare("SELECT id, reserved_units, state FROM generation_credit_reservations WHERE user_id = ? AND generation_id = ? LIMIT 1").bind(userId, generationId).first();
+}
+async function settleGenerationCredits(env, userId, generationId, outcome, now) {
+  if (!["capture", "release"].includes(outcome)) throw new Error("Invalid credit settlement outcome.");
+  const reservation = await env.DB.prepare("SELECT id, reserved_units, state FROM generation_credit_reservations WHERE user_id = ? AND generation_id = ? LIMIT 1").bind(userId, generationId).first();
+  if (!reservation || reservation.state !== "reserved") return false;
+  const units = Number(reservation.reserved_units);
+  const settlementKey = "generation:" + generationId + ":" + outcome;
+  const fingerprint = await sha256(JSON.stringify({ userId, generationId, units, outcome }));
+  await env.DB.batch([
+    env.DB.prepare("UPDATE credit_accounts SET reserved_units = reserved_units - ?, available_units = available_units + ?, version = version + 1, updated_at = ? WHERE user_id = ? AND reserved_units >= ? AND EXISTS (SELECT 1 FROM generation_credit_reservations WHERE user_id = ? AND generation_id = ? AND state = 'reserved')").bind(units, outcome === "release" ? units : 0, now, userId, units, userId, generationId),
+    env.DB.prepare("UPDATE generation_credit_reservations SET state = ?, captured_units = ?, settlement_idempotency_key = ?, settled_at = ?, updated_at = ? WHERE user_id = ? AND generation_id = ? AND state = 'reserved' AND changes() = 1").bind(outcome === "capture" ? "captured" : "released", outcome === "capture" ? units : 0, settlementKey, now, now, userId, generationId),
+    env.DB.prepare("INSERT INTO credit_ledger (id, user_id, entry_type, units, reference_type, reference_id, idempotency_key, payload_fingerprint, note, created_at) SELECT ?, ?, ?, ?, 'generation', ?, ?, ?, ?, ? WHERE changes() = 1").bind(crypto.randomUUID(), userId, outcome, units, generationId, settlementKey, fingerprint, outcome === "capture" ? "Kredity za úspešné generovanie" : "Vrátenie kreditov po neúspešnom generovaní", now)
+  ]);
+  const settled = await env.DB.prepare("SELECT state FROM generation_credit_reservations WHERE user_id = ? AND generation_id = ? LIMIT 1").bind(userId, generationId).first();
+  return settled?.state === (outcome === "capture" ? "captured" : "released");
+}
+
 export default {
   async fetch(request, env) {
     const origin = request.headers.get("Origin");
@@ -274,7 +303,7 @@ export default {
           ledger: creditTableNames.includes("credit_ledger"),
           reservations: creditTableNames.includes("generation_credit_reservations"),
           appendOnly: creditTriggerNames.includes("trg_credit_ledger_no_update") && creditTriggerNames.includes("trg_credit_ledger_no_delete"),
-          enabled: false
+          enabled: true
         };
         const authSchema = {
           usersTable: userColumnNames.length > 0,
@@ -493,6 +522,13 @@ export default {
           }
           throw error;
         }
+        const reservation = await reserveGenerationCredits(env, user.id, generationId, estimatedCredits, now);
+        if (!reservation || reservation.state !== "reserved") {
+          await env.DB.prepare("UPDATE generations SET status = 'failed', error_code = 'insufficient_credits', error_message = 'Nedostatok kreditov na toto generovanie.', updated_at = ?, completed_at = ? WHERE id = ? AND user_id = ?")
+            .bind(now, now, generationId, user.id).run();
+          const balance = await env.DB.prepare("SELECT available_units FROM credit_accounts WHERE user_id = ?").bind(user.id).first();
+          return json({ error: "Nemáš dostatok kreditov na toto generovanie.", requiredCredits: estimatedCredits, availableCredits: Number(balance?.available_units || 0) }, 402, origin);
+        }
         const upstream = await fetch("https://api.dev.runwayml.com/v1/image_to_video", {
           method: "POST",
           headers: runwayHeaders(env),
@@ -512,12 +548,15 @@ export default {
           const failedAt = Math.floor(Date.now() / 1000);
           await env.DB.prepare("UPDATE generations SET status = 'failed', error_code = ?, error_message = ?, updated_at = ?, completed_at = ? WHERE id = ? AND user_id = ?")
             .bind("provider_rejected", String(message).slice(0, 500), failedAt, failedAt, generationId, user.id).run();
+          await settleGenerationCredits(env, user.id, generationId, "release", failedAt);
           return json({ error: String(message), providerStatus: upstream.status || 502, generationId }, 502, origin);
         }
         const providerTaskId = String(result.id);
         const status = generationStatus(result.status || "PENDING");
         await env.DB.prepare("UPDATE generations SET provider_task_id = ?, status = ?, updated_at = ? WHERE id = ? AND user_id = ?")
           .bind(providerTaskId, status, Math.floor(Date.now() / 1000), generationId, user.id).run();
+        if (status === "succeeded") await settleGenerationCredits(env, user.id, generationId, "capture", Math.floor(Date.now() / 1000));
+        else if (status === "failed" || status === "cancelled") await settleGenerationCredits(env, user.id, generationId, "release", Math.floor(Date.now() / 1000));
         return json({ id: generationId, status: result.status || "PENDING", estimatedCredits, dailyLimit: PREVIEW_DAILY_GENERATION_LIMIT, usedToday: Number(usage?.count || 0) + 1 }, 201, origin);
       }
 
@@ -574,6 +613,8 @@ export default {
         const now = Math.floor(Date.now() / 1000);
         await env.DB.prepare("UPDATE generations SET status = ?, error_message = ?, completed_at = CASE WHEN ? = 1 THEN COALESCE(completed_at, ?) ELSE completed_at END, updated_at = ? WHERE id = ? AND user_id = ? AND status NOT IN ('succeeded','failed','cancelled')")
           .bind(mapped, mapped === "failed" ? String(task.failure || task.error || "Generovanie zlyhalo.").slice(0,500) : null, ["succeeded","failed","cancelled"].includes(mapped) ? 1 : 0, now, now, generation.id, user.id).run();
+        if (mapped === "succeeded") await settleGenerationCredits(env, user.id, generation.id, "capture", now);
+        else if (mapped === "failed" || mapped === "cancelled") await settleGenerationCredits(env, user.id, generation.id, "release", now);
         return json({ ...task, id: generation.id }, 200, origin);
       }
 
@@ -599,6 +640,7 @@ export default {
         const completedAt = Math.floor(Date.now() / 1000);
         await env.DB.prepare("UPDATE generations SET status = 'succeeded', completed_at = COALESCE(completed_at, ?), updated_at = ? WHERE id = ? AND user_id = ?")
           .bind(completedAt, completedAt, generation.id, user.id).run();
+        await settleGenerationCredits(env, user.id, generation.id, "capture", completedAt);
         return new Response(videoResponse.body, {
           status: 200,
           headers: { ...corsHeaders(origin), "Content-Type": videoResponse.headers.get("Content-Type") || "video/mp4", "Content-Disposition": 'attachment; filename="product-studio-ai.mp4"', "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" }
