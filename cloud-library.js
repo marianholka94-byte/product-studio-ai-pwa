@@ -34,6 +34,9 @@
   let editingProductRecord = null;
   let editingProjectId = null;
   let editingProjectRecord = null;
+  let accountEpoch = 0;
+  let authAttempt = 0;
+  const previewObjectUrls = new Set();
   const setStatus = (message, error = false) => {
     status.textContent = message;
     status.className = "status" + (error ? " err" : " ok");
@@ -93,6 +96,9 @@
   const projectList = $("div");
   workspace.append(accountLine, logout, $("hr"), productName.wrap, productDescription.wrap, addProduct, productConflict, productList, $("hr"), projectName.wrap, $("label", {}, "Prepojiť s produktom"), projectProduct, projectPrompt.wrap, addProject, projectConflict, projectList);
   function resetAccountWorkspace() {
+    accountEpoch += 1;
+    for (const url of previewObjectUrls) URL.revokeObjectURL(url);
+    previewObjectUrls.clear();
     editingProductId = null;
     editingProductRecord = null;
     conflictLatestProduct = null;
@@ -133,11 +139,12 @@
   }
   async function api(path, options = {}) {
     const headers = { ...(options.headers || {}) };
-    if (token) headers.Authorization = "Bearer " + token;
+    const requestToken = token;
+    if (requestToken) headers.Authorization = "Bearer " + requestToken;
     const response = await fetch(API + path, { ...options, headers });
     const data = (response.headers.get("content-type") || "").includes("application/json") ? await response.json() : null;
     if (!response.ok) {
-      if (response.status === 401) { token = ""; user = null; sessionStorage.removeItem(TOKEN_KEY); resetAccountWorkspace(); renderAuth(); notifyCloudAccountChange(); }
+      if (response.status === 401 && token === requestToken) { token = ""; user = null; sessionStorage.removeItem(TOKEN_KEY); resetAccountWorkspace(); renderAuth(); notifyCloudAccountChange(); }
       const error = new Error(data?.error || "Požiadavka zlyhala (" + response.status + ").");
       if (data?.currentProject) error.currentProject = data.currentProject;
       if (data?.currentProduct) error.currentProduct = data.currentProduct;
@@ -153,7 +160,11 @@
   }
   function addText(parent, tag, text) { parent.append($(tag, {}, text || "")); }
   async function refresh() {
+    const refreshEpoch = accountEpoch;
+    const refreshUserId = user?.id;
+    if (!token || !refreshUserId) return;
     const [p, pr] = await Promise.all([api("/api/products"), api("/api/projects")]);
+    if (refreshEpoch !== accountEpoch || refreshUserId !== user?.id) return;
     products = p.products || [];
     productList.replaceChildren();
     projectProduct.replaceChildren($("option", { value: "" }, "Bez prepojeného produktu"));
@@ -253,12 +264,19 @@
       card.append(upload, uploadButton, thumbs, actions);
       productList.append(card);
       try {
+        if (refreshEpoch !== accountEpoch || refreshUserId !== user?.id) return;
         const images = await api("/api/products/" + encodeURIComponent(product.id) + "/images");
+        if (refreshEpoch !== accountEpoch || refreshUserId !== user?.id) return;
         for (const image of images.images || []) {
-          const response = await fetch(API + image.url, { headers: { Authorization: "Bearer " + token } });
+          if (refreshEpoch !== accountEpoch || refreshUserId !== user?.id) return;
+          const response = await fetch(API + image.url, { headers: { Authorization: "Bearer " + token }, cache: "no-store" });
+          if (refreshEpoch !== accountEpoch || refreshUserId !== user?.id) return;
           if (response.ok) {
             const img = $("img", { class: "cloud-thumb" });
-            img.src = URL.createObjectURL(await response.blob());
+            const objectUrl = URL.createObjectURL(await response.blob());
+            if (refreshEpoch !== accountEpoch || refreshUserId !== user?.id) { URL.revokeObjectURL(objectUrl); return; }
+            previewObjectUrls.add(objectUrl);
+            img.src = objectUrl;
             img.alt = "Fotografia produktu";
             thumbs.append(img);
           }
@@ -288,6 +306,7 @@
       }
       productList.append(archive);
     }
+    if (refreshEpoch !== accountEpoch || refreshUserId !== user?.id) return;
     projectList.replaceChildren();
     for (const project of (pr.projects || []).filter(x => !x.archivedAt)) {
       const card = $("div", { class: "cloud-item" });
@@ -366,8 +385,13 @@
     if (!projectList.childElementCount) addText(projectList, "p", "Zatiaľ nemáš uložené reklamné projekty.");
   }
   async function signIn(path, body) {
+    if (login.disabled || register.disabled) return;
+    const attempt = ++authAttempt;
+    login.disabled = true;
+    register.disabled = true;
     try {
       const data = await api(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      if (attempt !== authAttempt) return;
       resetAccountWorkspace();
       token = data.token;
       sessionStorage.setItem(TOKEN_KEY, token);
@@ -378,19 +402,24 @@
       accountLine.textContent = "Prihlásený účet: " + user.email;
       setStatus("Cloudový účet je prihlásený.");
       await refresh();
-    } catch (e) { setStatus(e.message, true); }
+    } catch (e) { if (attempt === authAttempt) setStatus(e.message, true); }
+    finally { if (attempt === authAttempt) { login.disabled = false; register.disabled = false; } }
   }
   login.addEventListener("click", () => signIn("/api/auth/login", { email: email.el.value.trim(), password: password.el.value }));
   register.addEventListener("click", () => signIn("/api/auth/register", { email: email.el.value.trim(), password: password.el.value, displayName: displayName.el.value, inviteCode: invite.el.value }));
   showRegister.addEventListener("click", () => { registerFields.hidden = false; authButtons.hidden = true; });
   showLogin.addEventListener("click", () => { registerFields.hidden = true; authButtons.hidden = false; });
   logout.addEventListener("click", async () => {
+    authAttempt += 1;
+    login.disabled = false;
+    register.disabled = false;
     try { await api("/api/auth/logout", { method: "POST" }); } catch {}
     token = ""; user = null; sessionStorage.removeItem(TOKEN_KEY); resetAccountWorkspace(); renderAuth(); notifyCloudAccountChange();
   });
   addProduct.addEventListener("click", async () => {
     if (addProduct.disabled) return;
     const accountId = user?.id;
+    const requestEpoch = accountEpoch;
     const isEditing = !!editingProductId;
     addProduct.disabled = true;
     try {
@@ -398,7 +427,9 @@
       const payload = { name: productName.el.value.trim(), description: productDescription.el.value };
       if (isEditing) payload.expectedUpdatedAt = editingProductRecord?.updatedAt;
       if (!isEditing) payload.idempotencyKey = await operationFor("product-create", { name: payload.name, description: payload.description });
+      if (requestEpoch !== accountEpoch || accountId !== user?.id) throw new Error("Cloudový účet sa počas ukladania zmenil. Prihlás sa späť do pôvodného účtu.");
       await api(path, { method: isEditing ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      if (requestEpoch !== accountEpoch || accountId !== user?.id) return;
       if (!isEditing) clearOperation("product-create", accountId);
       editingProductId = null;
       editingProductRecord = null;
@@ -409,6 +440,7 @@
       setStatus(isEditing ? "Produkt bol upravený." : "Produkt bol uložený v cloudovej knižnici.");
       await refresh();
     } catch (e) {
+      if (requestEpoch !== accountEpoch || accountId !== user?.id) return;
       if (e.currentProduct && editingProductId) {
         conflictLatestProduct = e.currentProduct;
         editingProductRecord = e.currentProduct;
@@ -436,6 +468,7 @@
   addProject.addEventListener("click", async () => {
     if (addProject.disabled) return;
     const accountId = user?.id;
+    const requestEpoch = accountEpoch;
     const isEditing = !!editingProjectId;
     addProject.disabled = true;
     try {
@@ -448,7 +481,9 @@
       } else {
         payload.idempotencyKey = await operationFor("project-create", payload);
       }
+      if (requestEpoch !== accountEpoch || accountId !== user?.id) throw new Error("Cloudový účet sa počas ukladania zmenil. Prihlás sa späť do pôvodného účtu.");
       await api(path, { method: isEditing ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      if (requestEpoch !== accountEpoch || accountId !== user?.id) return;
       if (!isEditing) clearOperation("project-create", accountId);
       editingProjectId = null;
       editingProjectRecord = null;
@@ -459,6 +494,7 @@
       setStatus(isEditing ? "Reklamný projekt bol upravený." : "Reklamný projekt bol uložený.");
       await refresh();
     } catch (e) {
+      if (requestEpoch !== accountEpoch || accountId !== user?.id) return;
       if (e.currentProject && editingProjectId) {
         conflictLatestProject = e.currentProject;
         copyOperationId = null;
