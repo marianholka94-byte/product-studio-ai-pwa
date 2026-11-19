@@ -1,4 +1,4 @@
-const CACHE = "product-studio-ai-v40-generation-history-20261119";
+const CACHE = "product-studio-ai-v41-generation-history-actions-20261119";
 const FILES = ["/", "/index.html", "/manifest.webmanifest", "/icon.svg", "/cloud-library.js?v=commercial-generator-account-20261119", "/app-navigation.js?v=commercial-generator-account-20261119"];
 self.addEventListener("install", event => event.waitUntil(
   caches.open(CACHE).then(cache => cache.addAll(FILES)).then(() => self.skipWaiting())
