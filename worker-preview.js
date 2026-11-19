@@ -614,8 +614,22 @@ export default {
           }, 503, origin);
         }
         if (!upstream.ok || !result.id) {
-          const message = result.error?.message || result.error || result.message || "BytePlus ModelArk požiadavku neprijal.";
+          const message = result.error?.message || result.error || result.message || "BytePlus ModelArk nevrátilo potvrdenie úlohy.";
           const failedAt = Math.floor(Date.now() / 1000);
+          // A 5xx or a malformed 2xx response cannot prove that the paid task
+          // was rejected. Preserve the idempotency lock instead of permitting retry.
+          const ambiguous = upstream.status >= 500 || upstream.ok;
+          if (ambiguous) {
+            await env.DB.prepare("UPDATE generations SET status = 'submission_unknown', error_code = ?, error_message = ?, updated_at = ? WHERE id = ? AND user_id = ? AND provider_task_id IS NULL")
+              .bind("provider_submission_unknown", String(message).slice(0, 500), failedAt, generationId, user.id).run();
+            return json({
+              error: "BytePlus nevrátilo jednoznačné potvrdenie. Úloha mohla byť prijatá; automatické opakovanie je zablokované, aby nevzniklo duplicitné platené generovanie.",
+              providerStatus: upstream.status || 502,
+              generationId,
+              status: "submission_unknown",
+              recoveryRequired: true
+            }, 502, origin);
+          }
           await env.DB.prepare("UPDATE generations SET status = 'failed', error_code = ?, error_message = ?, updated_at = ?, completed_at = ? WHERE id = ? AND user_id = ?")
             .bind("provider_rejected", String(message).slice(0, 500), failedAt, failedAt, generationId, user.id).run();
           await settleGenerationCredits(env, user.id, generationId, "release", failedAt);
