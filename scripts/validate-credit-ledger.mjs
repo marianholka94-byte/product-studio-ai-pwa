@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import assert from "node:assert/strict";
 
 const migration = readFileSync("migrations/0008_credit_ledger_foundation.sql", "utf8");
+const reconciliation = readFileSync("migrations/0009_reconcile_legacy_credit_ledger.sql", "utf8");
 const worker = readFileSync("worker-preview.js", "utf8");
 const workflow = readFileSync(".github/workflows/deploy-commercial-preview.yml", "utf8");
 
@@ -17,6 +18,11 @@ assert.match(migration, /trg_credit_ledger_no_update[\s\S]*?RAISE\(ABORT, 'credi
 assert.match(migration, /trg_credit_ledger_no_delete[\s\S]*?RAISE\(ABORT, 'credit_ledger_is_append_only'\)/, "Ledger rows must reject deletes.");
 assert.match(migration, /CHECK \(captured_units <= reserved_units\)/, "Captured credits cannot exceed reserved credits.");
 assert.match(migration, /state IN \('reserved','captured','released','review'\)/, "Reservation state must be constrained.");
+assert.match(reconciliation, /abs\(amount\)/, "Legacy signed ledger amounts must be preserved as positive credit units.");
+assert.match(reconciliation, /WHEN 'reservation' THEN 'reserve'/, "Legacy reservations must map to the new reserve entry type.");
+assert.match(reconciliation, /WHEN 'charge' THEN 'capture'/, "Legacy charges must map to the new capture entry type.");
+assert.match(reconciliation, /COALESCE\(idempotency_key, 'legacy:' \|\| id\)/, "Legacy rows without idempotency keys must receive stable keys.");
+assert.match(reconciliation, /DROP TABLE credit_ledger;[\s\S]*?ALTER TABLE credit_ledger_rebuilt RENAME TO credit_ledger/, "Migration must replace the incompatible legacy table.");
 assert.match(worker, /creditSchema[\s\S]*?enabled: true/, "Credit accounting must be enabled after reservation and settlement are wired.");
 assert.match(worker, /async function reserveGenerationCredits[\s\S]*?UPDATE credit_accounts[\s\S]*?available_units >= \?[\s\S]*?INSERT INTO generation_credit_reservations[\s\S]*?INSERT INTO credit_ledger/, "Generation credits must be atomically reserved and recorded before provider submission.");
 assert.match(worker, /async function settleGenerationCredits[\s\S]*?UPDATE credit_accounts[\s\S]*?UPDATE generation_credit_reservations[\s\S]*?INSERT INTO credit_ledger/, "Generation credit settlement must update balances, reservation state, and immutable ledger together.");
