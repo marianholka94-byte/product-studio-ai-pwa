@@ -40,6 +40,14 @@ assert.match(worker, /'byteplus_modelark'/);
 assert.match(worker, /task\.content\?\.video_url/);
 assert.match(worker, /task\.status !== "succeeded"/);
 
+// A lost provider response must be treated as ambiguous, never as permission to retry.
+assert.match(worker, /status = 'submission_unknown'/);
+assert.match(worker, /provider_submission_unknown/);
+assert.match(worker, /recoveryRequired: true/);
+assert.ok(worker.includes("BytePlus may") && worker.includes("already have accepted and billed the task"));
+assert.ok(worker.includes("recoveryRequired: uncertain"));
+assert.ok(worker.includes("if (!prior.provider_task_id)") && worker.includes("neposielam znova"));
+
 // Status and download use the ModelArk task endpoint.
 assert.match(worker, /BYTEPLUS_TASKS_URL \+ "\/" \+ encodeURIComponent\(generation\.provider_task_id\)/);
 assert.doesNotMatch(worker, /RUNWAY_API_KEY|api\.dev\.runwayml\.com|RUNWAY_MODEL_ALLOWLIST/);
