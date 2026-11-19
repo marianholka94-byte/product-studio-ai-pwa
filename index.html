@@ -147,6 +147,7 @@ a{color:#174ea6;overflow-wrap:anywhere}
 <section class="panel">
 <h2>5. História generovaní</h2>
 <div class="row"><span class="note">Posledných 20 generovaní uložených v tvojom účte.</span><button id="refreshHistory" type="button" class="secondary">Obnoviť históriu</button></div>
+<div id="historySummary" class="account-footnote">Počet dokončených a rozpracovaných videí sa zobrazí po načítaní histórie.</div>
 <div id="history" class="note">História sa načíta po prihlásení do zákazníckeho účtu.</div>
 </section>
 
@@ -277,6 +278,12 @@ async function refreshGenerationHistory(){
   const data=await window.PSAICloudLibrary.request('/api/generations?limit=20');
   if(window.PSAICloudLibrary?.getCurrentUser()?.id!==account.id)return;
   const items=Array.isArray(data.generations)?data.generations:[];
+  const completed=items.filter(item=>item.status==='succeeded').length;
+  const active=items.filter(item=>['queued','processing'].includes(item.status)).length;
+  const failed=items.filter(item=>['failed','cancelled'].includes(item.status)).length;
+  $('historySummary').textContent=items.length
+    ? `Spolu ${items.length} · Hotové ${completed} · Rozpracované ${active} · Neúspešné/zrušené ${failed}`
+    : 'Zatiaľ žiadne generovania · Po prvom videu sa tu zobrazí tvoja história.';
   panel.replaceChildren();
   if(!items.length){panel.textContent='Zatiaľ nemáš žiadne uložené generovania.';return;}
   const list=document.createElement('div');list.className='generation-history-list';
