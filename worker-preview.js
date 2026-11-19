@@ -89,6 +89,33 @@ async function createSession(env, userId) {
 function publicUser(row) {
   return { id: row.id, email: row.email, displayName: row.display_name || "", createdAt: row.created_at };
 }
+async function readBytes(request, maxBytes) {
+  const length = Number(request.headers.get("Content-Length") || 0);
+  if (length > maxBytes) throw new Error("Súbor je príliš veľký.");
+  if (!request.body) throw new Error("Súbor je prázdny.");
+  const reader = request.body.getReader();
+  const chunks = [];
+  let total = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > maxBytes) {
+        await reader.cancel();
+        throw new Error("Súbor je príliš veľký.");
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  if (!total) throw new Error("Súbor je prázdny.");
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
+  return bytes;
+}
 async function readJson(request) {
   const length = Number(request.headers.get("Content-Length") || 0);
   if (length > 12000) throw new Error("Požiadavka je príliš veľká.");
@@ -260,7 +287,7 @@ export default {
       }
 
       // Every library endpoint is scoped to the authenticated account. Client-supplied user IDs are ignored.
-      if (url.pathname.startsWith("/api/products") || url.pathname.startsWith("/api/projects")) {
+      if (url.pathname.startsWith("/api/products") || url.pathname.startsWith("/api/projects") || url.pathname.startsWith("/api/assets/")) {
         const user = await currentUser(request, env);
         if (!user) return json({ error: "Prihlásenie vypršalo. Prihlás sa znova." }, 401, origin);
         const now = Math.floor(Date.now() / 1000);
@@ -269,6 +296,48 @@ export default {
 
         if (productMatch) {
           const productId = productMatch[1];
+          if (productId && request.method === "GET" && url.pathname === `/api/products/${productId}/images`) {
+            const product = await ownedProduct(env, user.id, productId);
+            if (!product) return json({ error: "Produkt sa nenašiel." }, 404, origin);
+            const result = await env.DB.prepare(
+              `SELECT a.id, a.content_type, a.byte_size, a.width, a.height, pi.sort_order, pi.is_primary, a.created_at
+               FROM product_images pi JOIN assets a ON a.id = pi.asset_id
+               WHERE pi.product_id = ? AND pi.user_id = ? AND a.deleted_at IS NULL
+               ORDER BY pi.sort_order ASC LIMIT 5`
+            ).bind(productId, user.id).all();
+            return json({ images: (result.results || []).map(row => ({ id: row.id, contentType: row.content_type, byteSize: row.byte_size, width: row.width, height: row.height, sortOrder: row.sort_order, isPrimary: !!row.is_primary, createdAt: row.created_at, url: `/api/assets/${row.id}` })) }, 200, origin);
+          }
+          if (productId && request.method === "POST" && url.pathname === `/api/products/${productId}/images`) {
+            const product = await ownedProduct(env, user.id, productId);
+            if (!product || product.archived_at) return json({ error: "Aktívny produkt sa nenašiel." }, 404, origin);
+            const contentType = (request.headers.get("Content-Type") || "").split(";")[0].trim().toLowerCase();
+            const allowedTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
+            if (!allowedTypes.has(contentType)) return json({ error: "Podporované sú iba JPG, PNG a WebP fotografie." }, 415, origin);
+            const current = await env.DB.prepare(
+              "SELECT COUNT(*) AS count FROM product_images WHERE product_id = ? AND user_id = ?"
+            ).bind(productId, user.id).first();
+            if (Number(current?.count || 0) >= 5) return json({ error: "Produkt môže obsahovať najviac 5 fotografií." }, 409, origin);
+            const bytes = await readBytes(request, 10 * 1024 * 1024);
+            const assetId = crypto.randomUUID();
+            const r2Key = `users/${user.id}/products/${productId}/${assetId}`;
+            const checksum = await sha256(b64url(bytes));
+            await env.MEDIA.put(r2Key, bytes, { httpMetadata: { contentType } });
+            const isPrimary = Number(current?.count || 0) === 0 ? 1 : 0;
+            try {
+              await env.DB.batch([
+                env.DB.prepare(
+                  "INSERT INTO assets (id, user_id, product_id, kind, r2_key, content_type, byte_size, checksum_sha256, created_at) VALUES (?, ?, ?, 'product_image', ?, ?, ?, ?, ?)"
+                ).bind(assetId, user.id, productId, r2Key, contentType, bytes.byteLength, checksum, now),
+                env.DB.prepare(
+                  "INSERT INTO product_images (product_id, asset_id, user_id, sort_order, is_primary, created_at) VALUES (?, ?, ?, ?, ?, ?)"
+                ).bind(productId, assetId, user.id, Number(current?.count || 0), isPrimary, now)
+              ]);
+            } catch (error) {
+              await env.MEDIA.delete(r2Key);
+              throw error;
+            }
+            return json({ image: { id: assetId, contentType, byteSize: bytes.byteLength, sortOrder: Number(current?.count || 0), isPrimary: !!isPrimary, createdAt: now, url: `/api/assets/${assetId}` } }, 201, origin);
+          }
           if (request.method === "GET" && !productId) {
             const result = await env.DB.prepare(
               "SELECT id, name, description, created_at, updated_at, archived_at FROM products WHERE user_id = ? ORDER BY updated_at DESC LIMIT 100"
@@ -311,6 +380,19 @@ export default {
           }
         }
 
+        const assetMatch = /^\\/api\\/assets\\/([a-zA-Z0-9_-]{1,80})$/.exec(url.pathname);
+        if (assetMatch && request.method === "GET") {
+          const asset = await env.DB.prepare(
+            "SELECT id, r2_key, content_type FROM assets WHERE id = ? AND user_id = ? AND deleted_at IS NULL LIMIT 1"
+          ).bind(assetMatch[1], user.id).first();
+          if (!asset) return json({ error: "Súbor sa nenašiel." }, 404, origin);
+          const object = await env.MEDIA.get(asset.r2_key);
+          if (!object) return json({ error: "Súbor už nie je dostupný." }, 404, origin);
+          return new Response(object.body, {
+            status: 200,
+            headers: { ...corsHeaders(origin), "Content-Type": asset.content_type, "Content-Length": String(object.size), "X-Content-Type-Options": "nosniff", "Content-Disposition": "inline" }
+          });
+        }
         if (projectMatch) {
           const projectId = projectMatch[1];
           if (request.method === "GET" && !projectId) {
@@ -389,7 +471,7 @@ export default {
     } catch (error) {
       // Never return SQL details, password hashes or provider internals to clients.
       const message = String(error?.message || "");
-      if (message === "Požiadavka je príliš veľká." || message === "Požiadavka neobsahuje platné JSON dáta." || message === "Požiadavka musí obsahovať JSON objekt.") {
+      if (message === "Požiadavka je príliš veľká." || message === "Požiadavka neobsahuje platné JSON dáta." || message === "Požiadavka musí obsahovať JSON objekt." || message === "Súbor je príliš veľký." || message === "Súbor je prázdny.") {
         return json({ error: message }, 400, origin);
       }
       return json({ ok: false, error: "Požiadavku sa nepodarilo spracovať. Skús to znova." }, 500, origin);
