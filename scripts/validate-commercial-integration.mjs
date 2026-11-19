@@ -164,6 +164,8 @@ assert.ok(cloud.includes('payload.idempotencyKey = await operationFor("product-c
 assert.ok(cloud.includes('clearOperation("product-create", accountId)') && cloud.includes('clearOperation("project-create", accountId)'), "Successful manual create operations must clear their pending idempotency checkpoint.");
 assert.ok(cloud.includes("if (addProduct.disabled) return") && cloud.includes("if (addProject.disabled) return"), "Manual create controls must prevent overlapping submissions.");
 assert.ok(worker.includes("WHERE id = ? AND user_id = ? AND updated_at = ?") && worker.includes("currentProduct: publicProduct(current)"), "Product edits must use an atomic updated_at precondition and return the current owned product on conflict.");
+const tenantTest = readFileSync("scripts/test-preview-tenant-isolation.mjs", "utf8");
+assert.ok(tenantTest.includes("Stale cloud product edit") && tenantTest.includes("unchangedProduct.product.updatedAt"), "The live two-account acceptance test must verify stale product edits return 409 without mutating the product.");
 assert.ok(cloud.includes("if (data?.currentProduct) error.currentProduct = data.currentProduct") && cloud.includes("Načítať najnovšiu verziu produktu"), "Cloud product editor must expose latest-version recovery after a conflict.");
 assert.ok(cloud.includes("payload.expectedUpdatedAt = editingProductRecord?.updatedAt") && cloud.includes("if (e.currentProduct && editingProductId)"), "Cloud product edits must submit and handle their baseline version.");
 assert.ok((cloud.match(/resetAccountWorkspace\(\)/g) || []).length >= 5, "Login, logout, expired sessions, and restored-session failures must reset stale account UI state.");
