@@ -225,14 +225,23 @@
       const uploadButton = $("button", {}, "Nahrať fotografiu");
       const thumbs = $("div");
       uploadButton.addEventListener("click", async () => {
+        if (uploadButton.disabled) return;
         const file = upload.files?.[0];
         if (!file) return setStatus("Najskôr vyber fotografiu.", true);
         if (!["image/jpeg", "image/png", "image/webp"].includes(file.type) || file.size > 10 * 1024 * 1024) return setStatus("Vyber JPG, PNG alebo WebP do 10 MB.", true);
+        const accountId = user?.id;
+        const requestEpoch = accountEpoch;
+        uploadButton.disabled = true;
         try {
           await api("/api/products/" + encodeURIComponent(product.id) + "/images", { method: "POST", headers: { "Content-Type": file.type }, body: file });
+          if (requestEpoch !== accountEpoch || accountId !== user?.id) return;
           setStatus("Fotografia bola bezpečne uložená.");
           await refresh();
-        } catch (e) { setStatus(e.message, true); }
+        } catch (e) {
+          if (requestEpoch === accountEpoch && accountId === user?.id) setStatus(e.message, true);
+        } finally {
+          if (requestEpoch === accountEpoch && accountId === user?.id) uploadButton.disabled = false;
+        }
       });
       const actions = $("div");
       const useInStudio = $("button", { class: "secondary" }, "Použiť v štúdiu");
@@ -242,18 +251,24 @@
           return;
         }
         if (!confirm("Načítať produkt „" + product.name + "“ do štúdia? Aktuálne neuložené zmeny v editore sa prepíšu.")) return;
+        const accountId = user?.id;
+        const requestEpoch = accountEpoch;
+        const requestToken = token;
+        if (!accountId || !requestToken) return setStatus("Cloudové prihlásenie vypršalo. Prihlás sa znova.", true);
         useInStudio.disabled = true;
         try {
           const result = await api("/api/products/" + encodeURIComponent(product.id) + "/images");
+          if (requestEpoch !== accountEpoch || accountId !== user?.id || requestToken !== token) return;
           const imageRecords = result.images || [];
           if (!imageRecords.length) throw new Error("Tento cloudový produkt nemá žiadne aktívne fotografie.");
           const files = [];
           for (let index = 0; index < imageRecords.length; index++) {
             const imageRecord = imageRecords[index];
             const response = await fetch(API + imageRecord.url, {
-              headers: { Authorization: "Bearer " + token },
+              headers: { Authorization: "Bearer " + requestToken },
               cache: "no-store"
             });
+            if (requestEpoch !== accountEpoch || accountId !== user?.id || requestToken !== token) return;
             if (response.status === 401) {
               token = "";
               sessionStorage.removeItem(TOKEN_KEY);
@@ -262,6 +277,7 @@
             }
             if (!response.ok) throw new Error("Fotografiu " + (index + 1) + " sa nepodarilo bezpečne načítať.");
             const blob = await response.blob();
+            if (requestEpoch !== accountEpoch || accountId !== user?.id || requestToken !== token) return;
             const type = imageRecord.contentType || blob.type || "image/jpeg";
             if (!["image/jpeg", "image/png", "image/webp"].includes(type)) throw new Error("Cloudová knižnica vrátila nepodporovaný formát fotografie.");
             files.push({
@@ -270,14 +286,16 @@
               blob
             });
           }
+          if (requestEpoch !== accountEpoch || accountId !== user?.id || requestToken !== token) return;
           await window.PSAIProjectBridge.restore({ product: product.name, images: files });
+          if (requestEpoch !== accountEpoch || accountId !== user?.id || requestToken !== token) return;
           window.PSAIProjectBridge.setPrompt("");
           document.querySelector('#appBottomNav [data-screen="screenStudio"]')?.click();
           setStatus("Produkt „" + product.name + "“ a " + files.length + " fotografií boli načítané do štúdia. Cloudový originál zostal nezmenený.");
         } catch (error) {
-          setStatus(error.message || "Produkt sa nepodarilo načítať do štúdia.", true);
+          if (requestEpoch === accountEpoch && accountId === user?.id) setStatus(error.message || "Produkt sa nepodarilo načítať do štúdia.", true);
         } finally {
-          useInStudio.disabled = false;
+          if (requestEpoch === accountEpoch && accountId === user?.id) useInStudio.disabled = false;
         }
       });
       const editButton = $("button", { class: "secondary" }, "Upraviť");
