@@ -80,12 +80,12 @@ a{color:#174ea6;overflow-wrap:anywhere}
 <div class="account-account-line"><h2>1. Môj účet a prehľad</h2><span id="accountBadge" class="account-pill">NEPRIHLÁSENÝ</span></div>
 <p class="note">Tvoj osobný prehľad používania PRODUCT STUDIO AI.</p>
 <div class="account-dashboard">
- <div class="account-metric"><span class="account-metric-label">ZÁKAZNÍCKY ÚČET</span><strong id="accountEmail" class="account-metric-value">Neprihlásený</strong><div id="accountStateNote" class="account-metric-note">Prihlás sa v Cloudovej knižnici.</div></div>
- <div class="account-metric"><span class="account-metric-label">DNES VYUŽITÉ</span><strong id="dailyUsageValue" class="account-metric-value">— / 3</strong><div id="dailyUsageMeta" class="account-metric-note">Denný skúšobný limit</div><div class="account-progress"><div id="dailyUsageBar" class="account-progress-fill"></div></div></div>
- <div class="account-metric"><span class="account-metric-label">KREDITOVÝ ÚČET</span><strong id="creditState" class="account-metric-value">Pripravujeme</strong><div class="account-metric-note">Kredity zatiaľ nie sú aktívne ani účtované.</div></div>
+ <div class="account-metric"><span class="account-metric-label">CLOUDOVÝ ÚČET</span><strong id="accountEmail" class="account-metric-value">Neprihlásený</strong><div id="accountStateNote" class="account-metric-note">Prihlás sa v Cloudovej knižnici.</div></div>
+ <div class="account-metric"><span class="account-metric-label">DNES VYUŽITÉ</span><strong id="dailyUsageValue" class="account-metric-value">— / 3</strong><div id="dailyUsageMeta" class="account-metric-note">Denný limit preview</div><div class="account-progress"><div id="dailyUsageBar" class="account-progress-fill"></div></div></div>
+ <div class="account-metric"><span class="account-metric-label">API KREDITY</span><strong id="creditState" class="account-metric-value">Pripravujeme</strong><div class="account-metric-note">Kreditový systém je odložený; žiadne kredity sa neúčtujú.</div></div>
 </div>
-<div id="connectionStatus" class="status">Prihlás sa do svojho zákazníckeho účtu v paneli Cloudová knižnica.</div>
-<p id="generationUsage" class="account-footnote">Skúšobný limit: najviac 3 generovania denne na jeden účet.</p>
+<div id="connectionStatus" class="status">Prihlás sa do svojho cloudového účtu v paneli Cloudová knižnica.</div>
+<p id="generationUsage" class="account-footnote">Bezpečnostný limit preview: najviac 3 generovania denne na účet.</p>
 </section>
 
 <section class="panel">
@@ -148,7 +148,7 @@ a{color:#174ea6;overflow-wrap:anywhere}
 <h2>5. História generovaní</h2>
 <div class="row"><span class="note">Posledných 20 generovaní uložených v tvojom účte.</span><button id="refreshHistory" type="button" class="secondary">Obnoviť históriu</button></div>
 <div id="historySummary" class="account-footnote">Počet dokončených a rozpracovaných videí sa zobrazí po načítaní histórie.</div>
-<div id="history" class="note">História sa načíta po prihlásení do zákazníckeho účtu.</div>
+<div id="history" class="note">História sa načíta po prihlásení do cloudového účtu.</div>
 </section>
 
 <script>
@@ -176,10 +176,10 @@ function completeGenerationProgress(title,detail){stopGenerationProgress();setGe
 function updateReadyStatus(){
   const hasAccount=!!window.PSAICloudLibrary?.getCurrentUser();
   const hasPhoto=selectedFiles.length>0;
-  if(hasAccount && hasPhoto) setStatus(`Pripravené: zákaznícky účet je prihlásený a vybraných je ${selectedFiles.length} fotografií produktu.`);
-  else if(!hasAccount && !hasPhoto) setStatus('Najskôr sa prihlás do zákazníckeho účtu a vyber fotografiu produktu.');
-  else if(!hasAccount) setStatus('Najskôr sa prihlás do zákazníckeho účtu v paneli Cloudová knižnica.');
-  else setStatus('Zákaznícky účet je prihlásený. Teraz vyber fotografiu produktu.');
+  if(hasAccount && hasPhoto) setStatus(`Pripravené: cloudový účet je prihlásený a vybraných je ${selectedFiles.length} fotografií produktu.`);
+  else if(!hasAccount && !hasPhoto) setStatus('Najskôr sa prihlás do cloudového účtu a vyber fotografiu produktu.');
+  else if(!hasAccount) setStatus('Najskôr sa prihlás do cloudového účtu v paneli Cloudová knižnica.');
+  else setStatus('Cloudový účet je prihlásený. Teraz vyber fotografiu produktu.');
 }
 function renderAccountOverview(account,usage=null,health=null){
  const badge=$('accountBadge'),email=$('accountEmail'),state=$('accountStateNote');
@@ -190,7 +190,7 @@ function renderAccountOverview(account,usage=null,health=null){
   $('creditState').textContent='Pripravujeme';return;
  }
  badge.textContent='ÚČET AKTÍVNY';badge.className='account-pill ready';
- email.textContent=account.email||'Prihlásený';state.textContent='Osobný zákaznícky účet';
+ email.textContent=account.email||'Prihlásený';state.textContent='Osobný pracovný účet';
  if(usage){
   const limit=Math.max(1,Number(usage.dailyLimit)||3),used=Math.max(0,Number(usage.usedToday)||0),remaining=Math.max(0,Number(usage.remainingToday)||0);
   $('dailyUsageValue').textContent=used+' / '+limit;
@@ -205,7 +205,7 @@ async function refreshCommercialConnection(){
   renderAccountOverview(account);
   if(!account){
     status.textContent='Nie si prihlásený. Prihlás sa v paneli Cloudová knižnica.';
-    usageLabel.textContent='Skúšobný limit: najviac 3 generovania denne na jeden účet.';
+    usageLabel.textContent='Bezpečnostný limit preview: najviac 3 generovania denne na účet.';
     return;
   }
   status.textContent='Overujem komerčný generátor…';
@@ -272,7 +272,7 @@ async function refreshHistoryGenerationStatus(id,button){
 async function refreshGenerationHistory(){
  const account=window.PSAICloudLibrary?.getCurrentUser();
  const panel=$('history');
- if(!account){panel.textContent='Prihlás sa do zákazníckeho účtu, aby sa zobrazila tvoja história generovaní.';return;}
+ if(!account){panel.textContent='Prihlás sa do cloudového účtu, aby sa zobrazila tvoja história generovaní.';return;}
  panel.textContent='Načítavam históriu generovaní…';
  try{
   const data=await window.PSAICloudLibrary.request('/api/generations?limit=20');
@@ -429,7 +429,7 @@ async function api(path,body){
 }
 async function generationRequestCheckpoint(payload){
  const account=window.PSAICloudLibrary?.getCurrentUser();
- if(!account)throw new Error('Najskôr sa prihlás do zákazníckeho účtu.');
+ if(!account)throw new Error('Najskôr sa prihlás do cloudového účtu.');
  const digest=new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(payload))));
  if(window.PSAICloudLibrary?.getCurrentUser()?.id!==account.id)throw new Error('Zákaznícky účet sa počas prípravy zmenil.');
  const fingerprint=Array.from(digest,byte=>byte.toString(16).padStart(2,'0')).join('');
