@@ -393,7 +393,21 @@ async function refreshGenerationHistory(){
  try{
   const data=await window.PSAICloudLibrary.request('/api/generations?limit=20');
   if(window.PSAICloudLibrary?.getCurrentUser()?.id!==account.id)return;
-  const items=Array.isArray(data.generations)?data.generations:[];
+  let items=Array.isArray(data.generations)?data.generations:[];
+  // Reconcile already-running provider tasks whenever history is opened/refreshed.
+  // This is status-only: it never creates or retries a paid generation.
+  const activeItems=items.filter(item=>['queued','processing'].includes(item.status));
+  if(activeItems.length){
+   await Promise.all(activeItems.map(item=>
+    window.PSAICloudLibrary.request('/api/status/'+encodeURIComponent(item.id)).catch(()=>null)
+   ));
+   if(window.PSAICloudLibrary?.getCurrentUser()?.id!==account.id)return;
+   try{
+    const refreshed=await window.PSAICloudLibrary.request('/api/generations?limit=20');
+    if(window.PSAICloudLibrary?.getCurrentUser()?.id!==account.id)return;
+    items=Array.isArray(refreshed.generations)?refreshed.generations:items;
+   }catch{}
+  }
   const completed=items.filter(item=>item.status==='succeeded').length;
   const active=items.filter(item=>['queued','processing'].includes(item.status)).length;
   const failed=items.filter(item=>['failed','cancelled'].includes(item.status)).length;

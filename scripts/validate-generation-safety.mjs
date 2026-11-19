@@ -68,6 +68,9 @@ assert.ok(html.includes("BytePlus účtuje Seedance podľa skutočnej spotreby t
 assert.ok(html.includes("submission_unknown:'Overenie odoslania'"));
 assert.ok(html.includes("Neposielaj požiadavku znova"));
 assert.ok(html.includes("Na overenie"));
+const historyRefresh = html.slice(html.indexOf("async function refreshGenerationHistory()"), html.indexOf("$('refreshHistory').addEventListener"));
+assert.ok(historyRefresh.includes("activeItems.map") && historyRefresh.includes("/api/status/"), "Opening generation history must reconcile existing active tasks.");
+assert.ok(!historyRefresh.includes("/api/generate"), "Automatic history reconciliation must never submit a new paid task.");
 assert.match(html, /platené generovanie zostáva vypnuté/i);
 assert.doesNotMatch(html, /Runway Dev|0\.15 USD/);
 
