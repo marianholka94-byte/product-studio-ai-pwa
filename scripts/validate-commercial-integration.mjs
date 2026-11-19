@@ -43,9 +43,9 @@ assert.ok(worker.includes("s.revoked_at IS NULL AND s.expires_at > ? AND u.statu
 assert.ok(worker.includes("ALLOWED_ORIGINS.has(origin)"), "Worker must reject origins outside the allowlist");
 assert.ok(cloud.includes("sessionStorage.removeItem(TOKEN_KEY)"), "Logout and expired sessions must clear the cloud token");
 assert.ok(cloud.includes('await api("/api/auth/logout", { method: "POST" })'), "Cloud logout must revoke the server-side session before clearing the local token.");
-assert.ok(cloud.includes('if (response.status === 401) { token = ""; user = null; sessionStorage.removeItem(TOKEN_KEY); renderAuth(); notifyCloudAccountChange(); }'), "Expired or revoked API sessions must clear the token, clear the account identity, refresh local project status, and return the cloud UI to signed-out state.");
+assert.ok(cloud.includes('if (response.status === 401) { token = ""; user = null; sessionStorage.removeItem(TOKEN_KEY); resetAccountWorkspace(); renderAuth(); notifyCloudAccountChange(); }'), "Expired or revoked API sessions must clear the token, account identity, and stale editor state.");
 assert.ok(cloud.includes('api("/api/auth/me").then(data =>'), "A restored tab session must be revalidated with the server before showing private cloud data.");
-assert.ok(cloud.includes('catch(() => { token = ""; user = null; sessionStorage.removeItem(TOKEN_KEY); renderAuth(); notifyCloudAccountChange(); })'), "An invalid restored session must fail closed, clear local credentials and account identity, and refresh account-scoped project labels.");
+assert.ok(cloud.includes('catch(() => { token = ""; user = null; sessionStorage.removeItem(TOKEN_KEY); resetAccountWorkspace(); renderAuth(); notifyCloudAccountChange(); })'), "An invalid restored session must fail closed and clear stale account-specific editor state.");
 
 assert.ok(cloud.includes('"Použiť v štúdiu"'), "Cloud products must offer an explicit read-only Studio import action");
 assert.ok(cloud.includes('api("/api/products/" + encodeURIComponent(product.id) + "/images")'), "Studio import must load the product's private image manifest");
