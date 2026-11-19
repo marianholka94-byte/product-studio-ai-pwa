@@ -31,6 +31,7 @@
   let products = [];
   let user = null;
   let editingProductId = null;
+  let editingProductRecord = null;
   let editingProjectId = null;
   let editingProjectRecord = null;
   const setStatus = (message, error = false) => {
@@ -65,6 +66,14 @@
   const productName = field("Názov produktu", "text", "Napr. Prémiová káva", 120);
   const productDescription = field("Popis produktu", "textarea", "Popis produktu", 2000);
   const addProduct = $("button", {}, "＋ Vytvoriť produkt");
+  const productConflict = $("div", { class: "cloud-item" });
+  productConflict.hidden = true;
+  productConflict.style.borderColor = "#c58b42";
+  const productConflictText = $("p", {}, "");
+  const reloadLatestProduct = $("button", { class: "secondary" }, "Načítať najnovšiu verziu produktu");
+  const retryProductSave = $("button", {}, "Ponechať moje zmeny a uložiť znova");
+  productConflict.append(productConflictText, reloadLatestProduct, retryProductSave);
+  let conflictLatestProduct = null;
   const productList = $("div");
   const projectName = field("Názov reklamného projektu", "text", "Napr. Letná kampaň", 120);
   const projectPrompt = field("Prompt", "textarea", "Zadanie reklamného videa", 8000);
@@ -82,9 +91,12 @@
   let copyOperationId = null;
   let pendingCopyPayload = null;
   const projectList = $("div");
-  workspace.append(accountLine, logout, $("hr"), productName.wrap, productDescription.wrap, addProduct, productList, $("hr"), projectName.wrap, $("label", {}, "Prepojiť s produktom"), projectProduct, projectPrompt.wrap, addProject, projectConflict, projectList);
+  workspace.append(accountLine, logout, $("hr"), productName.wrap, productDescription.wrap, addProduct, productConflict, productList, $("hr"), projectName.wrap, $("label", {}, "Prepojiť s produktom"), projectProduct, projectPrompt.wrap, addProject, projectConflict, projectList);
   function resetAccountWorkspace() {
     editingProductId = null;
+    editingProductRecord = null;
+    conflictLatestProduct = null;
+    productConflict.hidden = true;
     editingProjectId = null;
     editingProjectRecord = null;
     conflictLatestProject = null;
@@ -128,6 +140,7 @@
       if (response.status === 401) { token = ""; user = null; sessionStorage.removeItem(TOKEN_KEY); resetAccountWorkspace(); renderAuth(); notifyCloudAccountChange(); }
       const error = new Error(data?.error || "Požiadavka zlyhala (" + response.status + ").");
       if (data?.currentProject) error.currentProject = data.currentProject;
+      if (data?.currentProduct) error.currentProduct = data.currentProduct;
       error.status = response.status;
       throw error;
     }
@@ -218,6 +231,9 @@
       const archiveButton = $("button", { class: "secondary" }, "Archivovať");
       editButton.addEventListener("click", () => {
         editingProductId = product.id;
+        editingProductRecord = product;
+        conflictLatestProduct = null;
+        productConflict.hidden = true;
         productName.el.value = product.name;
         productDescription.el.value = product.description || "";
         addProduct.textContent = "Uložiť zmeny produktu";
@@ -228,7 +244,7 @@
         if (!confirm("Naozaj archivovať produkt „" + product.name + "“?")) return;
         try {
           await api("/api/products/" + encodeURIComponent(product.id), { method: "DELETE" });
-          if (editingProductId === product.id) { editingProductId = null; addProduct.textContent = "＋ Vytvoriť produkt"; }
+          if (editingProductId === product.id) { editingProductId = null; editingProductRecord = null; addProduct.textContent = "＋ Vytvoriť produkt"; productConflict.hidden = true; }
           setStatus("Produkt bol archivovaný.");
           await refresh();
         } catch (e) { setStatus(e.message, true); }
@@ -380,16 +396,42 @@
     try {
       const path = isEditing ? "/api/products/" + encodeURIComponent(editingProductId) : "/api/products";
       const payload = { name: productName.el.value.trim(), description: productDescription.el.value };
+      if (isEditing) payload.expectedUpdatedAt = editingProductRecord?.updatedAt;
       if (!isEditing) payload.idempotencyKey = await operationFor("product-create", { name: payload.name, description: payload.description });
       await api(path, { method: isEditing ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
       if (!isEditing) clearOperation("product-create", accountId);
       editingProductId = null;
+      editingProductRecord = null;
+      conflictLatestProduct = null;
+      productConflict.hidden = true;
       productName.el.value = ""; productDescription.el.value = "";
       addProduct.textContent = "＋ Vytvoriť produkt";
       setStatus(isEditing ? "Produkt bol upravený." : "Produkt bol uložený v cloudovej knižnici.");
       await refresh();
-    } catch (e) { setStatus(e.message, true); }
+    } catch (e) {
+      if (e.currentProduct && editingProductId) {
+        conflictLatestProduct = e.currentProduct;
+        editingProductRecord = e.currentProduct;
+        productConflictText.textContent = "Tento produkt bol medzičasom upravený v inom okne alebo zariadení. Tvoje aktuálne zmeny zostali zachované. Načítanie najnovšej verzie prepíše formulár; prípadne môžeš ponechať svoje zmeny a uložiť ich znova.";
+        productConflict.hidden = false;
+        setStatus("Konflikt verzií produktu: vyber, ako chceš pokračovať.", true);
+      } else setStatus(e.message, true);
+    }
     finally { addProduct.disabled = false; }
+  });
+  reloadLatestProduct.addEventListener("click", () => {
+    if (!conflictLatestProduct || !editingProductId) return;
+    const latest = conflictLatestProduct;
+    productName.el.value = latest.name || "";
+    productDescription.el.value = latest.description || "";
+    editingProductRecord = latest;
+    conflictLatestProduct = null;
+    productConflict.hidden = true;
+    setStatus("Načítala sa najnovšia cloudová verzia produktu.");
+  });
+  retryProductSave.addEventListener("click", () => {
+    if (!editingProductId || !conflictLatestProduct) return;
+    addProduct.click();
   });
   addProject.addEventListener("click", async () => {
     if (addProject.disabled) return;
