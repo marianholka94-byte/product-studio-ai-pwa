@@ -43,7 +43,8 @@ CREATE TABLE IF NOT EXISTS products (
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL,
   archived_at INTEGER,
-  UNIQUE (id, user_id)
+  UNIQUE (id, user_id),
+  FOREIGN KEY (main_asset_id, user_id) REFERENCES assets(id, user_id) ON DELETE RESTRICT
 );
 CREATE INDEX IF NOT EXISTS idx_products_owner_updated ON products(user_id, updated_at DESC);
 
