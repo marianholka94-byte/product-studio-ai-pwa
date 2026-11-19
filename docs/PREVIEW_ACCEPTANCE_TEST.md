@@ -35,6 +35,9 @@ This is a manual acceptance plan for the isolated preview only. It must not be r
 5. Confirm the same product is reused, already-uploaded images are checksum-verified and not duplicated, remaining images upload once, and exactly one cloud project is created.
 6. Repeat with a different local image in the same slot. The retry must stop with a clear mismatch error rather than mixing the files.
 7. Confirm no duplicate product/project appears after refresh.
+8. Test a lost project-create response: allow the project POST to reach the Worker and commit, but drop the response before it reaches the browser (for example, with a local proxy that aborts the response after forwarding the request). Retry the unchanged save from the same local project.
+9. Confirm the retry returns/reuses the original project ID and the account still has exactly one matching project. The operation key must remain unchanged across the retry; do not manually create a second local project for this test.
+10. Reuse the same operation key with a changed project payload only in a controlled API test. The Worker must return HTTP 409 and must not mutate the original project.
 
 ## D. Session behavior
 
