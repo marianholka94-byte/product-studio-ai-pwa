@@ -329,20 +329,20 @@
           body: JSON.stringify({ name: (record.product || record.name || "Produkt").slice(0, 120), description: "Produkt vytvorený pri ukladaní reklamného projektu." })
         });
         sync = { fingerprint, productId: created.product.id, uploadedImages: 0, projectId: null };
-        onProgress({ ...sync });
+        await onProgress({ ...sync });
       }
       const manifest = await api("/api/products/" + encodeURIComponent(sync.productId) + "/images");
       const uploaded = (manifest.images || []).length;
       if (uploaded > images.length) throw new Error("Cloudový produkt obsahuje viac fotografií, než má tento projekt. Nahrávanie bolo zastavené kvôli ochrane pred duplicitami.");
       sync.uploadedImages = uploaded;
-      onProgress({ ...sync });
+      await onProgress({ ...sync });
       for (let index = uploaded; index < images.length; index++) {
         const image = images[index];
         await api("/api/products/" + encodeURIComponent(sync.productId) + "/images", {
           method: "POST", headers: { "Content-Type": image.type }, body: image.blob
         });
         sync.uploadedImages = index + 1;
-        onProgress({ ...sync });
+        await onProgress({ ...sync });
       }
       const createdProject = await api("/api/projects", {
         method: "POST", headers: { "Content-Type": "application/json" },
