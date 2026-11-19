@@ -134,7 +134,7 @@ CREATE INDEX IF NOT EXISTS idx_generations_status_updated ON generations(status,
 -- Append-only ledger. Balance is calculated from entries; never trust a client-supplied balance.
 CREATE TABLE IF NOT EXISTS credit_ledger (
   id TEXT PRIMARY KEY,
-  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
   generation_id TEXT REFERENCES generations(id) ON DELETE SET NULL,
   entry_type TEXT NOT NULL CHECK (entry_type IN ('grant','purchase','reservation','charge','refund','adjustment','expiry')),
   amount INTEGER NOT NULL CHECK (amount <> 0),
@@ -192,3 +192,18 @@ CREATE TABLE IF NOT EXISTS audit_log (
   created_at INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_audit_target_created ON audit_log(target_user_id, created_at DESC);
+
+
+-- Credit history is immutable. Account deletion must anonymize users with
+-- financial history rather than erase the ledger needed for reconciliation.
+CREATE TRIGGER IF NOT EXISTS trg_credit_ledger_no_update
+BEFORE UPDATE ON credit_ledger
+BEGIN
+  SELECT RAISE(ABORT, 'credit_ledger is immutable');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_credit_ledger_no_delete
+BEFORE DELETE ON credit_ledger
+BEGIN
+  SELECT RAISE(ABORT, 'credit_ledger is immutable');
+END;
