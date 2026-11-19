@@ -58,6 +58,21 @@ try {
   tokenB = accountB.token;
   assert.notEqual(accountA.userId, accountB.userId, "The two test logins must resolve to different customer accounts.");
 
+  // Exercise the same authenticated credit-wallet read used by Cloud Library.
+  // This catches database/schema failures that a table-existence health check cannot detect.
+  for (const [label, token] of [["Account A", tokenA], ["Account B", tokenB]]) {
+    const walletResponse = await request("/api/credits", { token });
+    const walletBody = await walletResponse.json().catch(() => ({}));
+    assert.equal(walletResponse.status, 200,
+      label + " credit wallet returned HTTP " + walletResponse.status + ": " + String(walletBody.error || "unknown error"));
+    assert.ok(Number.isSafeInteger(walletBody.available) && walletBody.available >= 0,
+      label + " credit wallet must return a non-negative integer balance.");
+    assert.ok(Number.isSafeInteger(walletBody.reserved) && walletBody.reserved >= 0,
+      label + " credit wallet must return a non-negative integer reserved balance.");
+    assert.ok(Array.isArray(walletBody.history), label + " credit wallet must return ledger history.");
+  }
+
+
   // A lost create response must be safely replayable with the same account-scoped
   // idempotency key. A changed payload with that key must fail closed.
   const productOperationId = "acceptance-product-fixture-v1";
