@@ -18,6 +18,9 @@ Status: active working plan for the owner's private day-to-day PRODUCT STUDIO AI
 - [x] Project records preserve product settings, prompt, and original image bytes.
 - [x] Local project open, duplicate, delete, and save flows are present.
 - [x] Local product library supports image management and creating a project from a product.
+- [x] Library navigation refreshes local project/product lists only when opening the Projects screen, avoiding redundant reads on every tab switch.
+- [x] Local product thumbnail object URLs are revoked before re-rendering to prevent memory growth during repeated library refreshes.
+- [x] IndexedDB open failures and blocked upgrades clear the cached open promise so a later retry can recover.
 - [x] The Android preview app has user-confirmed local project saving.
 
 ### Cloud workspace
