@@ -26,6 +26,12 @@ mustContain(worker, /FROM products WHERE id = \? AND user_id = \? LIMIT 1/, "Pro
 mustContain(worker, /FROM projects WHERE id = \? AND user_id = \? LIMIT 1/, "Project lookup must enforce ownership.");
 mustContain(worker, /UPDATE products SET name = \?, description = \?, updated_at = \? WHERE id = \? AND user_id = \?/, "Product updates must enforce ownership in SQL.");
 mustContain(worker, /UPDATE products SET archived_at = \?, updated_at = \? WHERE id = \? AND user_id = \?/, "Product archive must enforce ownership in SQL.");
+
+mustContain(worker, /if \(productId && request\.method === "POST" && url\.pathname === `\/api\/products\/\$\{productId\}\/restore`\)[\s\S]*?const existing = await ownedProduct\(env, user\.id, productId\);[\s\S]*?UPDATE products SET archived_at = NULL, updated_at = \? WHERE id = \? AND user_id = \?/, "Product restore must verify ownership and scope the update to the authenticated account.");
+mustContain(worker, /if \(productId && request\.method === "POST" && url\.pathname === `\/api\/products\/\$\{productId\}\/images`\)[\s\S]*?if \(!product \|\| product\.archived_at\)/, "Archived products must not accept new media uploads.");
+mustContain(worker, /WHERE pi\.product_id = \? AND pi\.user_id = \? AND a\.deleted_at IS NULL/, "Product media manifests must exclude deleted assets and enforce tenant ownership.");
+mustContain(worker, /WHERE id = \? AND user_id = \? AND deleted_at IS NULL LIMIT 1/, "Private asset downloads must enforce tenant ownership.");
+
 mustContain(worker, /UPDATE projects SET product_id = \?, name = \?, prompt = \?, settings_json = \?, export_preset = \?, updated_at = \? WHERE id = \? AND user_id = \?/, "Project updates must enforce ownership in SQL.");
 mustContain(worker, /UPDATE projects SET status = 'archived', archived_at = \?, updated_at = \? WHERE id = \? AND user_id = \?/, "Project archive must enforce ownership in SQL.");
 
