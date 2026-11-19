@@ -555,6 +555,8 @@ export default {
         const status = generationStatus(result.status || "PENDING");
         await env.DB.prepare("UPDATE generations SET provider_task_id = ?, status = ?, updated_at = ? WHERE id = ? AND user_id = ?")
           .bind(providerTaskId, status, Math.floor(Date.now() / 1000), generationId, user.id).run();
+        if (status === "succeeded") await settleGenerationCredits(env, user.id, generationId, "capture", Math.floor(Date.now() / 1000));
+        else if (status === "failed" || status === "cancelled") await settleGenerationCredits(env, user.id, generationId, "release", Math.floor(Date.now() / 1000));
         return json({ id: generationId, status: result.status || "PENDING", estimatedCredits, dailyLimit: PREVIEW_DAILY_GENERATION_LIMIT, usedToday: Number(usage?.count || 0) + 1 }, 201, origin);
       }
 
