@@ -12,12 +12,15 @@ This document tracks readiness work on the isolated commercial preview. It is no
 - [x] Local IndexedDB image records are serialized to clone-safe bytes and hydrated on read.
 - [x] Cloud save progress is checkpointed locally between media uploads.
 - [x] Cloud product and project creation use persisted per-account idempotency keys, so retrying after a lost response returns the existing records instead of creating duplicates.
+- [x] Cloud project edits use an atomic `updated_at` precondition; stale edits return HTTP 409 with the current project instead of overwriting newer work.
+- [x] Cloud project editor preserves typed text after a conflict and updates its baseline version before the user retries.
 - [x] Reusing a product or project idempotency key with a different payload is rejected.
 - [x] Resumed cloud uploads compare ordered SHA-256 checksums against the remote image manifest before continuing.
 - [x] Schema and integration checks cover both idempotency columns and unique per-account constraints.
 - [x] Integration checks cover checksum-verified recovery of partially uploaded images.
 - [x] Manual interrupted cloud save followed by resume; user confirmed that the project saved successfully.
 - [ ] Manual lost project-create response retry test (verify idempotent replay without duplicate records).
+- [ ] Run live stale-project-edit acceptance test against the deployed preview (the script now verifies HTTP 409 and unchanged project data).
 - [ ] Manual UI check: save the same local project to account A and account B; confirm each account shows only its own cloud-save state and cloud copy.
 - [x] Manual UI tenant-isolation check: the second account showed only its own cloud product and no products/projects from the first account.
 - [x] Repeatable two-account API acceptance script added; checks own-account reads, cross-account product/project/asset denial, and server-side logout revocation without mutating saved records.
