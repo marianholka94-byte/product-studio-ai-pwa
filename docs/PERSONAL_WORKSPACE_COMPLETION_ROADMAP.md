@@ -53,6 +53,10 @@ Status: active working plan for the owner's private day-to-day PRODUCT STUDIO AI
 - [ ] Validate that the preview app always receives the latest deployed web bundle after a refresh/relaunch.
 - [ ] Complete Android file picker, external-link handling, back navigation, connectivity recovery, and session lifecycle tests.
 
+## Recent reliability hardening
+
+- [x] Guard cloud-session restoration with the starting token and account epoch so a late `/api/auth/me` response cannot overwrite a newly selected account or clear a newer session after a delayed failure.
+
 ## Confirmed gaps and limitations
 
 - [ ] Source-video-to-video generation is not implemented. The current UI input is disabled; the client function intentionally throws an explanatory error, and the preview Worker has no matching route. Do not treat this as a working feature.
