@@ -79,6 +79,7 @@ assert.ok(html.includes("Neposielaj požiadavku znova"));
 assert.ok(html.includes("Na overenie"));
 assert.ok(html.includes("item.errorCode==='provider_submission_unknown'"), "Unknown provider submissions must use their diagnostic code rather than an unsupported database status.");
 assert.ok(html.includes("item.errorCode!=='provider_submission_unknown'"), "Unknown provider submissions must not expose a misleading resume action.");
+assert.ok(html.includes("['FAILED','CANCELED','CANCELLED'].includes(status)"), "Polling must stop for both provider cancellation spellings.");
 const historyRefresh = html.slice(html.indexOf("async function refreshGenerationHistory()"), html.indexOf("$('refreshHistory').addEventListener"));
 assert.ok(historyRefresh.includes("activeItems.map") && historyRefresh.includes("/api/status/"), "Opening generation history must reconcile existing active tasks.");
 assert.ok(!historyRefresh.includes("/api/generate"), "Automatic history reconciliation must never submit a new paid task.");
