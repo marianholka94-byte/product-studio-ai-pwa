@@ -469,7 +469,28 @@
       });
       const remove=document.createElement('button');remove.type='button';remove.className='delete-project';remove.textContent='Vymazať';
       remove.addEventListener('click',async()=>{if(!confirm('Naozaj chceš vymazať projekt „'+(record.name||'Nepomenovaný projekt')+'“?'))return;try{await removeProject(record.id);if(activeProjectId===record.id)activeProjectId=null;await renderProjects();}catch(error){alert(error.message||'Projekt sa nepodarilo vymazať.');}});
-      buttons.append(open,duplicate,remove);info.append(title,meta,buttons);card.append(thumb,info);projectsList.append(card);
+      const saveCloud=document.createElement('button');saveCloud.type='button';saveCloud.className='secondary';saveCloud.textContent=record.cloudSync?.projectId?'Uložené v cloude':'Uložiť do cloudu';saveCloud.disabled=!!record.cloudSync?.projectId;
+      saveCloud.addEventListener('click',async()=>{
+        if(!window.PSAICloudLibrary?.saveLocalProject){alert('Cloudová knižnica ešte nie je pripravená. Obnov stránku a skús to znova.');return;}
+        if(!confirm('Uložiť projekt „'+(record.name||'Nepomenovaný projekt')+'“ a jeho fotografie do prihláseného cloudového účtu? Lokálny originál zostane zachovaný.'))return;
+        saveCloud.disabled=true;
+        try{
+          const latest=await getProject(record.id);if(!latest)throw new Error('Lokálny projekt sa už nenašiel.');
+          const result=await window.PSAICloudLibrary.saveLocalProject(latest,async sync=>{
+            latest.cloudSync=sync;latest.updatedAt=Date.now();await putProject(latest);
+          });
+          latest.cloudSync=result;latest.updatedAt=Date.now();await putProject(latest);
+          saveCloud.textContent='Uložené v cloude';saveCloud.disabled=true;
+          setProjectMessage('Projekt „'+latest.name+'“ bol uložený v cloude. Lokálna kópia zostala zachovaná.');
+          await renderProjects();
+        }catch(error){
+          const latest=await getProject(record.id).catch(()=>null);
+          saveCloud.disabled=false;
+          saveCloud.textContent=latest?.cloudSync?.productId?'Pokračovať v ukladaní':'Uložiť do cloudu';
+          setProjectMessage(error.message||'Projekt sa nepodarilo uložiť do cloudu.',true);
+        }
+      });
+      buttons.append(open,duplicate,remove,saveCloud);info.append(title,meta,buttons);card.append(thumb,info);projectsList.append(card);
     });
   };
 
@@ -605,7 +626,7 @@
     if(!state.product.trim()&&!state.images.length)throw new Error('Najskôr zadaj názov produktu alebo pridaj fotografiu.');
     if(!state.images.length)throw new Error('Projekt musí obsahovať aspoň jednu fotografiu produktu.');
     const now=Date.now(),existing=activeProjectId?await getProject(activeProjectId):null;
-    const editedPrompt=promptDraft.value.trim()||state.prompt;const record={id:activeProjectId||('project-'+now+'-'+Math.random().toString(36).slice(2,8)),name:state.product.trim()||'Nový produkt',createdAt:existing?.createdAt||now,updatedAt:now,product:state.product,productId:activeProductId||existing?.productId||null,style:state.style,scenePreset:state.scenePreset||'',format:state.format,motion:state.motion,duration:state.duration,lighting:state.lighting,extra:state.extra,prompt:editedPrompt,images:state.images};
+    const editedPrompt=promptDraft.value.trim()||state.prompt;const record={id:activeProjectId||('project-'+now+'-'+Math.random().toString(36).slice(2,8)),name:state.product.trim()||'Nový produkt',createdAt:existing?.createdAt||now,updatedAt:now,product:state.product,productId:activeProductId||existing?.productId||null,style:state.style,scenePreset:state.scenePreset||'',format:state.format,exportPreset:state.exportPreset||'custom',motion:state.motion,duration:state.duration,resolution:state.resolution||'720p',model:state.model||'seedance2_mini',lighting:state.lighting,extra:state.extra,prompt:editedPrompt,images:state.images};
     await putProject(record);activeProjectId=record.id;await renderProjects();setProjectMessage('Projekt „'+record.name+'“ bol uložený v tomto zariadení.');return record;
   };
   const startNewProject=async()=>{
