@@ -66,6 +66,21 @@
   authButtons.append(login, showRegister);
   auth.append(authButtons, registerFields);
   const accountLine = $("p", { class: "muted" });
+  const creditPanel = $("div", { class: "cloud-item" });
+  const creditHeading = $("h3", {}, "💳 Kredity");
+  const creditBalance = $("p", {}, "Dostupné kredity: načítavam…");
+  const creditReserved = $("small", {}, "");
+  const creditAdminArea = $("div");
+  creditAdminArea.hidden = true;
+  const creditAmount = field("Počet kreditov na dobitie", "number", "Napr. 500", 6);
+  creditAmount.el.min = "1";
+  creditAmount.el.max = "100000";
+  creditAmount.el.step = "1";
+  const creditNote = field("Poznámka k dobitiu", "text", "Manuálne dobitie", 160);
+  const creditGrant = $("button", {}, "＋ Dobíť kredity");
+  const creditHistory = $("div");
+  creditAdminArea.append(creditAmount.wrap, creditNote.wrap, creditGrant);
+  creditPanel.append(creditHeading, creditBalance, creditReserved, creditAdminArea, creditHistory);
   const logout = $("button", { class: "secondary" }, "Odhlásiť sa");
   const productName = field("Názov produktu", "text", "Napr. Prémiová káva", 120);
   const productDescription = field("Popis produktu", "textarea", "Popis produktu", 2000);
@@ -99,7 +114,7 @@
   const projectList = $("div");
   const projectSearch = field("Hľadať projekt", "search", "Názov alebo text promptu", 120);
   projectSearch.el.setAttribute("aria-label", "Hľadať v cloudových reklamných projektoch");
-  workspace.append(accountLine, logout, $("hr"), productName.wrap, productDescription.wrap, addProduct, productConflict, productSearch.wrap, productList, $("hr"), projectName.wrap, $("label", {}, "Prepojiť s produktom"), projectProduct, projectPrompt.wrap, addProject, projectConflict, projectSearch.wrap, projectList);
+  workspace.append(accountLine, creditPanel, logout, $("hr"), productName.wrap, productDescription.wrap, addProduct, productConflict, productSearch.wrap, productList, $("hr"), projectName.wrap, $("label", {}, "Prepojiť s produktom"), projectProduct, projectPrompt.wrap, addProject, projectConflict, projectSearch.wrap, projectList);
   const applyLibraryFilter = (root, query) => {
     const needle = String(query || "").trim().toLocaleLowerCase("sk");
     const cards = [...root.querySelectorAll(".cloud-item[data-search-text]")];
@@ -190,6 +205,58 @@
     }
     return data;
   }
+  async function refreshCredits() {
+    const accountId = user?.id;
+    if (!accountId || !token) return;
+    const data = await api("/api/credits");
+    if (accountId !== user?.id) return;
+    creditBalance.textContent = "Dostupné kredity: " + Number(data.available || 0).toLocaleString("sk-SK");
+    creditReserved.textContent = "Rezervované: " + Number(data.reserved || 0).toLocaleString("sk-SK");
+    creditAdminArea.hidden = !data.isAdmin;
+    creditHistory.replaceChildren();
+    const title = $("p", {}, "Posledné pohyby");
+    title.style.fontWeight = "700";
+    creditHistory.append(title);
+    const history = data.history || [];
+    if (!history.length) {
+      creditHistory.append($("small", {}, "Zatiaľ nemáš žiadne pohyby na kreditovom účte."));
+    } else {
+      for (const entry of history) {
+        const line = $("p", {});
+        line.style.cssText = "font-size:12px;color:#aebaca;margin:5px 0";
+        const date = new Date(Number(entry.createdAt) * 1000).toLocaleString("sk-SK");
+        line.textContent = date + " · " + entry.type + " · " + entry.units.toLocaleString("sk-SK") + " kreditov" + (entry.note ? " · " + entry.note : "");
+        creditHistory.append(line);
+      }
+    }
+  }
+  creditGrant.addEventListener("click", async () => {
+    const units = Number(creditAmount.el.value);
+    if (!Number.isSafeInteger(units) || units < 1 || units > 100000) {
+      setStatus("Zadaj počet kreditov od 1 do 100 000.", true);
+      return;
+    }
+    if (!confirm("Naozaj pripísať " + units.toLocaleString("sk-SK") + " kreditov na tvoj účet?")) return;
+    creditGrant.disabled = true;
+    try {
+      await api("/api/credits/admin-grant", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          units,
+          note: creditNote.el.value.trim() || "Manuálne dobitie správcom",
+          idempotencyKey: crypto.randomUUID()
+        })
+      });
+      creditAmount.el.value = "";
+      setStatus("Kredity boli pripísané na účet.");
+      await refreshCredits();
+    } catch (error) {
+      setStatus(error.message || "Dobitie kreditov zlyhalo.", true);
+    } finally {
+      creditGrant.disabled = false;
+    }
+  });
   function renderAuth() {
     auth.hidden = false;
     workspace.hidden = true;
@@ -483,6 +550,7 @@
       accountLine.textContent = "Prihlásený účet: " + user.email;
       setStatus("Cloudový účet je prihlásený.");
       await refresh();
+      try { await refreshCredits(); } catch (error) { setStatus("Kreditový účet sa nepodarilo načítať: " + error.message, true); }
     } catch (e) { if (attempt === authAttempt) setStatus(e.message, true); }
     finally { if (attempt === authAttempt) { login.disabled = false; register.disabled = false; } }
   }
