@@ -2,13 +2,6 @@ name: Apply commercial preview D1 migrations
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - feature/commercial-worker-preview
-    paths:
-      - "migrations/**"
-      - "wrangler.preview.toml"
-      - ".github/workflows/apply-commercial-preview-migrations.yml"
 
 permissions:
   contents: read
