@@ -113,8 +113,15 @@ async function readJson(request) {
   const bytes = new Uint8Array(total);
   let offset = 0;
   for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
-  try { return JSON.parse(new TextDecoder().decode(bytes)); }
-  catch { throw new Error("Požiadavka neobsahuje platné JSON dáta."); }
+  try {
+    const parsed = JSON.parse(new TextDecoder().decode(bytes));
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      throw new Error("Požiadavka musí obsahovať JSON objekt.");
+    }
+    return parsed;
+  } catch {
+    throw new Error("Požiadavka neobsahuje platné JSON dáta.");
+  }
 }
 async function authAttemptKey(request, email) {
   const ip = request.headers.get("CF-Connecting-IP") || "unknown";
@@ -382,7 +389,7 @@ export default {
     } catch (error) {
       // Never return SQL details, password hashes or provider internals to clients.
       const message = String(error?.message || "");
-      if (message === "Požiadavka je príliš veľká." || message === "Požiadavka neobsahuje platné JSON dáta.") {
+      if (message === "Požiadavka je príliš veľká." || message === "Požiadavka neobsahuje platné JSON dáta." || message === "Požiadavka musí obsahovať JSON objekt.") {
         return json({ error: message }, 400, origin);
       }
       return json({ ok: false, error: "Požiadavku sa nepodarilo spracovať. Skús to znova." }, 500, origin);
