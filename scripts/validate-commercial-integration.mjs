@@ -231,6 +231,7 @@ assert.ok(!/zákazníck(?:y|eho) účet|komerčný generátor/i.test(html + clou
 const androidWrapper = readFileSync("android/app/src/main/java/com/marianholka/productstudioai/MainActivity.java", "utf8");
 assert.ok(androidWrapper.includes("webView.saveState(outState)") && androidWrapper.includes("webView.restoreState(savedInstanceState)"), "Android WebView must preserve page state across Activity recreation instead of always restarting the app.");
 assert.ok(androidWrapper.includes("webView.onResume()") && androidWrapper.includes("webView.onPause()"), "Android WebView lifecycle must follow the host Activity lifecycle.");
+assert.ok(androidWrapper.includes("networkErrorView.setVisibility(View.VISIBLE)") && androidWrapper.includes("networkErrorView.setOnClickListener(v -> webView.reload())") && !androidWrapper.includes("view.loadData("), "Main-frame network errors must show a retry overlay without replacing WebView history");
 
 assert.ok(androidWrapper.includes("params.getAcceptTypes()") && androidWrapper.includes("params.getMode() == WebChromeClient.FileChooserParams.MODE_OPEN_MULTIPLE") && androidWrapper.includes("Intent.ACTION_OPEN_DOCUMENT"), "Android file picker must respect the web input MIME types and multiple-selection mode.");
 assert.ok(html.includes("renderAccountOverview(account,usage,health)") && html.includes("usage.remainingToday"), "The account overview must use server-returned usage values.");
