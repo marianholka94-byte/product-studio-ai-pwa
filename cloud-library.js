@@ -382,20 +382,28 @@
         images: images.map((x, index) => ({ name: x.name, type: x.type, size: x.blob.size, sha256: imageDigests[index] }))
       });
       const accountId = user.id;
+      const accountApi = (path, options = {}) => {
+        if (!token || user?.id !== accountId) return Promise.reject(new Error("Cloudový účet sa počas ukladania zmenil. Prihlás sa späť do pôvodného účtu a pokračuj v ukladaní."));
+        return api(path, options).then(data => {
+          if (!token || user?.id !== accountId) throw new Error("Cloudový účet sa počas ukladania zmenil. Prihlás sa späť do pôvodného účtu a pokračuj v ukladaní.");
+          return data;
+        });
+      };
       const savedByAccount = record.cloudSyncByAccount && typeof record.cloudSyncByAccount === "object" ? record.cloudSyncByAccount : {};
       let sync = savedByAccount[accountId] || (record.cloudSync?.accountId === accountId ? record.cloudSync : null);
+      if (sync && sync.accountId !== accountId) throw new Error("Cloudové uloženie patrí inému účtu. Ukladanie bolo zastavené.");
 
       // Older local records stored one unscoped cloudSync object. Adopt it only
       // after proving that its product (and, when present, project) belongs to
       // the currently authenticated account. Another account starts its own sync.
       if (!sync && record.cloudSync?.productId && !record.cloudSync.accountId) {
         try {
-          const remoteProduct = await api("/api/products/" + encodeURIComponent(record.cloudSync.productId));
+          const remoteProduct = await accountApi("/api/products/" + encodeURIComponent(record.cloudSync.productId));
           if (remoteProduct.product) {
             let legacyProjectId = record.cloudSync.projectId || null;
             if (legacyProjectId) {
               try {
-                const remoteProject = await api("/api/projects/" + encodeURIComponent(legacyProjectId));
+                const remoteProject = await accountApi("/api/projects/" + encodeURIComponent(legacyProjectId));
                 if (remoteProject.project?.productId !== record.cloudSync.productId) throw new Error("Legacy cloud project does not match its product.");
               } catch (error) {
                 if (!String(error.message || "").includes("(404)")) throw error;
@@ -425,7 +433,7 @@
           sync.productOperationId = crypto.randomUUID();
           await onProgress({ ...sync });
         }
-        const created = await api("/api/products", {
+        const created = await accountApi("/api/products", {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             name: (record.product || record.name || "Produkt").slice(0, 120),
@@ -436,7 +444,7 @@
         sync.productId = created.product.id;
         await onProgress({ ...sync });
       }
-      const manifest = await api("/api/products/" + encodeURIComponent(sync.productId) + "/images");
+      const manifest = await accountApi("/api/products/" + encodeURIComponent(sync.productId) + "/images");
       const uploaded = (manifest.images || []).length;
       if (uploaded > images.length) throw new Error("Cloudový produkt obsahuje viac fotografií, než má tento projekt. Nahrávanie bolo zastavené kvôli ochrane pred duplicitami.");
       const remoteDigests = (manifest.images || []).map(image => image.checksumSha256 || "");
@@ -449,7 +457,7 @@
       await onProgress({ ...sync });
       for (let index = uploaded; index < images.length; index++) {
         const image = images[index];
-        await api("/api/products/" + encodeURIComponent(sync.productId) + "/images", {
+        await accountApi("/api/products/" + encodeURIComponent(sync.productId) + "/images", {
           method: "POST", headers: { "Content-Type": image.type }, body: image.blob
         });
         sync.uploadedImages = index + 1;
@@ -459,7 +467,7 @@
         sync.idempotencyKey = crypto.randomUUID();
         await onProgress({ ...sync });
       }
-      const createdProject = await api("/api/projects", {
+      const createdProject = await accountApi("/api/projects", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: (record.name || record.product || "Reklamný projekt").slice(0, 120),
