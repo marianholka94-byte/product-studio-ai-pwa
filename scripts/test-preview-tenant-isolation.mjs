@@ -78,6 +78,11 @@ try {
   await expectStatus("Account B product-image manifest access", await request("/api/products/" + encodeURIComponent(product.id) + "/images", { token: tokenB }), 404);
   await expectStatus("Account B direct project-ID access", await request("/api/projects/" + encodeURIComponent(project.id), { token: tokenB }), 404);
   await expectStatus("Account B direct private asset-ID access", await request("/api/assets/" + encodeURIComponent(assetId), { token: tokenB }), 404);
+  await expectStatus("Account B cannot attach Account A product to a new project", await request("/api/projects", {
+    token: tokenB,
+    method: "POST",
+    body: { name: "Isolation test", productId: product.id, prompt: "", settings: {}, exportPreset: null, idempotencyKey: "isolation-test-" + crypto.randomUUID() }
+  }), 404);
 
   await expectStatus("Account A logout", await request("/api/auth/logout", { token: tokenA, method: "POST" }), 200);
   await expectStatus("Account A revoked session", await request("/api/auth/me", { token: tokenA }), 401);
