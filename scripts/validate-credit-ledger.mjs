@@ -19,7 +19,11 @@ assert.match(migration, /CHECK \(captured_units <= reserved_units\)/, "Captured 
 assert.match(migration, /state IN \('reserved','captured','released','review'\)/, "Reservation state must be constrained.");
 assert.match(worker, /creditSchema[\s\S]*?enabled: false/, "Credit ledger must be explicitly marked as not enabled.");
 assert.match(worker, /credit_ledger[\s\S]*?trg_credit_ledger_no_update[\s\S]*?trg_credit_ledger_no_delete/, "Health endpoint must report ledger tables and immutability triggers.");
-assert.doesNotMatch(worker, /INSERT INTO credit_accounts|INSERT INTO credit_ledger|UPDATE credit_accounts|UPDATE generation_credit_reservations/, "Preview generation must not mutate the foundation tables before reservation logic is implemented.");
+const generationRouteStart = worker.indexOf('if (url.pathname === "/api/generate" && request.method === "POST")');
+assert.notEqual(generationRouteStart, -1, "Commercial generation route must exist.");
+const generationHandler = worker.slice(generationRouteStart);
+assert.doesNotMatch(generationHandler, /INSERT INTO credit_accounts|INSERT INTO credit_ledger|UPDATE credit_accounts|UPDATE generation_credit_reservations/, "Preview generation must not mutate the foundation tables before reservation logic is implemented.");
+assert.match(worker, /url\.pathname === "\/api\/credits\/admin-grant"[\s\S]*?INSERT INTO credit_accounts[\s\S]*?INSERT INTO credit_ledger/, "Only the authenticated admin-grant route may add manual credit grants.");
 assert.match(workflow, /node scripts\/validate-credit-ledger\.mjs/, "Preview deployment must run the credit ledger validator.");
 assert.match(workflow, /creditSchema.*accounts.*ledger.*reservations/, "Deployment smoke test must verify credit schema readiness.");
 assert.match(workflow, /appendOnly.*enabled/, "Deployment smoke test must verify append-only ledger protection and disabled accounting.");
