@@ -92,7 +92,9 @@
     products = p.products || [];
     productList.replaceChildren();
     projectProduct.replaceChildren($("option", { value: "" }, "Bez prepojeného produktu"));
-    for (const product of products.filter(x => !x.archivedAt)) {
+    const archivedProducts = products.filter(x => !!x.archivedAt);
+    const activeProducts = products.filter(x => !x.archivedAt);
+    for (const product of activeProducts) {
       projectProduct.append($("option", { value: product.id }, product.name));
       const card = $("div", { class: "cloud-item" });
       addText(card, "strong", product.name);
@@ -195,7 +197,29 @@
         }
       } catch {}
     }
-    if (!productList.childElementCount) addText(productList, "p", "Zatiaľ nemáš uložené produkty.");
+    if (!productList.childElementCount) addText(productList, "p", "Zatiaľ nemáš uložené aktívne produkty.");
+    if (archivedProducts.length) {
+      const archive = $("details", { class: "cloud-item" });
+      archive.append($("summary", {}, "Archív produktov (" + archivedProducts.length + ")"));
+      for (const product of archivedProducts) {
+        const item = $("div", { class: "cloud-item" });
+        addText(item, "strong", product.name);
+        addText(item, "small", "Archivovaný produkt · fotografie zostávajú zachované");
+        const restore = $("button", { class: "secondary" }, "Obnoviť produkt");
+        restore.addEventListener("click", async () => {
+          restore.disabled = true;
+          try {
+            await api("/api/products/" + encodeURIComponent(product.id) + "/restore", { method: "POST" });
+            setStatus("Produkt „" + product.name + "“ bol obnovený.");
+            await refresh();
+          } catch (e) { setStatus(e.message, true); }
+          finally { restore.disabled = false; }
+        });
+        item.append(restore);
+        archive.append(item);
+      }
+      productList.append(archive);
+    }
     projectList.replaceChildren();
     for (const project of (pr.projects || []).filter(x => !x.archivedAt)) {
       const card = $("div", { class: "cloud-item" });
