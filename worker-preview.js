@@ -386,11 +386,34 @@ export default {
             const body = await readJson(request);
             const name = validText(body.name, 120);
             const description = validText(body.description, 2000, "");
-            if (!name || !name.length || description === null) return json({ error: "Skontroluj názov a popis produktu." }, 400, origin);
+            const operationId = body.idempotencyKey == null ? null : validText(body.idempotencyKey, 80);
+            if (!name || !name.length || description === null || operationId !== null && !/^[a-zA-Z0-9_-]{16,80}$/.test(operationId)) return json({ error: "Skontroluj názov a popis produktu." }, 400, origin);
+            if (operationId) {
+              const prior = await env.DB.prepare(
+                "SELECT id, name, description, created_at, updated_at, archived_at FROM products WHERE user_id = ? AND client_operation_id = ? LIMIT 1"
+              ).bind(user.id, operationId).first();
+              if (prior) {
+                if (prior.name !== name || prior.description !== description) return json({ error: "Kľúč operácie už bol použitý pre iný produkt." }, 409, origin);
+                return json({ product: publicProduct(prior), replayed: true }, 200, origin);
+              }
+            }
             const id = crypto.randomUUID();
-            await env.DB.prepare(
-              "INSERT INTO products (id, user_id, name, description, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)"
-            ).bind(id, user.id, name, description, now, now).run();
+            try {
+              await env.DB.prepare(
+                "INSERT INTO products (id, user_id, name, description, client_operation_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
+              ).bind(id, user.id, name, description, operationId, now, now).run();
+            } catch (error) {
+              if (operationId && /unique|constraint/i.test(String(error))) {
+                const prior = await env.DB.prepare(
+                  "SELECT id, name, description, created_at, updated_at, archived_at FROM products WHERE user_id = ? AND client_operation_id = ? LIMIT 1"
+                ).bind(user.id, operationId).first();
+                if (prior) {
+                  if (prior.name === name && prior.description === description) return json({ product: publicProduct(prior), replayed: true }, 200, origin);
+                  return json({ error: "Kľúč operácie už bol použitý pre iný produkt." }, 409, origin);
+                }
+              }
+              throw error;
+            }
             return json({ product: publicProduct({ id, name, description, created_at: now, updated_at: now, archived_at: null }) }, 201, origin);
           }
           if (productId && request.method === "GET") {
