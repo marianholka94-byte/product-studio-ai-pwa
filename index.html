@@ -645,7 +645,7 @@ async function pollTask(id, outputId='videoWrap', statusId='status'){
    $(statusId).className='status ok';
    return;
   }
-  if(status==='FAILED'||status==='CANCELED'){stopGenerationProgress();$('generationProgress').classList.remove('active');throw new Error(task.failure||task.error||'Generovanie zlyhalo. Skontroluj nastavenia a zostatok kreditov.');}
+  if(['FAILED','CANCELED','CANCELLED'].includes(status)){stopGenerationProgress();$('generationProgress').classList.remove('active');throw new Error(task.failure||task.error||'Generovanie zlyhalo. Skontroluj nastavenia a zostatok kreditov.');}
   $(statusId).textContent=`Generovanie prebieha… (${status||'čaká sa'}). Kontrola každých 5 sekúnd.`;
  }
  stopGenerationProgress();setGenerationProgress(1,'Generovanie stále prebieha','Automatické čakanie dosiahlo limit 10 minút. Úloha môže na serveri ďalej bežať; nespúšťaj ju znova, kým neoveríš jej stav.');
