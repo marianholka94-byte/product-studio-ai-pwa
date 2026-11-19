@@ -121,9 +121,9 @@ async function readBytes(request, maxBytes) {
   for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
   return bytes;
 }
-async function readJson(request) {
+async function readJson(request, maxBytes = 12000) {
   const length = Number(request.headers.get("Content-Length") || 0);
-  if (length > 12000) throw new Error("Požiadavka je príliš veľká.");
+  if (length > maxBytes) throw new Error("Požiadavka je príliš veľká.");
   if (!request.body) throw new Error("Požiadavka neobsahuje platné JSON dáta.");
   const reader = request.body.getReader();
   const chunks = [];
@@ -133,7 +133,7 @@ async function readJson(request) {
       const { done, value } = await reader.read();
       if (done) break;
       total += value.byteLength;
-      if (total > 12000) {
+      if (total > maxBytes) {
         await reader.cancel();
         throw new Error("Požiadavka je príliš veľká.");
       }
@@ -182,6 +182,25 @@ async function clearLoginFailures(env, key) {
   await env.DB.prepare("DELETE FROM auth_rate_limits WHERE key_hash = ?").bind(key).run();
 }
 
+const MINI_RATIOS = new Set(["864:496","640:640","496:864","1280:720","960:960","720:1280"]);
+const FULL_RATIOS = new Set([...MINI_RATIOS,"1920:1080","1440:1440","1080:1920","3840:2160","3840:3840","2160:3840"]);
+const PREVIEW_DAILY_GENERATION_LIMIT = 3;
+function runwayHeaders(env) {
+  return { Authorization: "Bearer " + env.RUNWAY_API_KEY, "X-Runway-Version": "2024-11-06", "Content-Type": "application/json" };
+}
+function generationStatus(providerStatus) {
+  const value = String(providerStatus || "").toUpperCase();
+  if (value === "SUCCEEDED") return "succeeded";
+  if (value === "FAILED") return "failed";
+  if (value === "CANCELED" || value === "CANCELLED") return "cancelled";
+  if (["PENDING","THROTTLED","QUEUED"].includes(value)) return "queued";
+  return "processing";
+}
+function estimatedGenerationCredits(model, resolution, duration) {
+  const rates = model === "seedance2" ? { "480p": 14, "720p": 30, "1080p": 40, "4K": 150 } : { "480p": 7, "720p": 15 };
+  const rate = rates[resolution];
+  return rate ? Math.max(rate * 4, duration * rate) : null;
+}
 function validText(value, max, fallback = "") {
   if (value == null) return fallback;
   if (typeof value !== "string") return null;
@@ -240,18 +259,23 @@ export default {
         ).first();
         const userColumnNames = (userColumns.results || []).map(column => column.name);
         const sessionColumnNames = (sessionColumns.results || []).map(column => column.name);
+        const generationColumns = await env.DB.prepare("PRAGMA table_info(generations)").all();
+        const generationColumnNames = (generationColumns.results || []).map(column => column.name);
         const authSchema = {
           usersTable: userColumnNames.length > 0,
           passwordHash: userColumnNames.includes("password_hash"),
           sessionsTable: sessionColumnNames.length > 0,
           sessionTokenHash: sessionColumnNames.includes("token_hash"),
-          rateLimitsTable: !!rateLimitTable
+          rateLimitsTable: !!rateLimitTable,
+          generationRequestId: generationColumnNames.includes("client_request_id"),
+          generationFingerprint: generationColumnNames.includes("request_fingerprint")
         };
         return json({
           ok: db?.ok === 1 && Array.isArray(objects?.objects),
           service: "PRODUCT STUDIO AI commercial preview",
           storage: { d1: db?.ok === 1, r2: Array.isArray(objects?.objects) },
-          authSchema
+          authSchema,
+          generation: { configured: Boolean(env.RUNWAY_API_KEY), dailyLimit: PREVIEW_DAILY_GENERATION_LIMIT }
         }, 200, origin);
       }
 
@@ -321,6 +345,154 @@ export default {
         await clearLoginFailures(env, attemptKey);
         const session = await createSession(env, user.id);
         return json({ user: publicUser(user), ...session }, 200, origin);
+      }
+
+
+      // Commercial generation always resolves the owner from the D1 session.
+      if (url.pathname === "/api/generate" && request.method === "POST") {
+        const user = await currentUser(request, env);
+        if (!user) return json({ error: "Na generovanie sa najskôr prihlás do svojho zákazníckeho účtu." }, 401, origin);
+        if (!env.RUNWAY_API_KEY) return json({ error: "Generátor zatiaľ nie je nakonfigurovaný pre komerčnú preview verziu." }, 503, origin);
+        const contentLength = Number(request.headers.get("Content-Length") || 0);
+        if (contentLength > 22 * 1024 * 1024) return json({ error: "Súhrnná veľkosť fotografií je príliš veľká. Použi menšie obrázky." }, 413, origin);
+        const body = await readJson(request, 22 * 1024 * 1024);
+        const requestId = String(body.requestId || "");
+        if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestId)) {
+          return json({ error: "Požiadavka nemá platný identifikátor. Obnov stránku a skús to znova." }, 400, origin);
+        }
+        const images = Array.isArray(body.images) ? body.images : (typeof body.image === "string" ? [body.image] : []);
+        if (images.length < 1 || images.length > 5) return json({ error: "Nahraj 1 až 5 fotografií produktu." }, 400, origin);
+        for (const image of images) {
+          if (typeof image !== "string" || !/^data:image\/(jpeg|jpg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(image)) {
+            return json({ error: "Jedna z fotografií nemá podporovaný formát. Použi JPG, PNG alebo WebP." }, 400, origin);
+          }
+          if (image.length > 5 * 1024 * 1024) return json({ error: "Každá fotografia musí mať menej než 5 MB." }, 413, origin);
+        }
+        if (images.reduce((total, image) => total + image.length, 0) > 20 * 1024 * 1024) return json({ error: "Súhrnná veľkosť fotografií prekračuje 20 MB." }, 413, origin);
+        if (typeof body.prompt !== "string" || !body.prompt.trim() || body.prompt.length > 1000) return json({ error: "Text zadania musí mať 1 až 1 000 znakov." }, 400, origin);
+        const duration = Number(body.duration);
+        const model = String(body.model || "seedance2_mini");
+        const resolution = String(body.resolution || (model === "seedance2" ? "1080p" : "720p"));
+        const ratio = String(body.ratio || "");
+        const allowedRatios = model === "seedance2" ? FULL_RATIOS : model === "seedance2_mini" ? MINI_RATIOS : null;
+        const estimatedCredits = estimatedGenerationCredits(model, resolution, duration);
+        if (!Number.isInteger(duration) || duration < 4 || duration > 15 || !allowedRatios || !allowedRatios.has(ratio) || estimatedCredits === null) {
+          return json({ error: "Nepodporovaná kombinácia modelu, rozlíšenia, pomeru strán alebo dĺžky." }, 400, origin);
+        }
+        const fingerprint = await sha256(JSON.stringify({ images, prompt: body.prompt.trim(), model, resolution, ratio, duration }));
+        const prior = await env.DB.prepare(
+          "SELECT id, request_fingerprint, provider_task_id, status, estimated_credits FROM generations WHERE user_id = ? AND client_request_id = ? LIMIT 1"
+        ).bind(user.id, requestId).first();
+        if (prior) {
+          if (prior.request_fingerprint !== fingerprint) return json({ error: "Identifikátor požiadavky už bol použitý pre iné zadanie." }, 409, origin);
+          if (!prior.provider_task_id) return json({ error: "Požiadavka sa už začala spracúvať. Z bezpečnostných dôvodov ju neposielam znova, aby nevzniklo duplicitné platené generovanie.", generationId: prior.id, status: prior.status }, 409, origin);
+          return json({ id: prior.id, status: prior.status, replayed: true, estimatedCredits: prior.estimated_credits }, 200, origin);
+        }
+        const now = Math.floor(Date.now() / 1000);
+        const dayStart = Math.floor(now / 86400) * 86400;
+        const usage = await env.DB.prepare("SELECT COUNT(*) AS count FROM generations WHERE user_id = ? AND created_at >= ?")
+          .bind(user.id, dayStart).first();
+        if (Number(usage?.count || 0) >= PREVIEW_DAILY_GENERATION_LIMIT) {
+          return json({ error: "Dosiahol si denný limit " + PREVIEW_DAILY_GENERATION_LIMIT + " skúšobných generovaní. Skús to znova zajtra.", dailyLimit: PREVIEW_DAILY_GENERATION_LIMIT, usedToday: Number(usage?.count || 0) }, 429, origin);
+        }
+        const generationId = crypto.randomUUID();
+        try {
+          await env.DB.prepare(
+            "INSERT INTO generations (id, user_id, provider, model, resolution, aspect_ratio, duration_seconds, status, prompt_snapshot, estimated_credits, client_request_id, request_fingerprint, created_at, updated_at) VALUES (?, ?, 'runway', ?, ?, ?, ?, 'queued', ?, ?, ?, ?, ?, ?)"
+          ).bind(generationId, user.id, model, resolution, ratio, duration, body.prompt.trim(), estimatedCredits, requestId, fingerprint, now, now).run();
+        } catch (error) {
+          if (/generation_daily_limit/i.test(String(error))) return json({ error: "Dosiahol si denný limit " + PREVIEW_DAILY_GENERATION_LIMIT + " skúšobných generovaní.", dailyLimit: PREVIEW_DAILY_GENERATION_LIMIT }, 429, origin);
+          if (/unique|constraint/i.test(String(error))) {
+            const raced = await env.DB.prepare("SELECT id, request_fingerprint, provider_task_id, status, estimated_credits FROM generations WHERE user_id = ? AND client_request_id = ? LIMIT 1")
+              .bind(user.id, requestId).first();
+            if (raced && raced.request_fingerprint === fingerprint && raced.provider_task_id) return json({ id: raced.id, status: raced.status, replayed: true, estimatedCredits: raced.estimated_credits }, 200, origin);
+            if (raced) return json({ error: "Požiadavka sa už spracúva. Neposielaj ju znova, aby nevzniklo duplicitné generovanie.", generationId: raced.id }, 409, origin);
+          }
+          throw error;
+        }
+        const upstream = await fetch("https://api.dev.runwayml.com/v1/image_to_video", {
+          method: "POST",
+          headers: runwayHeaders(env),
+          body: JSON.stringify({
+            model,
+            promptImage: images.length === 1 ? images[0] : images.map(uri => ({ uri })),
+            promptText: body.prompt.trim(),
+            ratio,
+            duration,
+            audio: false,
+            bitrate: "high"
+          })
+        });
+        const result = await upstream.json().catch(() => ({}));
+        if (!upstream.ok || !result.id) {
+          const message = result.error?.message || result.error || result.message || "Runway požiadavku neprijal.";
+          const failedAt = Math.floor(Date.now() / 1000);
+          await env.DB.prepare("UPDATE generations SET status = 'failed', error_code = ?, error_message = ?, updated_at = ?, completed_at = ? WHERE id = ? AND user_id = ?")
+            .bind("provider_rejected", String(message).slice(0, 500), failedAt, failedAt, generationId, user.id).run();
+          return json({ error: String(message), providerStatus: upstream.status || 502, generationId }, 502, origin);
+        }
+        const providerTaskId = String(result.id);
+        const status = generationStatus(result.status || "PENDING");
+        await env.DB.prepare("UPDATE generations SET provider_task_id = ?, status = ?, updated_at = ? WHERE id = ? AND user_id = ?")
+          .bind(providerTaskId, status, Math.floor(Date.now() / 1000), generationId, user.id).run();
+        return json({ id: generationId, status: result.status || "PENDING", estimatedCredits, dailyLimit: PREVIEW_DAILY_GENERATION_LIMIT, usedToday: Number(usage?.count || 0) + 1 }, 201, origin);
+      }
+
+      if (url.pathname === "/api/generation/usage" && request.method === "GET") {
+        const user = await currentUser(request, env);
+        if (!user) return json({ error: "Prihlásenie vypršalo. Prihlás sa znova." }, 401, origin);
+        const dayStart = Math.floor(Date.now() / 86400) * 86400;
+        const row = await env.DB.prepare("SELECT COUNT(*) AS count FROM generations WHERE user_id = ? AND created_at >= ?")
+          .bind(user.id, dayStart).first();
+        const used = Number(row?.count || 0);
+        return json({ dailyLimit: PREVIEW_DAILY_GENERATION_LIMIT, usedToday: used, remainingToday: Math.max(0, PREVIEW_DAILY_GENERATION_LIMIT - used), resetsAt: dayStart + 86400 }, 200, origin);
+      }
+
+      const generationStatusMatch = /^\/api\/status\/([0-9a-f-]{36})$/i.exec(url.pathname);
+      if (generationStatusMatch && request.method === "GET") {
+        const user = await currentUser(request, env);
+        if (!user) return json({ error: "Prihlásenie vypršalo. Prihlás sa znova." }, 401, origin);
+        if (!env.RUNWAY_API_KEY) return json({ error: "Generátor zatiaľ nie je nakonfigurovaný." }, 503, origin);
+        const generation = await env.DB.prepare("SELECT id, provider_task_id, status FROM generations WHERE id = ? AND user_id = ? LIMIT 1")
+          .bind(generationStatusMatch[1], user.id).first();
+        if (!generation) return json({ error: "Generovanie sa nenašlo." }, 404, origin);
+        if (!generation.provider_task_id) return json({ error: "Generovanie zatiaľ nemá potvrdené ID poskytovateľa.", status: generation.status }, 409, origin);
+        const upstream = await fetch("https://api.dev.runwayml.com/v1/tasks/" + encodeURIComponent(generation.provider_task_id), { headers: runwayHeaders(env) });
+        const task = await upstream.json().catch(() => ({}));
+        if (!upstream.ok) return json({ error: task.error?.message || task.error || "Stav generovania sa nepodarilo načítať.", providerStatus: upstream.status }, 502, origin);
+        const mapped = generationStatus(task.status);
+        const now = Math.floor(Date.now() / 1000);
+        await env.DB.prepare("UPDATE generations SET status = ?, error_message = ?, completed_at = ?, updated_at = ? WHERE id = ? AND user_id = ?")
+          .bind(mapped, mapped === "failed" ? String(task.failure || task.error || "Generovanie zlyhalo.").slice(0,500) : null, ["succeeded","failed","cancelled"].includes(mapped) ? now : null, now, generation.id, user.id).run();
+        return json({ ...task, id: generation.id }, 200, origin);
+      }
+
+      const generationDownloadMatch = /^\/api\/download\/([0-9a-f-]{36})$/i.exec(url.pathname);
+      if (generationDownloadMatch && request.method === "GET") {
+        const user = await currentUser(request, env);
+        if (!user) return json({ error: "Prihlásenie vypršalo. Prihlás sa znova." }, 401, origin);
+        if (!env.RUNWAY_API_KEY) return json({ error: "Generátor zatiaľ nie je nakonfigurovaný." }, 503, origin);
+        const generation = await env.DB.prepare("SELECT id, provider_task_id FROM generations WHERE id = ? AND user_id = ? LIMIT 1")
+          .bind(generationDownloadMatch[1], user.id).first();
+        if (!generation) return json({ error: "Video sa nenašlo." }, 404, origin);
+        if (!generation.provider_task_id) return json({ error: "Video ešte nie je pripravené." }, 409, origin);
+        const taskResponse = await fetch("https://api.dev.runwayml.com/v1/tasks/" + encodeURIComponent(generation.provider_task_id), { headers: runwayHeaders(env) });
+        const task = await taskResponse.json().catch(() => ({}));
+        if (!taskResponse.ok) return json({ error: task.error?.message || task.error || "Video sa nepodarilo načítať." }, 502, origin);
+        const videoUrl = Array.isArray(task.output) && typeof task.output[0] === "string" ? task.output[0] : "";
+        if (task.status !== "SUCCEEDED" || !videoUrl) return json({ error: "Video ešte nie je pripravené na stiahnutie." }, 409, origin);
+        let parsedVideoUrl;
+        try { parsedVideoUrl = new URL(videoUrl); } catch { return json({ error: "Poskytovateľ vrátil neplatnú adresu videa." }, 502, origin); }
+        if (parsedVideoUrl.protocol !== "https:" || parsedVideoUrl.username || parsedVideoUrl.password) return json({ error: "Poskytovateľ vrátil neplatnú adresu videa." }, 502, origin);
+        const videoResponse = await fetch(parsedVideoUrl.href);
+        if (!videoResponse.ok || !videoResponse.body) return json({ error: "Hotové video sa nepodarilo stiahnuť." }, 502, origin);
+        const completedAt = Math.floor(Date.now() / 1000);
+        await env.DB.prepare("UPDATE generations SET status = 'succeeded', completed_at = COALESCE(completed_at, ?), updated_at = ? WHERE id = ? AND user_id = ?")
+          .bind(completedAt, completedAt, generation.id, user.id).run();
+        return new Response(videoResponse.body, {
+          status: 200,
+          headers: { ...corsHeaders(origin), "Content-Type": videoResponse.headers.get("Content-Type") || "video/mp4", "Content-Disposition": 'attachment; filename="product-studio-ai.mp4"', "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" }
+        });
       }
 
       // Every library endpoint is scoped to the authenticated account. Client-supplied user IDs are ignored.
