@@ -313,6 +313,8 @@ async function generationRequestCheckpoint(payload){
 }
 $('generate').onclick=async()=>{
  const btn=$('generate');btn.disabled=true;$('videoWrap').innerHTML='';
+ currentVideoBlob=null;
+ if(currentVideoObjectUrl){URL.revokeObjectURL(currentVideoObjectUrl);currentVideoObjectUrl=null;}
  try{
   if(!selectedFiles.length)throw new Error('Najskôr nahraj aspoň jednu fotografiu produktu.');
   if(selectedSourceVideo){
