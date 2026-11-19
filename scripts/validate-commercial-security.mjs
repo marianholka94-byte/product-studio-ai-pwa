@@ -69,6 +69,10 @@ console.log("Commercial tenant-isolation and private-media security checks passe
 const generationHistoryRoute = worker.match(/if \(url\.pathname === "\/api\/generations" && request\.method === "GET"\)[\s\S]*?return json\(\{ generations, limit \}, 200, origin\);[\s\S]*?\n      }/)?.[0] || "";
 assert.ok(generationHistoryRoute.includes("currentUser(request, env)") && generationHistoryRoute.includes("WHERE user_id = ?"), "Generation history must authenticate and filter every record by the current owner.");
 assert.ok(!generationHistoryRoute.includes("provider_task_id"), "Generation history must never expose provider task IDs.");
+const generationDownloadRoute = worker.slice(worker.indexOf('const generationDownloadMatch'), worker.indexOf('// Every library endpoint'));
+assert.ok(generationDownloadRoute.includes("currentUser(request, env)") && generationDownloadRoute.includes("generation_outputs WHERE generation_id = ? AND user_id = ?"), "Generated video outputs must be private and owner-scoped.");
+assert.ok(generationDownloadRoute.includes("env.MEDIA.get(existingOutput.r2_key)") && generationDownloadRoute.includes("env.MEDIA.put(r2Key, limitedBody"), "Generated videos must be served from private R2 after first retrieval.");
+assert.ok(generationDownloadRoute.indexOf("if (existingOutput)") < generationDownloadRoute.indexOf("byteplusConfigured(env)"), "Cached generated videos must remain downloadable without provider credentials.");
 
 const historyDownload = html.match(/async function downloadHistoryGeneration\([\s\S]*?\n}/)?.[0] || "";
 const historyStatusRefresh = html.match(/async function refreshHistoryGenerationStatus\([\s\S]*?\n}/)?.[0] || "";
