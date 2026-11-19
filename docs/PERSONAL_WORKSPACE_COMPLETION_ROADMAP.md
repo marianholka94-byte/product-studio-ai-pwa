@@ -33,6 +33,7 @@ Status: active working plan for the owner's private day-to-day PRODUCT STUDIO AI
 - [x] Account overview wording now describes a private cloud workspace and clearly labels the three-per-day preview safety limit; deferred credit billing is not presented as active.
 - [x] Cloud library copy describes the owner's private working space rather than a commercial customer test environment.
 - [x] Android file picker now respects the file input's accepted MIME types and multiple-selection mode instead of always offering every image/video type.
+- [x] PWA static cache version and script asset query versions are advanced together so web releases invalidate stale cached app assets without requiring a new Android APK.
 - [x] Local projects can be explicitly saved to cloud with per-account sync checkpoints and retry-safe creation.
 - [x] Cloud project metadata supports edits, archive/restore, and conflict recovery choices.
 - [x] User-confirmed: the same local project can be saved to two separate accounts, each with its own cloud copy.
