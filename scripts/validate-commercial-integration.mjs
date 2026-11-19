@@ -221,7 +221,9 @@ assert.ok(html.includes("renderAccountOverview(account,usage,health)") && html.i
 assert.ok(html.includes('id="historySummary"') && html.includes("Rozpracované") && html.includes("Neúspešné/zrušené"), "The generation history must summarize completed, active, and failed jobs.");
 assert.ok(readFileSync("sw.js", "utf8").includes("product-studio-ai-v46-static-only-20261119"), "The PWA cache must refresh for the account overview UI.");
 
-const projectCopyHandler = cloud.match(/saveProjectAsCopy\.addEventListener\("click", async \(\) => \{[\\s\\S]*?\\n  \}\);/)?.[0] || "";
+const projectCopyStart = cloud.indexOf('saveProjectAsCopy.addEventListener("click"');
+const projectCopyEnd = cloud.indexOf("\n  });", projectCopyStart);
+const projectCopyHandler = projectCopyStart >= 0 && projectCopyEnd > projectCopyStart ? cloud.slice(projectCopyStart, projectCopyEnd) : "";
 assert.ok(projectCopyHandler.includes('operationFor("project-copy", payload)'), "Conflict save-as-copy must use a persisted, account-scoped idempotency key.");
 assert.ok(projectCopyHandler.includes('clearOperation("project-copy", accountId)'), "A successful conflict copy must clear its pending idempotency checkpoint.");
 assert.ok(projectCopyHandler.includes("const accountId = user.id") && projectCopyHandler.includes("const requestEpoch = accountEpoch"), "Conflict save-as-copy must capture the initiating account before asynchronous work.");
