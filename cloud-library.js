@@ -30,6 +30,8 @@
   let token = sessionStorage.getItem(TOKEN_KEY) || "";
   let products = [];
   let user = null;
+  let editingProductId = null;
+  let editingProjectId = null;
   const setStatus = (message, error = false) => {
     status.textContent = message;
     status.className = "status" + (error ? " err" : " ok");
@@ -108,7 +110,28 @@
           await refresh();
         } catch (e) { setStatus(e.message, true); }
       });
-      card.append(upload, uploadButton, thumbs);
+      const actions = $("div");
+      const editButton = $("button", { class: "secondary" }, "Upraviť");
+      const archiveButton = $("button", { class: "secondary" }, "Archivovať");
+      editButton.addEventListener("click", () => {
+        editingProductId = product.id;
+        productName.el.value = product.name;
+        productDescription.el.value = product.description || "";
+        addProduct.textContent = "Uložiť zmeny produktu";
+        productName.el.focus();
+        setStatus("Upravuješ produkt: " + product.name);
+      });
+      archiveButton.addEventListener("click", async () => {
+        if (!confirm("Naozaj archivovať produkt „" + product.name + "“?")) return;
+        try {
+          await api("/api/products/" + encodeURIComponent(product.id), { method: "DELETE" });
+          if (editingProductId === product.id) { editingProductId = null; addProduct.textContent = "＋ Vytvoriť produkt"; }
+          setStatus("Produkt bol archivovaný.");
+          await refresh();
+        } catch (e) { setStatus(e.message, true); }
+      });
+      actions.append(editButton, archiveButton);
+      card.append(upload, uploadButton, thumbs, actions);
       productList.append(card);
       try {
         const images = await api("/api/products/" + encodeURIComponent(product.id) + "/images");
@@ -130,6 +153,29 @@
       addText(card, "strong", project.name);
       addText(card, "small", (project.status || "draft") + (project.productId ? " · Prepojený produkt" : ""));
       addText(card, "p", project.prompt || "");
+      const actions = $("div");
+      const editButton = $("button", { class: "secondary" }, "Upraviť");
+      const archiveButton = $("button", { class: "secondary" }, "Archivovať");
+      editButton.addEventListener("click", () => {
+        editingProjectId = project.id;
+        projectName.el.value = project.name;
+        projectPrompt.el.value = project.prompt || "";
+        projectProduct.value = project.productId || "";
+        addProject.textContent = "Uložiť zmeny projektu";
+        projectName.el.focus();
+        setStatus("Upravuješ projekt: " + project.name);
+      });
+      archiveButton.addEventListener("click", async () => {
+        if (!confirm("Naozaj archivovať projekt „" + project.name + "“?")) return;
+        try {
+          await api("/api/projects/" + encodeURIComponent(project.id), { method: "DELETE" });
+          if (editingProjectId === project.id) { editingProjectId = null; addProject.textContent = "＋ Vytvoriť projekt"; }
+          setStatus("Projekt bol archivovaný.");
+          await refresh();
+        } catch (e) { setStatus(e.message, true); }
+      });
+      actions.append(editButton, archiveButton);
+      card.append(actions);
       projectList.append(card);
     }
     if (!projectList.childElementCount) addText(projectList, "p", "Zatiaľ nemáš uložené reklamné projekty.");
@@ -157,17 +203,25 @@
   });
   addProduct.addEventListener("click", async () => {
     try {
-      await api("/api/products", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: productName.el.value.trim(), description: productDescription.el.value }) });
+      const isEditing = !!editingProductId;
+      const path = isEditing ? "/api/products/" + encodeURIComponent(editingProductId) : "/api/products";
+      await api(path, { method: isEditing ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: productName.el.value.trim(), description: productDescription.el.value }) });
+      editingProductId = null;
       productName.el.value = ""; productDescription.el.value = "";
-      setStatus("Produkt bol uložený v cloudovej knižnici.");
+      addProduct.textContent = "＋ Vytvoriť produkt";
+      setStatus(isEditing ? "Produkt bol upravený." : "Produkt bol uložený v cloudovej knižnici.");
       await refresh();
     } catch (e) { setStatus(e.message, true); }
   });
   addProject.addEventListener("click", async () => {
     try {
-      await api("/api/projects", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: projectName.el.value.trim(), prompt: projectPrompt.el.value, productId: projectProduct.value || null, settings: {} }) });
+      const isEditing = !!editingProjectId;
+      const path = isEditing ? "/api/projects/" + encodeURIComponent(editingProjectId) : "/api/projects";
+      await api(path, { method: isEditing ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: projectName.el.value.trim(), prompt: projectPrompt.el.value, productId: projectProduct.value || null, settings: {} }) });
+      editingProjectId = null;
       projectName.el.value = ""; projectPrompt.el.value = "";
-      setStatus("Reklamný projekt bol uložený.");
+      addProject.textContent = "＋ Vytvoriť projekt";
+      setStatus(isEditing ? "Reklamný projekt bol upravený." : "Reklamný projekt bol uložený.");
       await refresh();
     } catch (e) { setStatus(e.message, true); }
   });
