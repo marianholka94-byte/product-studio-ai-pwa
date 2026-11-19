@@ -144,9 +144,9 @@ jobs:
           must_reject("cross-user generated output link",
               "INSERT INTO generation_outputs (id,generation_id,user_id,r2_key,content_type,byte_size,created_at) VALUES (?,?,?,?,?,?,?)",
               ("out_bad","g1","u2","users/u2/generations/g1/output.mp4","video/mp4",10,1))
-          db.execute("INSERT INTO generation_outputs (id,generation_id,user_id,r2_key,content_type,byte_size,created_at) VALUES ('out1','g1','u1','users/u1/generations/g1/output.mp4','video/mp4',10,1))
+          db.execute("INSERT INTO generation_outputs (id,generation_id,user_id,r2_key,content_type,byte_size,created_at) VALUES ('out1','g1','u1','users/u1/generations/g1/output.mp4','video/mp4',10,1)")
           must_reject("credit ledger update",
-              "UPDATE credit_ledger SET amount = -1 WHERE id = ?",
+              "UPDATE credit_ledger SET units = 1 WHERE id = ?",
               ("cl1",))
           must_reject("credit ledger delete",
               "DELETE FROM credit_ledger WHERE id = ?",
