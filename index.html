@@ -473,7 +473,7 @@ $('generate').onclick=async()=>{
   setStatus('Požiadavka prijatá. Video sa generuje. Stránku zatiaľ nezatváraj.');
   await pollTask(created.id);
   await Promise.all([refreshGenerationHistory(),refreshCommercialConnection()]);
- }catch(err){stopGenerationProgress();$('generationProgress').classList.remove('active');setStatus(err.message,'err');refreshGenerationHistory();refreshCommercialConnection();}
+ }catch(err){if(err.status===402){const account=window.PSAICloudLibrary?.getCurrentUser();if(account)sessionStorage.removeItem('psai_generation_pending_'+account.id);}stopGenerationProgress();$('generationProgress').classList.remove('active');setStatus(err.message,'err');refreshGenerationHistory();refreshCommercialConnection();}
  finally{btn.disabled=false}
 };
 async function downloadGeneratedVideo(id){
