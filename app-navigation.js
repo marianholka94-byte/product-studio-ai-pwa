@@ -254,7 +254,7 @@
   studio.append(welcome,product,advertising,generation);
 
   const projectsIntro=document.createElement('div');projectsIntro.className='app-placeholder';projectsIntro.dataset.sectionIcon='📁';
-  projectsIntro.innerHTML='<h2>Moje projekty</h2><p>Všetky tvoje produktové projekty a reklamné výstupy budú na jednom mieste.</p><p><strong>Pracovný priestor PRODUCT STUDIO AI</strong></p>';
+  projectsIntro.innerHTML='<h2>Moje projekty</h2><p>Lokálne projekty uložené v tomto zariadení. Nie sú viazané na cloudový účet a zostávajú tu aj po prepnutí účtu.</p><p>Cloudové projekty a produkty nájdeš v samostatnej sekcii <strong>Cloudová knižnica</strong>.</p><p><strong>Pracovný priestor PRODUCT STUDIO AI</strong></p>';
 
 
   connection.remove();
