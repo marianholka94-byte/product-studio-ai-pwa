@@ -78,10 +78,11 @@ The deploy workflow automatically configures the preview provider key and runs t
 ## Android integration
 
 - [x] Existing Android wrapper project identified.
-- [ ] Update Android WebView host allowlist and remote app URL deliberately.
+- [x] Update Android WebView host allowlist and remote app URL deliberately in the isolated preview flavor.
 - [ ] Verify cloud login, upload, save, retry, restore, and logout inside Android WebView.
 - [ ] Verify WebView file chooser, navigation, offline behavior, and session persistence.
-- [ ] Confirm which changes can ship as web updates and which require a new Android package.
+- [x] Documented update boundary: remote web code updates do not require an APK rebuild; native wrapper, package, permissions, or SDK changes do.
+- [ ] Confirm which changes can ship as web updates and which require a new Android package on the installed device.
 - [ ] Do not release a new Android build until preview acceptance and production cutover are explicitly approved.
 
 - [ ] Implement and test video-to-video generation from a user-supplied source clip; the Preview UI currently marks this input as unavailable.
