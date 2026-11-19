@@ -315,10 +315,14 @@
         motion: record.motion || "", duration: record.duration || "5", resolution: record.resolution || "720p",
         model: record.model || "seedance2_mini", lighting: record.lighting || "", extra: record.extra || ""
       };
+      const imageDigests = await Promise.all(images.map(async image => {
+        const digest = await crypto.subtle.digest("SHA-256", await image.blob.arrayBuffer());
+        return [...new Uint8Array(digest)].map(value => value.toString(16).padStart(2, "0")).join("");
+      }));
       const fingerprint = JSON.stringify({
         name: record.name || record.product || "Nový produkt", product: record.product || "",
         prompt: record.prompt || "", settings,
-        images: images.map(x => ({ name: x.name, type: x.type, size: x.blob.size }))
+        images: images.map((x, index) => ({ name: x.name, type: x.type, size: x.blob.size, sha256: imageDigests[index] }))
       });
       let sync = record.cloudSync || null;
       if (sync && sync.fingerprint !== fingerprint) throw new Error("Tento lokálny projekt sa od posledného pokusu zmenil. Pôvodné čiastočné nahrávanie zostáva zachované; najprv ho dokonči alebo vytvor nový lokálny projekt.");
