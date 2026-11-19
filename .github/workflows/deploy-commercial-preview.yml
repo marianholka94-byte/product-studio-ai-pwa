@@ -34,3 +34,10 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      - name: Smoke-test deployed D1 and R2 connectivity
+        run: |
+          response="$(curl --retry 8 --retry-delay 3 --retry-all-errors --fail --silent --show-error https://product-studio-ai-commercial-preview.marianholka94.workers.dev/api/health)"
+          echo "$response"
+          echo "$response" | grep -q '"ok":true'
+          echo "$response" | grep -q '"d1":true'
+          echo "$response" | grep -q '"r2":true'
