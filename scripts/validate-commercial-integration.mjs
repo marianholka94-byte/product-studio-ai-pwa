@@ -85,3 +85,8 @@ assert.ok(cloud.includes('prompt: project.prompt || ""'), "Cloud project import 
 assert.ok(cloud.includes('style: settings.style || ""') && cloud.includes('resolution: settings.resolution || "720p"') && cloud.includes('model: settings.model || "seedance2_mini"'), "Cloud project import must restore saved Studio settings");
 assert.ok(cloud.includes("project.exportPreset || \"custom\""), "Cloud project import must restore the export preset");
 assert.ok(cloud.includes("cloudový originál zostal nezmenený"), "Cloud project import must remain read-only");
+
+assert.ok(cloud.includes("let editingProjectRecord = null"), "Cloud project editor must retain the full original project record");
+assert.ok(cloud.includes("editingProjectRecord = project"), "Editing a cloud project must capture its existing settings");
+assert.ok(cloud.includes("payload.settings = editingProjectRecord?.settings || {}"), "Editing project metadata must preserve existing cloud settings instead of overwriting them with an empty object");
+assert.ok(cloud.includes("payload.exportPreset = editingProjectRecord?.exportPreset ?? null"), "Editing project metadata must preserve its export preset");
