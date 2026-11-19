@@ -418,7 +418,7 @@ async function refreshGenerationHistory(){
   panel.replaceChildren();
   if(!items.length){panel.textContent='Zatiaľ nemáš žiadne uložené generovania.';return;}
   const list=document.createElement('div');list.className='generation-history-list';
-  const labels={queued:'Čaká',processing:'Spracúva sa',succeeded:'Hotové',failed:'Neúspešné',cancelled:'Zrušené',submission_unknown:'Overenie odoslania'};
+  const labels={queued:'Čaká',processing:'Spracúva sa',succeeded:'Hotové',failed:'Neúspešné',cancelled:'Zrušené'};
   for(const item of items){
    const card=document.createElement('article');card.className='generation-history-item';
    const heading=document.createElement('strong');heading.textContent=(item.model||'AI video')+' · '+(item.errorCode==='provider_submission_unknown'?'Overenie odoslania':(labels[item.status]||item.status||'Neznámy stav'));
