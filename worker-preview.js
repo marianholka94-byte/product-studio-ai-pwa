@@ -583,19 +583,36 @@ export default {
             role: "reference_image"
           }))
         ];
-        const upstream = await fetch(BYTEPLUS_TASKS_URL, {
-          method: "POST",
-          headers: byteplusHeaders(env),
-          body: JSON.stringify({
-            model: providerModel,
-            content,
-            resolution,
-            ratio: providerRatio,
-            duration,
-            watermark: false
-          })
-        });
-        const result = await upstream.json().catch(() => ({}));
+        // A network failure after sending a paid POST is ambiguous: BytePlus may
+        // already have accepted and billed the task. Never retry this POST blindly.
+        let upstream;
+        let result;
+        try {
+          upstream = await fetch(BYTEPLUS_TASKS_URL, {
+            method: "POST",
+            headers: byteplusHeaders(env),
+            body: JSON.stringify({
+              model: providerModel,
+              content,
+              resolution,
+              ratio: providerRatio,
+              duration,
+              watermark: false
+            })
+          });
+          result = await upstream.json().catch(() => ({}));
+        } catch (error) {
+          const failedAt = Math.floor(Date.now() / 1000);
+          const diagnostic = String(error?.message || error?.name || "Network error").slice(0, 300);
+          await env.DB.prepare("UPDATE generations SET status = 'submission_unknown', error_code = ?, error_message = ?, updated_at = ? WHERE id = ? AND user_id = ? AND provider_task_id IS NULL")
+            .bind("provider_submission_unknown", "BytePlus odpoveď sa stratila počas odosielania. Úloha mohla byť prijatá; požiadavku neposielaj znova. Diagnostika: " + diagnostic, failedAt, generationId, user.id).run();
+          return json({
+            error: "Spojenie s BytePlus sa prerušilo počas odosielania. Poskytovateľ mohol úlohu prijať, preto ju z bezpečnostných dôvodov neposielam znova.",
+            generationId,
+            status: "submission_unknown",
+            recoveryRequired: true
+          }, 503, origin);
+        }
         if (!upstream.ok || !result.id) {
           const message = result.error?.message || result.error || result.message || "BytePlus ModelArk požiadavku neprijal.";
           const failedAt = Math.floor(Date.now() / 1000);
@@ -658,7 +675,16 @@ export default {
         const generation = await env.DB.prepare("SELECT id, provider_task_id, status FROM generations WHERE id = ? AND user_id = ? LIMIT 1")
           .bind(generationStatusMatch[1], user.id).first();
         if (!generation) return json({ error: "Generovanie sa nenašlo." }, 404, origin);
-        if (!generation.provider_task_id) return json({ error: "Generovanie zatiaľ nemá potvrdené ID poskytovateľa.", status: generation.status }, 409, origin);
+        if (!generation.provider_task_id) {
+          const uncertain = generation.status === "submission_unknown";
+          return json({
+            error: uncertain
+              ? "Stav odoslania do BytePlus nie je potvrdený. Úloha mohla byť prijatá; automatické opakovanie je zablokované, aby nevzniklo duplicitné platené generovanie."
+              : "Generovanie zatiaľ nemá potvrdené ID poskytovateľa.",
+            status: generation.status,
+            recoveryRequired: uncertain
+          }, 409, origin);
+        }
         const upstream = await fetch(BYTEPLUS_TASKS_URL + "/" + encodeURIComponent(generation.provider_task_id), { headers: byteplusHeaders(env) });
         const task = await upstream.json().catch(() => ({}));
         if (!upstream.ok) return json({ error: task.error?.message || task.error || "Stav generovania sa nepodarilo načítať.", providerStatus: upstream.status }, 502, origin);
