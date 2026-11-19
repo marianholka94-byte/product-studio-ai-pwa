@@ -127,8 +127,9 @@ a{color:#174ea6;overflow-wrap:anywhere}
 
 
 <section class="panel">
-<h2>5. História posledného generovania</h2>
-<div id="history" class="note">Zatiaľ žiadne generovanie v tejto relácii.</div>
+<h2>5. História generovaní</h2>
+<div class="row"><span class="note">Posledných 20 generovaní uložených v tvojom účte.</span><button id="refreshHistory" type="button" class="secondary">Obnoviť históriu</button></div>
+<div id="history" class="note">História sa načíta po prihlásení do zákazníckeho účtu.</div>
 </section>
 
 <script>
@@ -185,7 +186,36 @@ async function refreshCommercialConnection(){
     usageLabel.textContent=error.message;
   }
 }
-window.addEventListener('psai-cloud-account-change',()=>{updateReadyStatus();refreshCommercialConnection();});
+async function refreshGenerationHistory(){
+ const account=window.PSAICloudLibrary?.getCurrentUser();
+ const panel=$('history');
+ if(!account){panel.textContent='Prihlás sa do zákazníckeho účtu, aby sa zobrazila tvoja história generovaní.';return;}
+ panel.textContent='Načítavam históriu generovaní…';
+ try{
+  const data=await window.PSAICloudLibrary.request('/api/generations?limit=20');
+  if(window.PSAICloudLibrary?.getCurrentUser()?.id!==account.id)return;
+  const items=Array.isArray(data.generations)?data.generations:[];
+  panel.replaceChildren();
+  if(!items.length){panel.textContent='Zatiaľ nemáš žiadne uložené generovania.';return;}
+  const list=document.createElement('div');list.className='generation-history-list';
+  const labels={queued:'Čaká',processing:'Spracúva sa',succeeded:'Hotové',failed:'Neúspešné',cancelled:'Zrušené'};
+  for(const item of items){
+   const card=document.createElement('article');card.className='generation-history-item';
+   const heading=document.createElement('strong');heading.textContent=(item.model||'AI video')+' · '+(labels[item.status]||item.status||'Neznámy stav');
+   const details=document.createElement('p');details.className='note';
+   const date=item.createdAt?new Date(item.createdAt*1000).toLocaleString('sk-SK'):'Dátum neznámy';
+   details.textContent=[date,item.resolution||'',item.aspectRatio||'',item.durationSeconds?item.durationSeconds+' s':''].filter(Boolean).join(' · ');
+   card.append(heading,details);
+   if(item.status==='failed'&&item.errorMessage){const error=document.createElement('p');error.className='note';error.textContent=item.errorMessage;card.append(error);}
+   list.append(card);
+  }
+  panel.append(list);
+ }catch(error){
+  if(window.PSAICloudLibrary?.getCurrentUser()?.id===account.id)panel.textContent='Históriu sa nepodarilo načítať: '+error.message;
+ }
+}
+$('refreshHistory').addEventListener('click',refreshGenerationHistory);
+window.addEventListener('psai-cloud-account-change',()=>{updateReadyStatus();refreshCommercialConnection();refreshGenerationHistory();});
 function buildPrompt(){
  const product=$('product').value.trim()||'the uploaded product';
  const extra=$('extra').value.trim();
@@ -341,7 +371,8 @@ $('generate').onclick=async()=>{
   setGenerationProgress(1,'AI generuje video','Požiadavka bola prijatá. Sledujem stav na serveri; môže to chvíľu trvať.');
   setStatus('Požiadavka prijatá. Video sa generuje. Stránku zatiaľ nezatváraj.');
   await pollTask(created.id);
- }catch(err){stopGenerationProgress();$('generationProgress').classList.remove('active');setStatus(err.message,'err')}
+  await Promise.all([refreshGenerationHistory(),refreshCommercialConnection()]);
+ }catch(err){stopGenerationProgress();$('generationProgress').classList.remove('active');setStatus(err.message,'err');refreshGenerationHistory();refreshCommercialConnection();}
  finally{btn.disabled=false}
 };
 async function downloadGeneratedVideo(id){
