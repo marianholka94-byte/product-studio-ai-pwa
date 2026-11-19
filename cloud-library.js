@@ -312,13 +312,18 @@
         setStatus("Upravuješ produkt: " + product.name);
       });
       archiveButton.addEventListener("click", async () => {
-        if (!confirm("Naozaj archivovať produkt „" + product.name + "“?")) return;
+        if (archiveButton.disabled || !confirm("Naozaj archivovať produkt „" + product.name + "“?")) return;
+        const accountId = user?.id;
+        const requestEpoch = accountEpoch;
+        archiveButton.disabled = true;
         try {
           await api("/api/products/" + encodeURIComponent(product.id), { method: "DELETE" });
+          if (requestEpoch !== accountEpoch || accountId !== user?.id) return;
           if (editingProductId === product.id) { editingProductId = null; editingProductRecord = null; addProduct.textContent = "＋ Vytvoriť produkt"; productConflict.hidden = true; }
           setStatus("Produkt bol archivovaný.");
           await refresh();
-        } catch (e) { setStatus(e.message, true); }
+        } catch (e) { if (requestEpoch === accountEpoch && accountId === user?.id) setStatus(e.message, true); }
+        finally { if (requestEpoch === accountEpoch && accountId === user?.id) archiveButton.disabled = false; }
       });
       actions.append(useInStudio, editButton, archiveButton);
       card.append(upload, uploadButton, thumbs, actions);
@@ -354,13 +359,17 @@
         addText(item, "small", "Archivovaný produkt · fotografie zostávajú zachované");
         const restore = $("button", { class: "secondary" }, "Obnoviť produkt");
         restore.addEventListener("click", async () => {
+          if (restore.disabled) return;
+          const accountId = user?.id;
+          const requestEpoch = accountEpoch;
           restore.disabled = true;
           try {
             await api("/api/products/" + encodeURIComponent(product.id) + "/restore", { method: "POST" });
+            if (requestEpoch !== accountEpoch || accountId !== user?.id) return;
             setStatus("Produkt „" + product.name + "“ bol obnovený.");
             await refresh();
-          } catch (e) { setStatus(e.message, true); }
-          finally { restore.disabled = false; }
+          } catch (e) { if (requestEpoch === accountEpoch && accountId === user?.id) setStatus(e.message, true); }
+          finally { if (requestEpoch === accountEpoch && accountId === user?.id) restore.disabled = false; }
         });
         item.append(restore);
         archive.append(item);
