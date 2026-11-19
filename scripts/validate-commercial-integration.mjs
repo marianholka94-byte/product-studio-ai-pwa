@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import assert from "node:assert/strict";
+import vm from "node:vm";
 
 const worker = readFileSync("worker-preview.js", "utf8");
 const cloud = readFileSync("cloud-library.js", "utf8");
@@ -24,6 +25,12 @@ for (const apiPath of [
 ]) assert.ok(cloud.includes(apiPath), "Cloud UI does not call " + apiPath);
 
 assert.ok(html.includes("/cloud-library.js?"), "Main PWA does not load the cloud library module");
+assert.ok(html.includes("https://product-studio-ai-commercial-preview.marianholka94.workers.dev") && html.includes("generationRequestCheckpoint"), "The generator UI must use the commercial preview API and retry-safe request IDs.");
+assert.ok(!html.includes("requestAppPassword") && !html.includes("psai_session_token"), "The commercial preview UI must not rely on the shared legacy application password.");
+assert.ok(cloud.includes("async request(path, options = {})") && cloud.includes("async download(path)"), "The commercial account bridge must expose owner-bound JSON and binary requests.");
+for (const script of html.matchAll(/<script(?:\\s[^>]*)?>([\\s\\S]*?)<\\/script>/gi)) {
+  if (script[1].trim()) new vm.Script(script[1], { filename: "index.html inline script" });
+}
 assert.ok(cloud.includes("sessionStorage"), "Cloud session token must use sessionStorage");
 assert.ok(!cloud.includes("localStorage"), "Cloud session token must not use localStorage");
 assert.ok(cloud.includes("Authorization"), "Cloud requests must use bearer authentication");
