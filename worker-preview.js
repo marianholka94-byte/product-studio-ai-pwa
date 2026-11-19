@@ -311,7 +311,7 @@ export default {
 
     try {
       const providerInputMatch = /^\/api\/provider-input\/([0-9a-f-]{36})$/i.exec(url.pathname);
-      if (providerInputMatch && request.method === "GET") {
+      if (providerInputMatch && ["GET", "HEAD"].includes(request.method)) {
         const token = url.searchParams.get("token") || "";
         if (!/^[A-Za-z0-9_-]{40,60}$/.test(token)) return new Response("Not found", { status: 404, headers: { "Cache-Control": "no-store" } });
         const tokenHash = await sha256(token);
@@ -322,7 +322,7 @@ export default {
         if (!input) return new Response("Not found", { status: 404, headers: { "Cache-Control": "no-store" } });
         const object = await env.MEDIA.get(input.r2_key);
         if (!object || Number(object.size) !== Number(input.byte_size)) return new Response("Not found", { status: 404, headers: { "Cache-Control": "no-store" } });
-        return new Response(object.body, {
+        return new Response(request.method === "HEAD" ? null : object.body, {
           status: 200,
           headers: {
             "Content-Type": input.content_type,
@@ -330,7 +330,6 @@ export default {
             "Content-Disposition": 'inline; filename="reference-video"',
             "Cache-Control": "private, no-store, max-age=0",
             "X-Content-Type-Options": "nosniff",
-            "Accept-Ranges": "bytes"
           }
         });
       }
@@ -707,7 +706,7 @@ export default {
           throw error;
         }
         if (inputVideo) {
-          const accessExpiresAt = now + 6 * 60 * 60;
+          const accessExpiresAt = now + 48 * 60 * 60;
           const claimed = await env.DB.prepare(
             "UPDATE generation_input_videos SET generation_id = ?, access_token_hash = ?, access_expires_at = ? WHERE id = ? AND user_id = ? AND generation_id IS NULL AND expires_at > ?"
           ).bind(generationId, await sha256(providerInputToken), accessExpiresAt, inputVideo.id, user.id, now).run();
