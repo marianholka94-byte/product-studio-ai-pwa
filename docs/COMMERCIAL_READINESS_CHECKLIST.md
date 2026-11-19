@@ -17,6 +17,7 @@ This document tracks readiness work on the isolated commercial preview. It is no
 - [x] Cloud project conflict recovery offers explicit reload-latest, retry-with-my-edits, and idempotent save-as-copy actions.
 - [x] Cloud account changes, logout, and expired sessions clear account-specific editor state so one account's unsaved form data is not shown to another.
 - [x] Reusing a product or project idempotency key with a different payload is rejected.
+- [x] Manual cloud-library product and project creation persist account-scoped idempotency checkpoints in session storage, reuse the same key after a lost response, and prevent overlapping submissions.
 - [x] Resumed cloud uploads compare ordered SHA-256 checksums against the remote image manifest before continuing.
 - [x] Schema and integration checks cover both idempotency columns and unique per-account constraints.
 - [x] Integration checks cover checksum-verified recovery of partially uploaded images.
