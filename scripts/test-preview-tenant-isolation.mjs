@@ -78,6 +78,22 @@ try {
   await expectStatus("Account A can read own project", await request("/api/projects/" + encodeURIComponent(project.id), { token: tokenA }), 200);
   await expectStatus("Account A can read own private image", await request("/api/assets/" + encodeURIComponent(assetId), { token: tokenA }), 200);
 
+  const staleProductVersion = Number(product.updatedAt) - 1;
+  assert.ok(Number.isSafeInteger(staleProductVersion) && staleProductVersion >= 0, "Account A product must expose a valid version timestamp.");
+  const staleProductEditResponse = await request("/api/products/" + encodeURIComponent(product.id), {
+    token: tokenA,
+    method: "PATCH",
+    body: { name: product.name, description: product.description, expectedUpdatedAt: staleProductVersion }
+  });
+  await expectStatus("Stale cloud product edit", staleProductEditResponse, 409);
+  const staleProductEdit = await staleProductEditResponse.json();
+  assert.equal(staleProductEdit.currentProduct?.updatedAt, product.updatedAt, "A stale product edit must return the current product version without overwriting it.");
+  const unchangedProductResponse = await request("/api/products/" + encodeURIComponent(product.id), { token: tokenA });
+  await expectStatus("Account A product remains unchanged after stale edit", unchangedProductResponse, 200);
+  const unchangedProduct = await unchangedProductResponse.json();
+  assert.equal(unchangedProduct.product.updatedAt, product.updatedAt, "A rejected stale product edit must not change the product timestamp.");
+  assert.equal(unchangedProduct.product.name, product.name, "A rejected stale product edit must not change the product name.");
+
   const staleVersion = Number(project.updatedAt) - 1;
   assert.ok(Number.isSafeInteger(staleVersion) && staleVersion >= 0, "Account A project must expose a valid version timestamp.");
   const staleEditResponse = await request("/api/projects/" + encodeURIComponent(project.id), {
