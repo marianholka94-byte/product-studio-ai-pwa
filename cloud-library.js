@@ -70,8 +70,16 @@
   const projectPrompt = field("Prompt", "textarea", "Zadanie reklamného videa", 8000);
   const projectProduct = $("select");
   const addProject = $("button", {}, "＋ Vytvoriť projekt");
+  const projectConflict = $("div", { class: "cloud-item" });
+  projectConflict.hidden = true;
+  projectConflict.style.borderColor = "#c58b42";
+  const projectConflictText = $("p", {}, "");
+  const reloadLatestProject = $("button", { class: "secondary" }, "Načítať najnovšiu verziu");
+  const retryProjectSave = $("button", {}, "Ponechať moje zmeny a uložiť znova");
+  projectConflict.append(projectConflictText, reloadLatestProject, retryProjectSave);
+  let conflictLatestProject = null;
   const projectList = $("div");
-  workspace.append(accountLine, logout, $("hr"), productName.wrap, productDescription.wrap, addProduct, productList, $("hr"), projectName.wrap, $("label", {}, "Prepojiť s produktom"), projectProduct, projectPrompt.wrap, addProject, projectList);
+  workspace.append(accountLine, logout, $("hr"), productName.wrap, productDescription.wrap, addProduct, productList, $("hr"), projectName.wrap, $("label", {}, "Prepojiť s produktom"), projectProduct, projectPrompt.wrap, addProject, projectConflict, projectList);
   async function api(path, options = {}) {
     const headers = { ...(options.headers || {}) };
     if (token) headers.Authorization = "Bearer " + token;
@@ -278,6 +286,8 @@
       editButton.addEventListener("click", () => {
         editingProjectId = project.id;
         editingProjectRecord = project;
+        conflictLatestProject = null;
+        projectConflict.hidden = true;
         projectName.el.value = project.name;
         projectPrompt.el.value = project.prompt || "";
         projectProduct.value = project.productId || "";
@@ -347,18 +357,38 @@
       await api(path, { method: isEditing ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
       editingProjectId = null;
       editingProjectRecord = null;
+      conflictLatestProject = null;
+      projectConflict.hidden = true;
       projectName.el.value = ""; projectPrompt.el.value = "";
       addProject.textContent = "＋ Vytvoriť projekt";
       setStatus(isEditing ? "Reklamný projekt bol upravený." : "Reklamný projekt bol uložený.");
       await refresh();
     } catch (e) {
       if (e.currentProject && editingProjectId) {
+        conflictLatestProject = e.currentProject;
         editingProjectRecord = e.currentProject;
-        setStatus("Projekt sa medzičasom zmenil v cloude. Tvoje textové zmeny zostali zachované. Skontroluj ich a stlač „Uložiť zmeny projektu“ znova, aby sa aplikovali na najnovšiu verziu.", true);
+        projectConflictText.textContent = "Tento projekt bol medzičasom upravený v inom okne alebo zariadení. Tvoje aktuálne textové zmeny sú zachované. Môžeš načítať najnovšiu verziu (prepíše rozpracovaný formulár), alebo ponechať svoje zmeny a uložiť ich znova nad aktuálnou verziou.";
+        projectConflict.hidden = false;
+        setStatus("Konflikt verzií: cloudový projekt sa zmenil. Vyber, ako chceš pokračovať.", true);
       } else {
         setStatus(e.message, true);
       }
     }
+  });
+  reloadLatestProject.addEventListener("click", () => {
+    if (!conflictLatestProject || !editingProjectId) return;
+    const latest = conflictLatestProject;
+    projectName.el.value = latest.name || "";
+    projectPrompt.el.value = latest.prompt || "";
+    projectProduct.value = latest.productId || "";
+    editingProjectRecord = latest;
+    conflictLatestProject = null;
+    projectConflict.hidden = true;
+    setStatus("Načítala sa najnovšia cloudová verzia projektu. Môžeš ju ďalej upraviť.");
+  });
+  retryProjectSave.addEventListener("click", () => {
+    if (!editingProjectId || !conflictLatestProject) return;
+    addProject.click();
   });
   window.PSAICloudLibrary = {
     getSyncState(record) {
