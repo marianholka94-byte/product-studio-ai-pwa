@@ -82,7 +82,7 @@ a{color:#174ea6;overflow-wrap:anywhere}
 <div class="account-dashboard">
  <div class="account-metric"><span class="account-metric-label">CLOUDOVÝ ÚČET</span><strong id="accountEmail" class="account-metric-value">Neprihlásený</strong><div id="accountStateNote" class="account-metric-note">Prihlás sa v Cloudovej knižnici.</div></div>
  <div class="account-metric"><span class="account-metric-label">DNES VYUŽITÉ</span><strong id="dailyUsageValue" class="account-metric-value">— / 3</strong><div id="dailyUsageMeta" class="account-metric-note">Denný limit preview</div><div class="account-progress"><div id="dailyUsageBar" class="account-progress-fill"></div></div></div>
- <div class="account-metric"><span class="account-metric-label">API KREDITY</span><strong id="creditState" class="account-metric-value">Pripravujeme</strong><div class="account-metric-note">Kreditový systém je odložený; žiadne kredity sa neúčtujú.</div></div>
+ <div class="account-metric"><span class="account-metric-label">DOSTUPNÉ KREDITY</span><strong id="creditState" class="account-metric-value">—</strong><div id="creditMeta" class="account-metric-note">Zostatok sa zobrazí po prihlásení.</div></div>
 </div>
 <div id="connectionStatus" class="status">Prihlás sa do svojho cloudového účtu v paneli Cloudová knižnica.</div>
 <p id="generationUsage" class="account-footnote">Bezpečnostný limit preview: najviac 3 generovania denne na účet.</p>
@@ -181,13 +181,13 @@ function updateReadyStatus(){
   else if(!hasAccount) setStatus('Najskôr sa prihlás do cloudového účtu v paneli Cloudová knižnica.');
   else setStatus('Cloudový účet je prihlásený. Teraz vyber fotografiu produktu.');
 }
-function renderAccountOverview(account,usage=null,health=null){
+function renderAccountOverview(account,usage=null,health=null,credits=null){
  const badge=$('accountBadge'),email=$('accountEmail'),state=$('accountStateNote');
  if(!account){
   badge.textContent='NEPRIHLÁSENÝ';badge.className='account-pill';
   email.textContent='Neprihlásený';state.textContent='Prihlás sa v Cloudovej knižnici.';
   $('dailyUsageValue').textContent='— / 3';$('dailyUsageMeta').textContent='Čaká sa na prihlásenie';$('dailyUsageBar').style.width='0%';
-  $('creditState').textContent='Pripravujeme';return;
+  $('creditState').textContent='—';$('creditMeta').textContent='Zostatok sa zobrazí po prihlásení.';return;
  }
  badge.textContent='ÚČET AKTÍVNY';badge.className='account-pill ready';
  email.textContent=account.email||'Prihlásený';state.textContent='Osobný pracovný účet';
@@ -197,7 +197,7 @@ function renderAccountOverview(account,usage=null,health=null){
   $('dailyUsageMeta').textContent='Zostáva '+remaining+' generovaní dnes';
   $('dailyUsageBar').style.width=Math.min(100,used/limit*100)+'%';
  }
- $('creditState').textContent=health?.creditSchema?.enabled?'Aktívny':'Pripravujeme';
+ if(health?.creditSchema?.enabled && credits){ $('creditState').textContent=Number(credits.available||0).toLocaleString('sk-SK'); $('creditMeta').textContent='Rezervované: '+Number(credits.reserved||0).toLocaleString('sk-SK')+' · 1 kredit = 0,01 USD'; } else { $('creditState').textContent='Nedostupné'; $('creditMeta').textContent='Kreditový účet sa nepodarilo načítať.'; }
 }
 async function refreshCommercialConnection(){
   const account=window.PSAICloudLibrary?.getCurrentUser();
@@ -210,12 +210,13 @@ async function refreshCommercialConnection(){
   }
   status.textContent='Overujem pripojenie generátora…';
   try{
-    const [health,usage]=await Promise.all([
+    const [health,usage,credits]=await Promise.all([
       fetch(API_BASE+'/api/health',{cache:'no-store'}).then(r=>r.json()),
-      window.PSAICloudLibrary.request('/api/generation/usage')
+      window.PSAICloudLibrary.request('/api/generation/usage'),
+      window.PSAICloudLibrary.request('/api/credits')
     ]);
     if(window.PSAICloudLibrary?.getCurrentUser()?.id!==account.id)return;
-    renderAccountOverview(account,usage,health);
+    renderAccountOverview(account,usage,health,credits);
     status.textContent=health.generation?.configured
       ? 'Účet '+account.email+' je pripojený. Generátor je pripravený.'
       : 'Účet '+account.email+' je pripojený. Čaká sa na samostatný API kľúč preview generátora.';
