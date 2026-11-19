@@ -1,6 +1,9 @@
 name: Deploy commercial preview Worker
 
 on:
+  push:
+    branches:
+      - feature/commercial-worker-preview
   workflow_dispatch:
 
 permissions:
