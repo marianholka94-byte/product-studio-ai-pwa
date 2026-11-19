@@ -93,6 +93,7 @@ jobs:
           echo "$response" | grep -q '"rateLimitsTable":true'
           echo "$response" | grep -q '"generationRequestId":true'
           echo "$response" | grep -q '"generationFingerprint":true'
+          echo "$response" | grep -q '"generationOutputsTable":true'
           echo "$response" | grep -q '"creditSchema":{"accounts":true,"ledger":true,"reservations":true,"appendOnly":true,"enabled":true}'
           echo "$response" | grep -q '"adminGrantConfigured":true'
           echo "$response" | grep -q '"dailyLimit":3'

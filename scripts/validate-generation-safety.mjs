@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 const worker = readFileSync("worker-preview.js", "utf8");
 const html = readFileSync("index.html", "utf8");
+const outputMigration = readFileSync("migrations/0010_generation_outputs_r2.sql", "utf8");
 
 // Provider readiness is deliberately opt-in: an API key alone must never trigger paid calls.
 assert.match(worker, /BYTEPLUS_MODELARK_API_KEY/);
@@ -45,6 +46,13 @@ assert.doesNotMatch(worker, /reserveGenerationCredits\(env, user\.id, generation
 assert.match(worker, /'byteplus_modelark'/);
 assert.match(worker, /task\.content\?\.video_url/);
 assert.match(worker, /task\.status !== "succeeded"/);
+assert.match(worker, /MEDIA\.put\(r2Key, limitedBody/);
+assert.match(worker, /MEDIA\.get\(savedOutput\.r2_key\)/);
+assert.match(worker, /maxVideoBytes = 250 \* 1024 \* 1024/);
+assert.match(worker, /generation_outputs WHERE generation_id = \? AND user_id = \?/);
+assert.match(outputMigration, /CREATE TABLE IF NOT EXISTS generation_outputs/);
+assert.match(outputMigration, /FOREIGN KEY \(generation_id, user_id\)[\s\S]*?REFERENCES generations\(id, user_id\)/);
+assert.match(outputMigration, /UNIQUE/);
 
 // A lost provider response must be treated as ambiguous, never as permission to retry.
 assert.match(worker, /SET status = 'processing', error_code = \?/);
