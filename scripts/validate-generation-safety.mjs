@@ -4,24 +4,52 @@ import assert from "node:assert/strict";
 const worker = readFileSync("worker-preview.js", "utf8");
 const html = readFileSync("index.html", "utf8");
 
-assert.match(worker, /const RUNWAY_MODEL_ALLOWLIST = new Set\(\);/, "No provider model may be treated as supported before an adapter is verified.");
-assert.match(worker, /modelIntegrationReady: RUNWAY_MODEL_ALLOWLIST\.size > 0/, "Health must distinguish an API key from a working model integration.");
-assert.match(worker, /supportedModels: \[\.\.\.RUNWAY_MODEL_ALLOWLIST\]/, "Health must expose only explicitly verified provider models.");
-assert.match(worker, /code: "PROVIDER_MODEL_NOT_SUPPORTED"/, "Unsupported model requests must return a stable diagnostic code.");
+// Provider readiness is deliberately opt-in: an API key alone must never trigger paid calls.
+assert.match(worker, /BYTEPLUS_MODELARK_API_KEY/);
+assert.match(worker, /BYTEPLUS_MODELARK_ENABLED/);
+assert.match(worker, /function byteplusReady\(env\)[\s\S]*?=== "true"/);
+assert.match(worker, /modelIntegrationReady: byteplusReady\(env\)/);
+assert.match(worker, /provider: "byteplus_modelark"/);
 
+// Official Seedance 2.0 model IDs and ModelArk API contract.
+assert.match(worker, /dreamina-seedance-2-0-mini-260615/);
+assert.match(worker, /dreamina-seedance-2-0-260128/);
+assert.match(worker, /https:\/\/ark\.ap-southeast\.bytepluses\.com\/api\/v3\/contents\/generations\/tasks/);
+assert.match(worker, /type: "image_url"/);
+assert.match(worker, /image_url: \{ url: image \}/);
+assert.match(worker, /role: "reference_image"/);
+assert.match(worker, /ratio: providerRatio/);
+assert.match(worker, /function byteplusRatio/);
+assert.match(worker, /function generationStatus\(providerStatus\)[\s\S]*?toLowerCase\(\)/);
+
+// Fail closed before writing a generation or invoking BytePlus.
 const generationStart = worker.indexOf('if (url.pathname === "/api/generate" && request.method === "POST")');
 assert.notEqual(generationStart, -1, "Generation route must exist.");
-const modelGuard = worker.indexOf("if (!RUNWAY_MODEL_ALLOWLIST.has(model))", generationStart);
-const reservation = worker.indexOf("reserveGenerationCredits(env, user.id, generationId, estimatedCredits, now)", generationStart);
-const providerFetch = worker.indexOf('fetch("https://api.dev.runwayml.com/v1/image_to_video"', generationStart);
-assert.ok(modelGuard > generationStart, "Generation route must verify the provider/model adapter.");
-assert.ok(reservation > modelGuard, "Unsupported models must be rejected before any credit reservation.");
-assert.ok(providerFetch > modelGuard, "Unsupported models must be rejected before calling the paid provider.");
+const readinessGuard = worker.indexOf("if (!byteplusReady(env))", generationStart);
+const modelGuard = worker.indexOf("const providerModel = BYTEPLUS_MODEL_IDS[model]", generationStart);
+const generationInsert = worker.indexOf("INSERT INTO generations", generationStart);
+const providerFetch = worker.indexOf("fetch(BYTEPLUS_TASKS_URL", generationStart);
+assert.ok(readinessGuard > generationStart && modelGuard > readinessGuard);
+assert.ok(generationInsert > modelGuard, "Unsupported models must be rejected before a task is recorded.");
+assert.ok(providerFetch > generationInsert, "Paid provider calls must happen only after all validation.");
 
-assert.ok(html.includes("let generationIntegrationReady=false"), "The UI must start in a fail-closed generation state.");
-assert.ok(html.includes("setGenerationAvailability(false)"), "Missing account or failed health checks must disable generation.");
-assert.ok(html.includes("health.generation?.modelIntegrationReady"), "The UI must use provider/model readiness, not just API-key presence.");
-assert.ok(html.includes("Platené generovanie je bezpečne zablokované"), "The UI must explain why paid generation is unavailable.");
-assert.ok(html.includes("finally{btn.disabled=!generationIntegrationReady}"), "Finishing a request must not re-enable generation when the provider is not ready.");
+// BytePlus billing is separate from the app wallet; do not debit stale Runway estimates.
+assert.match(worker, /const estimatedCredits = 0/);
+assert.doesNotMatch(worker, /reserveGenerationCredits\(env, user\.id, generationId/);
+assert.match(worker, /'byteplus_modelark'/);
+assert.match(worker, /task\.content\?\.video_url/);
+assert.match(worker, /task\.status !== "succeeded"/);
 
-console.log("Generation provider readiness checks passed: unsupported models fail closed before credit reservation or paid provider calls.");
+// Status and download use the ModelArk task endpoint.
+assert.match(worker, /BYTEPLUS_TASKS_URL \+ "\/" \+ encodeURIComponent\(generation\.provider_task_id\)/);
+assert.doesNotMatch(worker, /RUNWAY_API_KEY|api\.dev\.runwayml\.com|RUNWAY_MODEL_ALLOWLIST/);
+
+// UI must not invent a fixed provider price and must remain disabled until health confirms readiness.
+assert.ok(html.includes("let generationIntegrationReady=false"));
+assert.ok(html.includes("health.generation?.modelIntegrationReady"));
+assert.ok(html.includes("Cena podľa skutočnej spotreby BytePlus"));
+assert.ok(html.includes("BytePlus účtuje Seedance podľa skutočnej spotreby tokenov"));
+assert.match(html, /platené generovanie zostáva vypnuté/i);
+assert.doesNotMatch(html, /Runway Dev|0\.15 USD/);
+
+console.log("BytePlus ModelArk integration checks passed: paid calls require explicit opt-in, model mapping and billing are provider-correct, and task polling/download use ModelArk.");

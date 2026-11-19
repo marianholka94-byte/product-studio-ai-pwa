@@ -57,17 +57,18 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      - name: Configure dedicated preview generation provider key when available
+      - name: Configure BytePlus ModelArk API key when explicitly supplied
         run: |
-          if [ -n "$RUNWAY_API_KEY_PREVIEW" ]; then
-            printf '%s' "$RUNWAY_API_KEY_PREVIEW" | npx --yes wrangler@4 secret put RUNWAY_API_KEY --config wrangler.preview.toml
+          if [ -n "$BYTEPLUS_MODELARK_API_KEY_PREVIEW" ]; then
+            printf '%s' "$BYTEPLUS_MODELARK_API_KEY_PREVIEW" | npx --yes wrangler@4 secret put BYTEPLUS_MODELARK_API_KEY --config wrangler.preview.toml
+            echo "BytePlus API key configured. Paid generation remains disabled until BYTEPLUS_MODELARK_ENABLED is explicitly set to true."
           else
-            echo "SKIP: Add the RUNWAY_API_KEY_PREVIEW repository secret to enable isolated AI generation."
+            echo "SKIP: BytePlus ModelArk is not configured. Paid generation remains disabled."
           fi
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          RUNWAY_API_KEY_PREVIEW: ${{ secrets.RUNWAY_API_KEY_PREVIEW }}
+          BYTEPLUS_MODELARK_API_KEY_PREVIEW: ${{ secrets.BYTEPLUS_MODELARK_API_KEY_PREVIEW }}
       - name: Run live two-account tenant-isolation acceptance test when credentials are configured
         env:
           PREVIEW_ACCOUNT_A_EMAIL: ${{ secrets.PREVIEW_ACCOUNT_A_EMAIL }}
