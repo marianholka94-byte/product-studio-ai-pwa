@@ -1,5 +1,5 @@
-const CACHE = "product-studio-ai-v32-project-conflict-copy-recovery-20261119";
-const FILES = ["/", "/index.html", "/manifest.webmanifest", "/icon.svg", "/cloud-library.js?v=project-conflict-copy-recovery-20261119", "/app-navigation.js?v=project-conflict-copy-recovery-20261119"];
+const CACHE = "product-studio-ai-v33-account-state-reset-20261119";
+const FILES = ["/", "/index.html", "/manifest.webmanifest", "/icon.svg", "/cloud-library.js?v=account-state-reset-20261119", "/app-navigation.js?v=account-state-reset-20261119"];
 self.addEventListener("install", event => event.waitUntil(
   caches.open(CACHE).then(cache => cache.addAll(FILES)).then(() => self.skipWaiting())
 ));
