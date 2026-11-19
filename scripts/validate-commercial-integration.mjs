@@ -28,15 +28,15 @@ assert.ok(worker.includes("ALLOWED_ORIGINS"), "Worker must enforce an origin all
 assert.ok(worker.includes("user.id"), "Worker must scope library operations to the authenticated account");
 
 
-const ownedProduct = worker.match(/async function ownedProduct[\\s\\S]*?\\n}/)?.[0] || "";
-const ownedProject = worker.match(/async function ownedProject[\\s\\S]*?\\n}/)?.[0] || "";
-assert.ok(/WHERE id = \\? AND user_id = \\?/.test(ownedProduct), "Product lookup must be scoped by both ID and authenticated user");
-assert.ok(/WHERE id = \\? AND user_id = \\?/.test(ownedProject), "Project lookup must be scoped by both ID and authenticated user");
-assert.ok(/WHERE id = \\? AND user_id = \\? AND deleted_at IS NULL/.test(worker), "Private asset lookup must enforce owner and active state");
-assert.ok(/users\\/\\$\\{user\\.id\\}\\/products\\/\\$\\{productId\\}/.test(worker), "R2 object keys must be namespaced by authenticated user and product");
-assert.ok(/sessions s JOIN users u ON u\\.id = s\\.user_id/.test(worker), "Session lookup must resolve its account from the server-side session record");
-assert.ok(/s\\.revoked_at IS NULL AND s\\.expires_at > \\? AND u\\.status = 'active'/.test(worker), "Session lookup must reject revoked, expired, or inactive accounts");
-assert.ok(/ALLOWED_ORIGINS\\.has\\(origin\\)/.test(worker), "Worker must reject origins outside the allowlist");
-assert.ok(/sessionStorage\\.removeItem\\(TOKEN_KEY\\)/.test(cloud), "Logout and expired sessions must clear the cloud token");
+const ownedProduct = worker.match(/async function ownedProduct[\s\S]*?\n}/)?.[0] || "";
+const ownedProject = worker.match(/async function ownedProject[\s\S]*?\n}/)?.[0] || "";
+assert.ok(ownedProduct.includes("WHERE id = ? AND user_id = ?"), "Product lookup must be scoped by both ID and authenticated user");
+assert.ok(ownedProject.includes("WHERE id = ? AND user_id = ?"), "Project lookup must be scoped by both ID and authenticated user");
+assert.ok(worker.includes("WHERE id = ? AND user_id = ? AND deleted_at IS NULL"), "Private asset lookup must enforce owner and active state");
+assert.ok(worker.includes("const r2Key = `users/${user.id}/products/${productId}/${assetId}`"), "R2 object keys must be namespaced by authenticated user and product");
+assert.ok(worker.includes("sessions s JOIN users u ON u.id = s.user_id"), "Session lookup must resolve its account from the server-side session record");
+assert.ok(worker.includes("s.revoked_at IS NULL AND s.expires_at > ? AND u.status = 'active'"), "Session lookup must reject revoked, expired, or inactive accounts");
+assert.ok(worker.includes("ALLOWED_ORIGINS.has(origin)"), "Worker must reject origins outside the allowlist");
+assert.ok(cloud.includes("sessionStorage.removeItem(TOKEN_KEY)"), "Logout and expired sessions must clear the cloud token");
 
 console.log("Commercial cloud integration contract checks passed.");
