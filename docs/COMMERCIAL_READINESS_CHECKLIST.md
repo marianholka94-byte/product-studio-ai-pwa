@@ -16,7 +16,8 @@ This document tracks readiness work on the isolated commercial preview. It is no
 - [x] Resumed cloud uploads compare ordered SHA-256 checksums against the remote image manifest before continuing.
 - [x] Schema and integration checks cover both idempotency columns and unique per-account constraints.
 - [x] Integration checks cover checksum-verified recovery of partially uploaded images.
-- [ ] Manual interruption/retry test with a deliberately interrupted project-create response.
+- [x] Manual interrupted cloud save followed by resume; user confirmed that the project saved successfully.
+- [ ] Manual lost project-create response retry test (verify idempotent replay without duplicate records).
 - [ ] Manual tenant-isolation test using two independent preview accounts.
 - [ ] Manual session-expiry and logout test.
 - [x] User-confirmed: after signing out and signing back in, a cloud project opens back into Studio with its saved content and photos.
