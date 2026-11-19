@@ -83,13 +83,32 @@
   let pendingCopyPayload = null;
   const projectList = $("div");
   workspace.append(accountLine, logout, $("hr"), productName.wrap, productDescription.wrap, addProduct, productList, $("hr"), projectName.wrap, $("label", {}, "Prepojiť s produktom"), projectProduct, projectPrompt.wrap, addProject, projectConflict, projectList);
+  function resetAccountWorkspace() {
+    editingProductId = null;
+    editingProjectId = null;
+    editingProjectRecord = null;
+    conflictLatestProject = null;
+    copyOperationId = null;
+    pendingCopyPayload = null;
+    productName.el.value = "";
+    productDescription.el.value = "";
+    projectName.el.value = "";
+    projectPrompt.el.value = "";
+    addProduct.textContent = "＋ Vytvoriť produkt";
+    addProject.textContent = "＋ Vytvoriť projekt";
+    projectConflict.hidden = true;
+    products = [];
+    productList.replaceChildren();
+    projectList.replaceChildren();
+    projectProduct.replaceChildren($("option", { value: "" }, "Bez prepojeného produktu"));
+  }
   async function api(path, options = {}) {
     const headers = { ...(options.headers || {}) };
     if (token) headers.Authorization = "Bearer " + token;
     const response = await fetch(API + path, { ...options, headers });
     const data = (response.headers.get("content-type") || "").includes("application/json") ? await response.json() : null;
     if (!response.ok) {
-      if (response.status === 401) { token = ""; user = null; sessionStorage.removeItem(TOKEN_KEY); renderAuth(); notifyCloudAccountChange(); }
+      if (response.status === 401) { token = ""; user = null; sessionStorage.removeItem(TOKEN_KEY); resetAccountWorkspace(); renderAuth(); notifyCloudAccountChange(); }
       const error = new Error(data?.error || "Požiadavka zlyhala (" + response.status + ").");
       if (data?.currentProject) error.currentProject = data.currentProject;
       error.status = response.status;
@@ -316,6 +335,7 @@
   async function signIn(path, body) {
     try {
       const data = await api(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      resetAccountWorkspace();
       token = data.token;
       sessionStorage.setItem(TOKEN_KEY, token);
       user = data.user;
@@ -333,7 +353,7 @@
   showLogin.addEventListener("click", () => { registerFields.hidden = true; authButtons.hidden = false; });
   logout.addEventListener("click", async () => {
     try { await api("/api/auth/logout", { method: "POST" }); } catch {}
-    token = ""; user = null; sessionStorage.removeItem(TOKEN_KEY); renderAuth(); notifyCloudAccountChange();
+    token = ""; user = null; sessionStorage.removeItem(TOKEN_KEY); resetAccountWorkspace(); renderAuth(); notifyCloudAccountChange();
   });
   addProduct.addEventListener("click", async () => {
     try {
@@ -572,6 +592,6 @@
       accountLine.textContent = "Prihlásený účet: " + user.email;
       return refresh();
     }).then(() => setStatus("Cloudová knižnica je synchronizovaná."))
-      .catch(() => { token = ""; user = null; sessionStorage.removeItem(TOKEN_KEY); renderAuth(); notifyCloudAccountChange(); });
+      .catch(() => { token = ""; user = null; sessionStorage.removeItem(TOKEN_KEY); resetAccountWorkspace(); renderAuth(); notifyCloudAccountChange(); });
   }
 })();
