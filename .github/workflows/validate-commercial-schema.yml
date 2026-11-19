@@ -33,11 +33,13 @@ jobs:
           db = sqlite3.connect(":memory:")
           db.execute("PRAGMA foreign_keys = ON")
           db.executescript(migration)
+          for migration_path in sorted(Path("migrations").glob("000[2-9]_*.sql")):
+              db.executescript(migration_path.read_text(encoding="utf-8"))
 
           expected = {
               "users", "sessions", "products", "projects", "assets",
               "product_images", "generations", "credit_ledger", "plans",
-              "subscriptions", "payment_events", "audit_log",
+              "subscriptions", "payment_events", "audit_log", "auth_rate_limits",
           }
           actual = {
               row[0] for row in db.execute(
@@ -108,6 +110,20 @@ jobs:
           must_reject("second primary image",
               "INSERT INTO product_images (product_id,asset_id,user_id,is_primary,created_at) VALUES (?,?,?,?,?)",
               ("p1","a3","u1",1,2))
+
+          for index in range(4, 7):
+              asset_id = f"a{index}"
+              db.execute(
+                  "INSERT INTO assets (id,user_id,product_id,kind,r2_key,content_type,byte_size,created_at) VALUES (?,?,?,?,?,?,?,?)",
+                  (asset_id,"u1","p1","product_image",f"u1/{asset_id}","image/jpeg",100,1)
+              )
+          db.execute("INSERT INTO product_images (product_id,asset_id,user_id,is_primary,created_at) VALUES ('p1','a3','u1',0,2)")
+          db.execute("INSERT INTO product_images (product_id,asset_id,user_id,is_primary,created_at) VALUES ('p1','a4','u1',0,3)")
+          db.execute("INSERT INTO product_images (product_id,asset_id,user_id,is_primary,created_at) VALUES ('p1','a5','u1',0,4)")
+          db.execute("INSERT INTO product_images (product_id,asset_id,user_id,is_primary,created_at) VALUES ('p1','a6','u1',0,5)")
+          must_reject("sixth product image",
+              "INSERT INTO product_images (product_id,asset_id,user_id,is_primary,created_at) VALUES (?,?,?,?,?)",
+              ("p1","a7","u1",0,6))
 
           # Financial and generated-media history must not disappear through
           # parent deletion. Explicit detach/archive flows belong in the app.
