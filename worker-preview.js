@@ -937,6 +937,9 @@ export default {
         stack: String(error?.stack || "").slice(0, 2000)
       });
       const message = String(error?.message || "");
+      if (url.pathname === "/api/credits") {
+        return json({ ok: false, error: "Kreditový účet zlyhal mimo jeho lokálnej kontroly.", diagnostic: message.slice(0, 240) || String(error?.name || "Unknown error") }, 500, origin);
+      }
       if (message === "Požiadavka je príliš veľká." || message === "Požiadavka neobsahuje platné JSON dáta." || message === "Požiadavka musí obsahovať JSON objekt." || message === "Súbor je príliš veľký." || message === "Súbor je prázdny.") {
         return json({ error: message }, 400, origin);
       }
