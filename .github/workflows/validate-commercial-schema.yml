@@ -42,7 +42,7 @@ jobs:
 
           expected = {
               "users", "sessions", "products", "projects", "assets",
-              "product_images", "generations", "generation_outputs", "credit_ledger", "plans",
+              "product_images", "generations", "generation_outputs", "credit_accounts", "generation_credit_reservations", "credit_ledger", "plans",
               "subscriptions", "payment_events", "audit_log", "auth_rate_limits",
           }
           actual = {
@@ -186,8 +186,9 @@ jobs:
               "DELETE FROM products WHERE id = ?", ("p1",))
           must_reject("delete project with generation history",
               "DELETE FROM projects WHERE id = ?", ("pr1",))
-          must_reject("delete generation referenced by credit ledger",
+          db.execute("INSERT INTO generation_credit_reservations (id,user_id,generation_id,reserved_units,captured_units,state,reserve_idempotency_key,reserve_fingerprint,created_at,updated_at) VALUES ('res1','u1','g1',5,0,'reserved','reserve-g1','fingerprint-res1',1,1)")
+          must_reject("delete generation referenced by active credit reservation",
               "DELETE FROM generations WHERE id = ?", ("g1",))
 
-          print(f"Commercial D1 schema valid: {len(expected)} tables; tenant isolation, generation idempotency/daily quota, primary-image and immutable-credit-ledger constraints passed.")
+          print(f"Commercial D1 schema valid: {len(expected)} tables; tenant isolation, generation idempotency/daily quota, primary-image, private generated-output and immutable-credit-ledger constraints passed.")
           PY
