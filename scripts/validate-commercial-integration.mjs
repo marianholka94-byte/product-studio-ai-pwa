@@ -172,7 +172,7 @@ assert.ok(nav.includes("latest.cloudSyncByAccount={...(latest.cloudSyncByAccount
 assert.ok(nav.includes("[result.accountId]:result"), "Completed cloud saves must remain associated with the account that owns them.");
 assert.ok(nav.includes("psai-cloud-account-change"), "Switching cloud accounts must refresh local project cloud-status labels.");
 assert.ok(html.includes("cloud-library.js?v=commercial-generator-account-20261119") && html.includes("app-navigation.js?v=commercial-generator-account-20261119"), "PWA HTML must request the account-scoped cloud-sync asset versions.");
-assert.ok(serviceWorker.includes("product-studio-ai-v43-resume-generation-monitor-20261119"), "PWA service worker cache must be versioned for the account-scoped cloud-sync release.");
+assert.ok(serviceWorker.includes("product-studio-ai-v44-account-overview-20261119"), "PWA service worker cache must be versioned for the account-scoped cloud-sync release.");
 assert.ok(serviceWorker.includes("/cloud-library.js?v=commercial-generator-account-20261119") && serviceWorker.includes("/app-navigation.js?v=commercial-generator-account-20261119"), "Offline precache must include the exact project-conflict-recovery asset URLs.");
 assert.ok(worker.includes("const expectedUpdatedAt = body.expectedUpdatedAt"), "Cloud project edits must accept the version the user originally opened.");
 assert.ok(worker.includes("AND updated_at = ?"), "Cloud project updates must use an atomic version condition to prevent stale overwrites.");
