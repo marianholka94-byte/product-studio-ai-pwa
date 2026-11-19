@@ -73,3 +73,7 @@ const historyDownload = html.match(/async function downloadHistoryGeneration\([\
 const historyStatusRefresh = html.match(/async function refreshHistoryGenerationStatus\([\s\S]*?\n}/)?.[0] || "";
 assert.ok(historyDownload.includes("PSAICloudLibrary.download") && historyDownload.includes("getCurrentUser()?.id!==account.id"), "History downloads must use the authenticated cloud bridge and reject account changes during download.");
 assert.ok(historyStatusRefresh.includes("PSAICloudLibrary.request('/api/status/'") && historyStatusRefresh.includes("getCurrentUser()?.id!==account.id"), "History status refresh must use the account-bound status API and reject account changes.");
+
+const resumeHistory = html.match(/async function resumeHistoryGeneration\([\s\S]*?\n}/)?.[0] || "";
+assert.ok(resumeHistory.includes("pollTask(id") && !resumeHistory.includes("/api/generate"), "Resuming a generation must poll its existing task and never submit another provider generation.");
+assert.ok(resumeHistory.includes("getCurrentUser()?.id!==account.id"), "Resumed generation monitoring must stop applying results after an account switch.");
