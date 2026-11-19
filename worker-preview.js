@@ -607,7 +607,7 @@ export default {
         } catch (error) {
           const failedAt = Math.floor(Date.now() / 1000);
           const diagnostic = String(error?.message || error?.name || "Network error").slice(0, 300);
-          await env.DB.prepare("UPDATE generations SET status = 'submission_unknown', error_code = ?, error_message = ?, updated_at = ? WHERE id = ? AND user_id = ? AND provider_task_id IS NULL")
+          await env.DB.prepare("UPDATE generations SET status = 'processing', error_code = ?, error_message = ?, updated_at = ? WHERE id = ? AND user_id = ? AND provider_task_id IS NULL")
             .bind("provider_submission_unknown", "BytePlus odpoveď sa stratila počas odosielania. Úloha mohla byť prijatá; požiadavku neposielaj znova. Diagnostika: " + diagnostic, failedAt, generationId, user.id).run();
           return json({
             error: "Spojenie s BytePlus sa prerušilo počas odosielania. Poskytovateľ mohol úlohu prijať, preto ju z bezpečnostných dôvodov neposielam znova.",
@@ -623,7 +623,7 @@ export default {
           // was rejected. Preserve the idempotency lock instead of permitting retry.
           const ambiguous = upstream.status >= 500 || upstream.ok;
           if (ambiguous) {
-            await env.DB.prepare("UPDATE generations SET status = 'submission_unknown', error_code = ?, error_message = ?, updated_at = ? WHERE id = ? AND user_id = ? AND provider_task_id IS NULL")
+            await env.DB.prepare("UPDATE generations SET status = 'processing', error_code = ?, error_message = ?, updated_at = ? WHERE id = ? AND user_id = ? AND provider_task_id IS NULL")
               .bind("provider_submission_unknown", String(message).slice(0, 500), failedAt, generationId, user.id).run();
             return json({
               error: "BytePlus nevrátilo jednoznačné potvrdenie. Úloha mohla byť prijatá; automatické opakovanie je zablokované, aby nevzniklo duplicitné platené generovanie.",
@@ -689,11 +689,11 @@ export default {
         const user = await currentUser(request, env);
         if (!user) return json({ error: "Prihlásenie vypršalo. Prihlás sa znova." }, 401, origin);
         if (!byteplusConfigured(env)) return json({ error: "Seedance API zatiaľ nie je nakonfigurované." }, 503, origin);
-        const generation = await env.DB.prepare("SELECT id, provider_task_id, status FROM generations WHERE id = ? AND user_id = ? LIMIT 1")
+        const generation = await env.DB.prepare("SELECT id, provider_task_id, status, error_code FROM generations WHERE id = ? AND user_id = ? LIMIT 1")
           .bind(generationStatusMatch[1], user.id).first();
         if (!generation) return json({ error: "Generovanie sa nenašlo." }, 404, origin);
         if (!generation.provider_task_id) {
-          const uncertain = generation.status === "submission_unknown";
+          const uncertain = generation.error_code === "provider_submission_unknown";
           return json({
             error: uncertain
               ? "Stav odoslania do BytePlus nie je potvrdený. Úloha mohla byť prijatá; automatické opakovanie je zablokované, aby nevzniklo duplicitné platené generovanie."
