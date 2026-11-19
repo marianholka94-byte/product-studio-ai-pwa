@@ -154,6 +154,6 @@ assert.ok(worker.includes("AND updated_at = ?"), "Cloud project updates must use
 assert.ok(worker.includes("currentProject: publicProject(current)"), "A stale cloud edit must return the latest project so the user can review and reapply their changes.");
 assert.ok(cloud.includes("payload.expectedUpdatedAt = editingProjectRecord?.updatedAt"), "Cloud project editor must send the version it originally loaded.");
 assert.ok(cloud.includes("if (data?.currentProject) error.currentProject = data.currentProject"), "Cloud API client must preserve conflict details for the editor.");
-assert.ok(cloud.includes("Tvoje textové zmeny zostali zachované"), "Cloud project editor must preserve typed changes after a version conflict.");
+assert.ok(cloud.includes("Tvoje aktuálne textové zmeny sú zachované"), "Cloud project editor must preserve typed changes after a version conflict.");
 assert.ok(cloud.includes("Načítať najnovšiu verziu") && cloud.includes("Ponechať moje zmeny a uložiť znova"), "Cloud project conflicts must offer explicit reload-latest and keep-my-edits recovery actions.");
 assert.ok(cloud.includes("projectConflict.hidden = false") && cloud.includes("projectConflict.hidden = true"), "Cloud project conflict recovery panel must be shown and cleared deliberately.");
