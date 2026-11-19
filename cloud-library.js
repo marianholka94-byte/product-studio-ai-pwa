@@ -397,12 +397,16 @@
         sync.uploadedImages = index + 1;
         await onProgress({ ...sync });
       }
+      if (!sync.idempotencyKey) {
+        sync.idempotencyKey = crypto.randomUUID();
+        await onProgress({ ...sync });
+      }
       const createdProject = await api("/api/projects", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: (record.name || record.product || "Reklamný projekt").slice(0, 120),
           productId: sync.productId, prompt: record.prompt || "", settings,
-          exportPreset: record.exportPreset || null
+          exportPreset: record.exportPreset || null, idempotencyKey: sync.idempotencyKey
         })
       });
       sync.projectId = createdProject.project.id;
