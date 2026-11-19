@@ -102,9 +102,22 @@
   workspace.append(accountLine, logout, $("hr"), productName.wrap, productDescription.wrap, addProduct, productConflict, productSearch.wrap, productList, $("hr"), projectName.wrap, $("label", {}, "Prepojiť s produktom"), projectProduct, projectPrompt.wrap, addProject, projectConflict, projectSearch.wrap, projectList);
   const applyLibraryFilter = (root, query) => {
     const needle = String(query || "").trim().toLocaleLowerCase("sk");
-    for (const card of root.querySelectorAll(".cloud-item[data-search-text]")) {
+    const cards = [...root.querySelectorAll(".cloud-item[data-search-text]")];
+    let visible = 0;
+    for (const card of cards) {
       card.hidden = !!needle && !card.dataset.searchText.includes(needle);
+      if (!card.hidden) visible += 1;
     }
+    let emptyState = root.querySelector(":scope > .cloud-search-empty");
+    if (!emptyState) {
+      emptyState = $("p", { class: "cloud-search-empty", role: "status" });
+      emptyState.style.cssText = "color:#aeb8c7;font-size:13px;line-height:1.5;padding:10px 2px";
+      root.append(emptyState);
+    }
+    emptyState.hidden = !needle || visible > 0;
+    emptyState.textContent = root === productList
+      ? "Nenašli sa žiadne produkty. Skús iný názov alebo popis."
+      : "Nenašli sa žiadne projekty. Skús iný názov alebo text promptu.";
   };
   productSearch.el.addEventListener("input", () => applyLibraryFilter(productList, productSearch.el.value));
   projectSearch.el.addEventListener("input", () => applyLibraryFilter(projectList, projectSearch.el.value));
