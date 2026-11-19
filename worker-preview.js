@@ -231,10 +231,25 @@ export default {
       if (request.method === "GET" && url.pathname === "/api/health") {
         const db = await env.DB.prepare("SELECT 1 AS ok").first();
         const objects = await env.MEDIA.list({ limit: 1 });
+        const userColumns = await env.DB.prepare("PRAGMA table_info(users)").all();
+        const sessionColumns = await env.DB.prepare("PRAGMA table_info(sessions)").all();
+        const rateLimitTable = await env.DB.prepare(
+          "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'auth_rate_limits'"
+        ).first();
+        const userColumnNames = (userColumns.results || []).map(column => column.name);
+        const sessionColumnNames = (sessionColumns.results || []).map(column => column.name);
+        const authSchema = {
+          usersTable: userColumnNames.length > 0,
+          passwordHash: userColumnNames.includes("password_hash"),
+          sessionsTable: sessionColumnNames.length > 0,
+          sessionTokenHash: sessionColumnNames.includes("token_hash"),
+          rateLimitsTable: !!rateLimitTable
+        };
         return json({
           ok: db?.ok === 1 && Array.isArray(objects?.objects),
           service: "PRODUCT STUDIO AI commercial preview",
-          storage: { d1: db?.ok === 1, r2: Array.isArray(objects?.objects) }
+          storage: { d1: db?.ok === 1, r2: Array.isArray(objects?.objects) },
+          authSchema
         }, 200, origin);
       }
 
