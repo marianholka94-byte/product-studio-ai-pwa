@@ -36,12 +36,12 @@ jobs:
           db = sqlite3.connect(":memory:")
           db.execute("PRAGMA foreign_keys = ON")
           db.executescript(migration)
-          for migration_path in sorted(Path("migrations").glob("000[2-9]_*.sql")):
+          for migration_path in sorted([*Path("migrations").glob("000[2-9]_*.sql"), *Path("migrations").glob("0010_*.sql")]):
               db.executescript(migration_path.read_text(encoding="utf-8"))
 
           expected = {
               "users", "sessions", "products", "projects", "assets",
-              "product_images", "generations", "credit_ledger", "plans",
+              "product_images", "generations", "generation_outputs", "credit_ledger", "plans",
               "subscriptions", "payment_events", "audit_log", "auth_rate_limits",
           }
           actual = {
@@ -132,17 +132,19 @@ jobs:
           must_reject("fourth generation within the UTC day",
               "INSERT INTO generations (id,user_id,model,duration_seconds,status,prompt_snapshot,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?)",
               ("g3_over","u3","test-model",5,"queued","daily quota overflow",now,now))
-          must_reject("cross-user credit ledger/generation link",
-              "INSERT INTO credit_ledger (id,user_id,generation_id,entry_type,amount,created_at) VALUES (?,?,?,?,?,?)",
-              ("cl_bad","u2","g1","charge",-5,1))
-
-          db.execute("INSERT INTO credit_ledger (id,user_id,generation_id,entry_type,amount,idempotency_key,created_at) VALUES ('cl1','u1','g1','reservation',-5,'test-reservation',1)")
-          must_reject("negative grant amount",
-              "INSERT INTO credit_ledger (id,user_id,entry_type,amount,created_at) VALUES (?,?,?,?,?)",
-              ("cl_bad_sign_1","u1","grant",-5,1))
-          must_reject("positive charge amount",
-              "INSERT INTO credit_ledger (id,user_id,entry_type,amount,created_at) VALUES (?,?,?,?,?)",
-              ("cl_bad_sign_2","u1","charge",5,1))
+          # The current append-only ledger stores typed references and positive units;
+          # generated outputs enforce the actual composite owner/generation relation.
+          db.execute("INSERT INTO credit_ledger (id,user_id,entry_type,units,reference_type,reference_id,idempotency_key,payload_fingerprint,created_at) VALUES ('cl1','u1','capture',5,'generation','g1','test-capture','fingerprint-cl1',1)")
+          must_reject("zero-unit credit ledger entry",
+              "INSERT INTO credit_ledger (id,user_id,entry_type,units,reference_type,reference_id,idempotency_key,payload_fingerprint,created_at) VALUES (?,?,?,?,?,?,?,?,?)",
+              ("cl_bad_units","u1","capture",0,"generation","g1","bad-units","fingerprint-bad",1))
+          must_reject("invalid credit ledger entry type",
+              "INSERT INTO credit_ledger (id,user_id,entry_type,units,reference_type,reference_id,idempotency_key,payload_fingerprint,created_at) VALUES (?,?,?,?,?,?,?,?,?)",
+              ("cl_bad_type","u1","charge",5,"generation","g1","bad-type","fingerprint-type",1))
+          must_reject("cross-user generated output link",
+              "INSERT INTO generation_outputs (id,generation_id,user_id,r2_key,content_type,byte_size,created_at) VALUES (?,?,?,?,?,?,?)",
+              ("out_bad","g1","u2","users/u2/generations/g1/output.mp4","video/mp4",10,1))
+          db.execute("INSERT INTO generation_outputs (id,generation_id,user_id,r2_key,content_type,byte_size,created_at) VALUES ('out1','g1','u1','users/u1/generations/g1/output.mp4','video/mp4',10,1))
           must_reject("credit ledger update",
               "UPDATE credit_ledger SET amount = -1 WHERE id = ?",
               ("cl1",))
