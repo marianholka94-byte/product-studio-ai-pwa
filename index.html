@@ -716,7 +716,7 @@ async function uploadFormApi(path, form){
 }
 async function generateFromCombinedInputs(){
  const basePrompt=buildPrompt();
- const videoGuidance='Preserve the product exact shape, packaging, logo, label and colors. Retain the source action and camera movement; enhance lighting and color only.';
+ const videoGuidance='Preserve the product's exact shape, packaging, logo, label and colors. Retain the source action and camera movement; enhance lighting and color only.';
  const prompt=(basePrompt.slice(0,Math.max(0,999-videoGuidance.length))+' '+videoGuidance).trim().slice(0,1000);
  if(!selectedSourceVideo)return false;
  if(!selectedSourceVideoDuration)throw new Error('Počkaj, kým sa načítajú metadáta zdrojového videa.');
