@@ -51,6 +51,7 @@ assert.ok(worker.includes("if (!prior.provider_task_id)") && worker.includes("ne
 
 // Status and download use the ModelArk task endpoint.
 assert.match(worker, /BYTEPLUS_TASKS_URL \+ "\/" \+ encodeURIComponent\(generation\.provider_task_id\)/);
+assert.ok(worker.includes("providerStatus: task.status, status: mapped"), "Status API must return normalized terminal states while preserving the provider status.");
 assert.doesNotMatch(worker, /RUNWAY_API_KEY|api\.dev\.runwayml\.com|RUNWAY_MODEL_ALLOWLIST/);
 
 // UI must not invent a fixed provider price and must remain disabled until health confirms readiness.
