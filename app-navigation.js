@@ -387,6 +387,8 @@
   const productsList=document.createElement('div');productsList.id='savedProductsList';
   productsList.innerHTML='<div class="projects-empty"><span class="empty-icon">▧</span><strong>Zatiaľ nemáš uložené produkty</strong><p>V štúdiu môžeš uložiť produkt spolu s jeho fotografiami.</p></div>';
   projects.append(projectsIntro,productsIntro,productsList,history,projectsList);
+  const cloudLibraryPanel=document.getElementById('commercialCloudPanel');
+  if(cloudLibraryPanel)projects.append(cloudLibraryPanel);
   productsIntro.querySelector('#productLibraryInfoButton').addEventListener('click',()=>{
     const button=productsIntro.querySelector('#productLibraryInfoButton');
     const info=productsIntro.querySelector('#productLibraryInfo');
