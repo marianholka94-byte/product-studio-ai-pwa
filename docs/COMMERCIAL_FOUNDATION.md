@@ -20,6 +20,8 @@ The SQL migration is deliberately additive and does not change the live Worker. 
 - append-only credit ledger;
 - plans, subscriptions, payment webhook idempotency and audit log.
 
+The migration includes composite ownership foreign keys so a row belonging to one user cannot be linked to another user's product, project, asset or generation. Product-image records also enforce at most one primary image per product. Parent records with dependent tenant-owned rows are protected by restrictive composite constraints; application delete flows must explicitly detach or remove dependent rows in a user-scoped transaction before deleting the parent. The CI workflow tests cross-user link rejection and the single-primary-image rule.
+
 The migration is not applied yet. It requires a D1 database and a Worker binding, neither of which is currently provisioned by the connected tools. Do not deploy Worker code that references `env.DB` until the D1 binding exists.
 
 ## Required Cloudflare resources and one-time setup
