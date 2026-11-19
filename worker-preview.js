@@ -291,6 +291,7 @@ export default {
           storage: { d1: db?.ok === 1, r2: Array.isArray(objects?.objects) },
           authSchema,
           creditSchema,
+          adminGrantConfigured: Boolean(String(env.PREVIEW_ADMIN_EMAIL || "").trim()),
           generation: { configured: Boolean(env.RUNWAY_API_KEY), dailyLimit: PREVIEW_DAILY_GENERATION_LIMIT }
         }, 200, origin);
       }
