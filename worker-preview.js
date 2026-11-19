@@ -429,13 +429,23 @@ export default {
               return json({ error: "Neplatná verzia reklamného projektu." }, 400, origin);
             }
             if (expectedUpdatedAt !== undefined && Number(existing.updated_at) !== expectedUpdatedAt) {
-              return json({ error: "Projekt bol medzičasom zmenený v cloude. Tvoje zmeny zostali zachované; skontroluj aktuálnu verziu a ulož ich znova.", currentProject: publicProject(existing) }, 409, origin);
+              return json({ error: "Produkt bol medzičasom zmenený v cloude. Tvoje zmeny zostali zachované; skontroluj aktuálnu verziu a ulož ich znova.", currentProduct: publicProduct(existing) }, 409, origin);
             }
             const name = body.name === undefined ? existing.name : validText(body.name, 120);
             const description = body.description === undefined ? existing.description : validText(body.description, 2000);
             if (!name || !name.length || description === null) return json({ error: "Skontroluj názov a popis produktu." }, 400, origin);
-            await env.DB.prepare("UPDATE products SET name = ?, description = ?, updated_at = ? WHERE id = ? AND user_id = ?")
-              .bind(name, description, now, productId, user.id).run();
+            const updateStatement = expectedUpdatedAt === undefined
+              ? env.DB.prepare("UPDATE products SET name = ?, description = ?, updated_at = ? WHERE id = ? AND user_id = ?")
+                  .bind(name, description, now, productId, user.id)
+              : env.DB.prepare("UPDATE products SET name = ?, description = ?, updated_at = ? WHERE id = ? AND user_id = ? AND updated_at = ?")
+                  .bind(name, description, now, productId, user.id, expectedUpdatedAt);
+            const updateResult = await updateStatement.run();
+            if (expectedUpdatedAt !== undefined && Number(updateResult.meta?.changes || 0) !== 1) {
+              const current = await ownedProduct(env, user.id, productId);
+              return current
+                ? json({ error: "Produkt bol medzičasom zmenený v cloude. Tvoje zmeny zostali zachované; skontroluj aktuálnu verziu a ulož ich znova.", currentProduct: publicProduct(current) }, 409, origin)
+                : json({ error: "Produkt sa nenašiel." }, 404, origin);
+            }
             const updated = await ownedProduct(env, user.id, productId);
             return json({ product: publicProduct(updated) }, 200, origin);
           }
