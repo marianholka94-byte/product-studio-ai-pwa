@@ -479,7 +479,12 @@ export default {
 
       return json({ error: "Not found" }, 404, origin);
     } catch (error) {
-      // Never return SQL details, password hashes or provider internals to clients.
+      // Keep detailed diagnostics in Worker logs only; never expose SQL details to clients.
+      console.error("Commercial preview request failed", {
+        name: String(error?.name || "Error"),
+        message: String(error?.message || "Unknown error"),
+        stack: String(error?.stack || "").slice(0, 2000)
+      });
       const message = String(error?.message || "");
       if (message === "Požiadavka je príliš veľká." || message === "Požiadavka neobsahuje platné JSON dáta." || message === "Požiadavka musí obsahovať JSON objekt." || message === "Súbor je príliš veľký." || message === "Súbor je prázdny.") {
         return json({ error: message }, 400, origin);
