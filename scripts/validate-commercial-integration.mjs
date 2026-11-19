@@ -108,3 +108,24 @@ assert.ok(cloud.includes("let editingProjectRecord = null"), "Cloud project edit
 assert.ok(cloud.includes("editingProjectRecord = project"), "Editing a cloud project must capture its existing settings");
 assert.ok(cloud.includes("payload.settings = editingProjectRecord?.settings || {}"), "Editing project metadata must preserve existing cloud settings instead of overwriting them with an empty object");
 assert.ok(cloud.includes("payload.exportPreset = editingProjectRecord?.exportPreset ?? null"), "Editing project metadata must preserve its export preset");
+
+
+// Retry correctness: the same account-scoped operation key must replay the
+// original row after a lost response, while a changed payload must fail closed.
+const projectCreate = worker.match(/if \(request\.method === "POST" && !projectId\)[\s\S]*?\n          }\n          if \(projectId && request\.method === "GET"\)/)?.[0] || "";
+assert.ok(projectCreate.includes("if (prior)"), "Project create must detect a previously committed operation before inserting again.");
+assert.ok(projectCreate.includes("return json({ project: publicProject(prior), replayed: true }, 200, origin)"), "A lost project-create response must replay the original project rather than create a duplicate.");
+assert.ok(projectCreate.includes("if (!samePayload) return json({ error: \"Kľúč operácie už bol použitý pre iný projekt.\" }, 409, origin)"), "A project retry with a changed payload must be rejected.");
+assert.ok(projectCreate.includes("if (operationId && /unique|constraint/i.test(String(error)))"), "Concurrent project retries must recover from the unique operation-key constraint.");
+
+const projectMigration = readFileSync("migrations/0005_project_save_idempotency.sql", "utf8");
+const productMigration = readFileSync("migrations/0006_product_save_idempotency.sql", "utf8");
+assert.ok(projectMigration.includes("CREATE UNIQUE INDEX") && projectMigration.includes("ON projects(user_id, client_operation_id)"), "Project operation keys must be unique within each account at the database layer.");
+assert.ok(productMigration.includes("CREATE UNIQUE INDEX") && productMigration.includes("ON products(user_id, client_operation_id)"), "Product operation keys must be unique within each account at the database layer.");
+assert.ok(projectMigration.includes("WHERE client_operation_id IS NOT NULL") && productMigration.includes("WHERE client_operation_id IS NOT NULL"), "Legacy rows without operation keys must remain compatible.");
+
+// A retry must reconcile the server manifest before sending another image.
+const saveFlow = cloud.match(/async saveLocalProject\(record, onProgress = \(\) => \{\}\)[\s\S]*?\n    }\n  };/)?.[0] || "";
+assert.ok(saveFlow.indexOf("/images\")") < saveFlow.indexOf("for (let index = uploaded; index < images.length; index++)"), "Cloud save must read the remote manifest before uploading any retry images.");
+assert.ok(saveFlow.includes("if (!remoteDigests[index] || remoteDigests[index] !== imageDigests[index])"), "Cloud save must refuse to resume when a previously uploaded image cannot be checksum-verified.");
+assert.ok(saveFlow.includes("sync.idempotencyKey = crypto.randomUUID()") && saveFlow.indexOf("await onProgress({ ...sync })") < saveFlow.indexOf("api(\"/api/projects\""), "Project operation key must be persisted before the create request can lose its response.");
