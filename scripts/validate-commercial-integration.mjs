@@ -11,7 +11,8 @@ assert.ok(nav.includes("Nie sú viazané na cloudový účet"), "The local proje
 
 for (const route of [
   "/api/auth/register", "/api/auth/login", "/api/auth/me", "/api/auth/logout",
-  "/api/products", "/api/projects", "/api/assets/"
+  "/api/products", "/api/projects", "/api/assets/", "/api/generate",
+  "/api/generation/usage", "/api/status/", "/api/download/"
 ]) assert.ok(worker.includes(route), "Missing Worker route: " + route);
 
 for (const method of ["POST", "GET", "PATCH", "DELETE"]) {
@@ -30,6 +31,11 @@ assert.ok(cloud.includes("method: isEditing ? \"PATCH\" : \"POST\""), "Cloud UI 
 assert.ok(cloud.includes('method: "DELETE"'), "Cloud UI must support archive operations");
 assert.ok(worker.includes("ALLOWED_ORIGINS"), "Worker must enforce an origin allowlist");
 assert.ok(worker.includes("user.id"), "Worker must scope library operations to the authenticated account");
+assert.ok(worker.includes("const user = await currentUser(request, env)") && worker.includes("WHERE id = ? AND user_id = ? LIMIT 1"), "Generation endpoints must resolve identity from D1 sessions and scope task lookups to the owner.");
+assert.ok(worker.includes("client_request_id") && worker.includes("request_fingerprint"), "Generation submissions must persist account-scoped idempotency keys and payload fingerprints.");
+assert.ok(worker.includes("PREVIEW_DAILY_GENERATION_LIMIT = 3") && worker.includes("generation_daily_limit"), "Preview generation must enforce a daily per-account limit, including concurrent requests.");
+assert.ok(worker.includes("if (!env.RUNWAY_API_KEY)"), "Paid provider requests must fail closed until a dedicated preview API secret is configured.");
+assert.ok(cloud.includes("async request(path, options = {})") && cloud.includes("getCurrentUser()"), "The generator integration must use the commercial account session without exposing its token.");
 
 
 const ownedProduct = worker.match(/async function ownedProduct[\s\S]*?\n}/)?.[0] || "";
@@ -130,6 +136,11 @@ assert.ok(projectCreate.includes("if (prior)"), "Project create must detect a pr
 assert.ok(projectCreate.includes("return json({ project: publicProject(prior), replayed: true }, 200, origin)"), "A lost project-create response must replay the original project rather than create a duplicate.");
 assert.ok(projectCreate.includes("if (!samePayload) return json({ error: \"Kľúč operácie už bol použitý pre iný projekt.\" }, 409, origin)"), "A project retry with a changed payload must be rejected.");
 assert.ok(projectCreate.includes("if (operationId && /unique|constraint/i.test(String(error)))"), "Concurrent project retries must recover from the unique operation-key constraint.");
+
+const generationMigration = readFileSync("migrations/0007_account_bound_generation.sql", "utf8");
+assert.ok(generationMigration.includes("client_request_id") && generationMigration.includes("request_fingerprint"), "Generation idempotency must be stored in D1.");
+assert.ok(generationMigration.includes("ON generations(user_id, client_request_id)"), "Generation request IDs must be unique per customer account.");
+assert.ok(generationMigration.includes("trg_generations_preview_daily_limit") && generationMigration.includes("generation_daily_limit"), "The preview daily generation limit must be enforced by a database trigger.");
 
 const projectMigration = readFileSync("migrations/0005_project_save_idempotency.sql", "utf8");
 const productMigration = readFileSync("migrations/0006_product_save_idempotency.sql", "utf8");
