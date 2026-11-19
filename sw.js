@@ -1,4 +1,4 @@
-const CACHE = "product-studio-ai-v52-personal-workspace-20261119";
+const CACHE = "product-studio-ai-v53-credit-wallet-20261119";
 const FILES = ["/", "/index.html", "/manifest.webmanifest", "/icon.svg", "/cloud-library.js?v=personal-workspace-20261119g", "/app-navigation.js?v=personal-workspace-20261119g"];
 
 self.addEventListener("install", event => event.waitUntil(
