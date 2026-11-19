@@ -3,6 +3,8 @@
 // Does not replace the production Worker or invoke paid generation APIs.
 const ALLOWED_ORIGINS = new Set([
   "https://feature-social-export-preset.product-studio-ai-pwa.pages.dev",
+  "https://feature-commercial-worker-pr.product-studio-ai-pwa.pages.dev",
+  "https://07bfc5c3.product-studio-ai-pwa.pages.dev",
   "https://product-studio-ai-pwa.pages.dev",
   "https://localhost",
   "http://localhost",
