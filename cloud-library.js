@@ -79,6 +79,8 @@
   productConflict.append(productConflictText, reloadLatestProduct, retryProductSave);
   let conflictLatestProduct = null;
   const productList = $("div");
+  const productSearch = field("Hľadať produkt", "search", "Názov alebo popis produktu", 120);
+  productSearch.el.setAttribute("aria-label", "Hľadať v cloudovej knižnici produktov");
   const projectName = field("Názov reklamného projektu", "text", "Napr. Letná kampaň", 120);
   const projectPrompt = field("Prompt", "textarea", "Zadanie reklamného videa", 8000);
   const projectProduct = $("select");
@@ -95,7 +97,17 @@
   let copyOperationId = null;
   let pendingCopyPayload = null;
   const projectList = $("div");
-  workspace.append(accountLine, logout, $("hr"), productName.wrap, productDescription.wrap, addProduct, productConflict, productList, $("hr"), projectName.wrap, $("label", {}, "Prepojiť s produktom"), projectProduct, projectPrompt.wrap, addProject, projectConflict, projectList);
+  const projectSearch = field("Hľadať projekt", "search", "Názov alebo text promptu", 120);
+  projectSearch.el.setAttribute("aria-label", "Hľadať v cloudových reklamných projektoch");
+  workspace.append(accountLine, logout, $("hr"), productName.wrap, productDescription.wrap, addProduct, productConflict, productSearch.wrap, productList, $("hr"), projectName.wrap, $("label", {}, "Prepojiť s produktom"), projectProduct, projectPrompt.wrap, addProject, projectConflict, projectSearch.wrap, projectList);
+  const applyLibraryFilter = (root, query) => {
+    const needle = String(query || "").trim().toLocaleLowerCase("sk");
+    for (const card of root.querySelectorAll(".cloud-item[data-search-text]")) {
+      card.hidden = !!needle && !card.dataset.searchText.includes(needle);
+    }
+  };
+  productSearch.el.addEventListener("input", () => applyLibraryFilter(productList, productSearch.el.value));
+  projectSearch.el.addEventListener("input", () => applyLibraryFilter(projectList, projectSearch.el.value));
   function resetAccountWorkspace() {
     accountEpoch += 1;
     refreshSequence += 1;
@@ -181,6 +193,7 @@
     for (const product of activeProducts) {
       projectProduct.append($("option", { value: product.id }, product.name));
       const card = $("div", { class: "cloud-item" });
+      card.dataset.searchText = [product.name, product.description].filter(Boolean).join(" ").toLocaleLowerCase("sk");
       addText(card, "strong", product.name);
       const description = $("small", {}, product.description || "Bez popisu");
       description.style.display = "block";
@@ -271,6 +284,7 @@
       actions.append(useInStudio, editButton, archiveButton);
       card.append(upload, uploadButton, thumbs, actions);
       productList.append(card);
+      applyLibraryFilter(productList, productSearch.el.value);
       try {
         if (!isCurrentRefresh()) return
         const images = await api("/api/products/" + encodeURIComponent(product.id) + "/images");
@@ -318,6 +332,7 @@
     projectList.replaceChildren();
     for (const project of (pr.projects || []).filter(x => !x.archivedAt)) {
       const card = $("div", { class: "cloud-item" });
+      card.dataset.searchText = [project.name, project.prompt, project.status].filter(Boolean).join(" ").toLocaleLowerCase("sk");
       addText(card, "strong", project.name);
       addText(card, "small", (project.status || "draft") + (project.productId ? " · Prepojený produkt" : ""));
       addText(card, "p", project.prompt || "");
@@ -389,6 +404,7 @@
       actions.append(openInStudio, editButton, archiveButton);
       card.append(actions);
       projectList.append(card);
+      applyLibraryFilter(projectList, projectSearch.el.value);
     }
     if (!projectList.childElementCount) addText(projectList, "p", "Zatiaľ nemáš uložené reklamné projekty.");
   }
