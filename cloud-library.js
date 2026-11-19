@@ -37,6 +37,7 @@
     status.textContent = message;
     status.className = "status" + (error ? " err" : " ok");
   };
+  const notifyCloudAccountChange = () => window.dispatchEvent(new CustomEvent("psai-cloud-account-change"));
   const field = (label, type, placeholder, maxLength) => {
     const wrap = $("div");
     wrap.append($("label", {}, label));
@@ -77,7 +78,7 @@
     const response = await fetch(API + path, { ...options, headers });
     const data = (response.headers.get("content-type") || "").includes("application/json") ? await response.json() : null;
     if (!response.ok) {
-      if (response.status === 401) { token = ""; sessionStorage.removeItem(TOKEN_KEY); renderAuth(); }
+      if (response.status === 401) { token = ""; user = null; sessionStorage.removeItem(TOKEN_KEY); renderAuth(); notifyCloudAccountChange(); }
       throw new Error(data?.error || "Požiadavka zlyhala (" + response.status + ").");
     }
     return data;
@@ -302,6 +303,7 @@
       token = data.token;
       sessionStorage.setItem(TOKEN_KEY, token);
       user = data.user;
+      notifyCloudAccountChange();
       auth.hidden = true;
       workspace.hidden = false;
       accountLine.textContent = "Prihlásený účet: " + user.email;
@@ -315,7 +317,7 @@
   showLogin.addEventListener("click", () => { registerFields.hidden = true; authButtons.hidden = false; });
   logout.addEventListener("click", async () => {
     try { await api("/api/auth/logout", { method: "POST" }); } catch {}
-    token = ""; user = null; sessionStorage.removeItem(TOKEN_KEY); renderAuth();
+    token = ""; user = null; sessionStorage.removeItem(TOKEN_KEY); renderAuth(); notifyCloudAccountChange();
   });
   addProduct.addEventListener("click", async () => {
     try {
@@ -348,8 +350,12 @@
     } catch (e) { setStatus(e.message, true); }
   });
   window.PSAICloudLibrary = {
+    getSyncState(record) {
+      if (!user?.id || !record) return null;
+      return record.cloudSyncByAccount?.[user.id] || (record.cloudSync?.accountId === user.id ? record.cloudSync : null);
+    },
     async saveLocalProject(record, onProgress = () => {}) {
-      if (!token) throw new Error("Najskôr sa prihlás do cloudovej knižnice.");
+      if (!token || !user?.id) throw new Error("Najskôr sa prihlás do cloudovej knižnice.");
       if (!record || !record.id || !Array.isArray(record.images) || !record.images.length) throw new Error("Projekt musí obsahovať aspoň jednu fotografiu.");
       if (record.images.length > 5) throw new Error("Cloudový produkt môže obsahovať najviac 5 fotografií.");
       const images = record.images.map((item, index) => {
@@ -375,11 +381,43 @@
         prompt: record.prompt || "", settings, exportPreset: record.exportPreset || null,
         images: images.map((x, index) => ({ name: x.name, type: x.type, size: x.blob.size, sha256: imageDigests[index] }))
       });
-      let sync = record.cloudSync || null;
+      const accountId = user.id;
+      const savedByAccount = record.cloudSyncByAccount && typeof record.cloudSyncByAccount === "object" ? record.cloudSyncByAccount : {};
+      let sync = savedByAccount[accountId] || (record.cloudSync?.accountId === accountId ? record.cloudSync : null);
+
+      // Older local records stored one unscoped cloudSync object. Adopt it only
+      // after proving that its product (and, when present, project) belongs to
+      // the currently authenticated account. Another account starts its own sync.
+      if (!sync && record.cloudSync?.productId && !record.cloudSync.accountId) {
+        try {
+          const remoteProduct = await api("/api/products/" + encodeURIComponent(record.cloudSync.productId));
+          if (remoteProduct.product) {
+            let legacyProjectId = record.cloudSync.projectId || null;
+            if (legacyProjectId) {
+              try {
+                const remoteProject = await api("/api/projects/" + encodeURIComponent(legacyProjectId));
+                if (remoteProject.project?.productId !== record.cloudSync.productId) throw new Error("Legacy cloud project does not match its product.");
+              } catch (error) {
+                if (!String(error.message || "").includes("(404)")) throw error;
+                legacyProjectId = null;
+              }
+            }
+            sync = { ...record.cloudSync, accountId, projectId: legacyProjectId };
+            if (!legacyProjectId) delete sync.idempotencyKey;
+            await onProgress({ ...sync });
+          }
+        } catch (error) {
+          if (String(error.message || "").includes("(401)")) throw error;
+          // A 404 means the old cloud product belongs to another account (or
+          // no longer exists); create a separate account-scoped cloud copy.
+          if (!String(error.message || "").includes("(404)")) throw error;
+        }
+      }
+
       if (sync && sync.fingerprint !== fingerprint) throw new Error("Tento lokálny projekt sa od posledného pokusu zmenil. Pôvodné čiastočné nahrávanie zostáva zachované; najprv ho dokonči alebo vytvor nový lokálny projekt.");
       if (sync?.projectId) return { ...sync, alreadySaved: true };
       if (!sync) {
-        sync = { fingerprint, productOperationId: crypto.randomUUID(), productId: null, uploadedImages: 0, projectId: null };
+        sync = { accountId, fingerprint, productOperationId: crypto.randomUUID(), productId: null, uploadedImages: 0, projectId: null };
         await onProgress({ ...sync });
       }
       if (!sync?.productId) {
@@ -441,10 +479,10 @@
   renderAuth();
   if (token) {
     api("/api/auth/me").then(data => {
-      user = data.user; auth.hidden = true; workspace.hidden = false;
+      user = data.user; notifyCloudAccountChange(); auth.hidden = true; workspace.hidden = false;
       accountLine.textContent = "Prihlásený účet: " + user.email;
       return refresh();
     }).then(() => setStatus("Cloudová knižnica je synchronizovaná."))
-      .catch(() => { token = ""; sessionStorage.removeItem(TOKEN_KEY); renderAuth(); });
+      .catch(() => { token = ""; user = null; sessionStorage.removeItem(TOKEN_KEY); renderAuth(); notifyCloudAccountChange(); });
   }
 })();
