@@ -737,6 +737,7 @@ export default {
         if (existingOutput) {
           const storedObject = await env.MEDIA.get(existingOutput.r2_key);
           if (!storedObject) return json({ error: "Uložené video sa v súkromnom úložisku nenašlo. Kontaktuj podporu." }, 503, origin);
+          if (Number(existingOutput.byte_size) !== Number(storedObject.size)) return json({ error: "Veľkosť uloženého videa nesúhlasí s jeho databázovým záznamom. Kontaktuj podporu." }, 503, origin);
           const completedAt = Math.floor(Date.now() / 1000);
           await env.DB.prepare("UPDATE generations SET status = 'succeeded', completed_at = COALESCE(completed_at, ?), updated_at = ? WHERE id = ? AND user_id = ?")
             .bind(completedAt, completedAt, generation.id, user.id).run();
@@ -787,6 +788,7 @@ export default {
         if (!savedOutput) return json({ error: "Video sa uložilo, ale jeho záznam sa nepodarilo potvrdiť." }, 502, origin);
         const storedObject = await env.MEDIA.get(savedOutput.r2_key);
         if (!storedObject) return json({ error: "Video sa uložilo, ale vrátenie súboru z úložiska zlyhalo." }, 502, origin);
+        if (Number(savedOutput.byte_size) !== Number(storedObject.size)) return json({ error: "Veľkosť uloženého videa nesúhlasí s jeho databázovým záznamom." }, 502, origin);
         const completedAt = Math.floor(Date.now() / 1000);
         await env.DB.prepare("UPDATE generations SET status = 'succeeded', completed_at = COALESCE(completed_at, ?), updated_at = ? WHERE id = ? AND user_id = ?")
           .bind(completedAt, completedAt, generation.id, user.id).run();
