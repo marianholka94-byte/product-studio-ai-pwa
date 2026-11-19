@@ -26,7 +26,9 @@ assert.match(reconciliation, /DROP TABLE credit_ledger;[\s\S]*?ALTER TABLE credi
 assert.match(worker, /creditSchema[\s\S]*?enabled: true/, "Credit accounting must be enabled after reservation and settlement are wired.");
 assert.match(worker, /async function reserveGenerationCredits[\s\S]*?UPDATE credit_accounts[\s\S]*?available_units >= \?[\s\S]*?INSERT INTO generation_credit_reservations[\s\S]*?INSERT INTO credit_ledger/, "Generation credits must be atomically reserved and recorded before provider submission.");
 assert.match(worker, /async function settleGenerationCredits[\s\S]*?UPDATE credit_accounts[\s\S]*?UPDATE generation_credit_reservations[\s\S]*?INSERT INTO credit_ledger/, "Generation credit settlement must update balances, reservation state, and immutable ledger together.");
-assert.match(worker, /reserveGenerationCredits\(env, user\.id, generationId, estimatedCredits, now\)/, "Generation must reserve its estimated credit cost before calling the provider.");
+assert.match(worker, /const estimatedCredits = 0/, "BytePlus generation must not invent an app-wallet estimate for provider-billed requests.");
+assert.doesNotMatch(worker, /reserveGenerationCredits\(env, user\.id, generationId, estimatedCredits, now\)/, "BytePlus provider-billed generation must not reserve internal wallet credits.");
+assert.match(worker, /provider: "byteplus_modelark"/, "Generation health must identify the BytePlus ModelArk provider.");
 assert.match(worker, /settleGenerationCredits\(env, user\.id, generationId, "release", failedAt\)/, "Provider rejection must release the reservation.");
 assert.match(worker, /settleGenerationCredits\(env, user\.id, generation\.id, "capture", now\)/, "Successful provider completion must capture reserved credits.");
 assert.match(worker, /settleGenerationCredits\(env, user\.id, generation\.id, "release", now\)/, "Failed or cancelled provider completion must release reserved credits.");
@@ -34,7 +36,8 @@ assert.match(worker, /credit_ledger[\s\S]*?trg_credit_ledger_no_update[\s\S]*?tr
 const generationRouteStart = worker.indexOf('if (url.pathname === "/api/generate" && request.method === "POST")');
 assert.notEqual(generationRouteStart, -1, "Commercial generation route must exist.");
 const generationHandler = worker.slice(generationRouteStart);
-assert.match(generationHandler, /reserveGenerationCredits\(env, user\.id, generationId, estimatedCredits, now\)/, "Generation route must use the audited reservation helper rather than ad hoc balance writes.");
+assert.match(generationHandler, /const estimatedCredits = 0/, "Provider charges are billed directly by BytePlus, not the internal wallet.");
+assert.doesNotMatch(generationHandler, /reserveGenerationCredits\(env, user\.id, generationId/, "Provider-billed generation must not reserve internal credits.");
 assert.match(worker, /url\.pathname === "\/api\/credits\/admin-grant"[\s\S]*?INSERT INTO credit_accounts[\s\S]*?INSERT INTO credit_ledger/, "Only the authenticated admin-grant route may add manual credit grants.");
 assert.match(workflow, /node scripts\/validate-credit-ledger\.mjs/, "Preview deployment must run the credit ledger validator.");
 assert.match(workflow, /creditSchema.*accounts.*ledger.*reservations/, "Deployment smoke test must verify credit schema readiness.");
