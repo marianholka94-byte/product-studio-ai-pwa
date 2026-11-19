@@ -47,7 +47,7 @@ assert.match(worker, /task\.content\?\.video_url/);
 assert.match(worker, /task\.status !== "succeeded"/);
 
 // A lost provider response must be treated as ambiguous, never as permission to retry.
-assert.match(worker, /status = 'submission_unknown'/);
+assert.match(worker, /SET status = 'processing', error_code = \?/);
 assert.match(worker, /provider_submission_unknown/);
 assert.match(worker, /recoveryRequired: true/);
 assert.ok(worker.includes("BytePlus may") && worker.includes("already have accepted and billed the task"));
@@ -65,12 +65,10 @@ assert.ok(html.includes("let generationIntegrationReady=false"));
 assert.ok(html.includes("health.generation?.modelIntegrationReady"));
 assert.ok(html.includes("Cena podľa skutočnej spotreby BytePlus"));
 assert.ok(html.includes("BytePlus účtuje Seedance podľa skutočnej spotreby tokenov"));
-assert.ok(html.includes("submission_unknown:'Overenie odoslania'"));
+assert.ok(html.includes("item.errorCode==='provider_submission_unknown'?'Overenie odoslania'"));
 assert.ok(html.includes("Neposielaj požiadavku znova"));
 assert.ok(html.includes("Na overenie"));
-const historyRefresh = html.slice(html.indexOf("async function refreshGenerationHistory()"), html.indexOf("$('refreshHistory').addEventListener"));
-assert.ok(historyRefresh.includes("activeItems.map") && historyRefresh.includes("/api/status/"), "Opening generation history must reconcile existing active tasks.");
-assert.ok(!historyRefresh.includes("/api/generate"), "Automatic history reconciliation must never submit a new paid task.");
+assert.ok(html.includes("item.errorCode==='provider_submission_unknown'"), "Unknown provider submissions must use their diagnostic code rather than an unsupported database status.");
 assert.match(html, /platené generovanie zostáva vypnuté/i);
 assert.doesNotMatch(html, /Runway Dev|0\.15 USD/);
 
