@@ -49,6 +49,18 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      - name: Run live two-account tenant-isolation acceptance test when credentials are configured
+        env:
+          PREVIEW_ACCOUNT_A_EMAIL: ${{ secrets.PREVIEW_ACCOUNT_A_EMAIL }}
+          PREVIEW_ACCOUNT_A_PASSWORD: ${{ secrets.PREVIEW_ACCOUNT_A_PASSWORD }}
+          PREVIEW_ACCOUNT_B_EMAIL: ${{ secrets.PREVIEW_ACCOUNT_B_EMAIL }}
+          PREVIEW_ACCOUNT_B_PASSWORD: ${{ secrets.PREVIEW_ACCOUNT_B_PASSWORD }}
+        run: |
+          if [ -z "$PREVIEW_ACCOUNT_A_EMAIL" ] || [ -z "$PREVIEW_ACCOUNT_A_PASSWORD" ] || [ -z "$PREVIEW_ACCOUNT_B_EMAIL" ] || [ -z "$PREVIEW_ACCOUNT_B_PASSWORD" ]; then
+            echo "SKIP: Configure the four PREVIEW_ACCOUNT_A/B_EMAIL/PASSWORD repository secrets to enable live two-account acceptance."
+            exit 0
+          fi
+          node scripts/test-preview-tenant-isolation.mjs
       - name: Smoke-test deployed D1 and R2 connectivity
         run: |
           response="$(curl --retry 8 --retry-delay 3 --retry-all-errors --fail --silent --show-error https://product-studio-ai-commercial-preview.marianholka94.workers.dev/api/health)"
