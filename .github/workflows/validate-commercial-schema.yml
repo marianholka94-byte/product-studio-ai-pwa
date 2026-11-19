@@ -47,5 +47,35 @@ jobs:
           if violations:
               raise SystemExit(f"Foreign key violations: {violations}")
 
-          print(f"Commercial D1 schema valid: {len(expected)} tables created; no FK violations.")
+          # Tenant-isolation constraints: a user must not attach another user's
+          # product, project, asset or generation to their own records.
+          db.execute("INSERT INTO users (id,email,created_at,updated_at) VALUES ('u1','one@example.test',1,1)")
+          db.execute("INSERT INTO users (id,email,created_at,updated_at) VALUES ('u2','two@example.test',1,1)")
+          db.execute("INSERT INTO products (id,user_id,name,created_at,updated_at) VALUES ('p1','u1','One',1,1)")
+          db.execute("INSERT INTO projects (id,user_id,name,created_at,updated_at) VALUES ('pr1','u1','Project one',1,1)")
+          db.execute("INSERT INTO assets (id,user_id,product_id,kind,r2_key,content_type,byte_size,created_at) VALUES ('a1','u1','p1','product_image','u1/a1','image/jpeg',100,1)")
+
+          def must_reject(label, statement, values):
+              try:
+                  db.execute(statement, values)
+              except sqlite3.IntegrityError:
+                  return
+              raise SystemExit(f"Tenant isolation test failed: {label} was accepted")
+
+          must_reject("cross-user project/product link",
+              "INSERT INTO projects (id,user_id,product_id,name,created_at,updated_at) VALUES (?,?,?,?,?,?)",
+              ("pr2","u2","p1","Bad project",1,1))
+          must_reject("cross-user asset/project link",
+              "INSERT INTO assets (id,user_id,project_id,kind,r2_key,content_type,byte_size,created_at) VALUES (?,?,?,?,?,?,?,?)",
+              ("a2","u2","pr1","other","u2/a2","application/octet-stream",10,1))
+          must_reject("cross-user product image",
+              "INSERT INTO product_images (product_id,asset_id,user_id,created_at) VALUES (?,?,?,?)",
+              ("p1","a1","u2",1))
+
+          db.execute("INSERT INTO product_images (product_id,asset_id,user_id,is_primary,created_at) VALUES ('p1','a1','u1',1,1)")
+          must_reject("second primary image",
+              "INSERT INTO product_images (product_id,asset_id,user_id,is_primary,created_at) VALUES (?,?,?,?,?)",
+              ("p1","a1","u1",1,2))
+
+          print(f"Commercial D1 schema valid: {len(expected)} tables; tenant isolation and primary-image constraints passed.")
           PY
