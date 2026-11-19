@@ -580,6 +580,27 @@
       }
       return result;
     },
+    async download(path) {
+      const accountId = user?.id;
+      const requestEpoch = accountEpoch;
+      const requestToken = token;
+      if (!requestToken || !accountId) throw new Error("Najskôr sa prihlás do svojho zákazníckeho účtu.");
+      const response = await fetch(API + path, { headers: { Authorization: "Bearer " + requestToken } });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        if (response.status === 401 && token === requestToken) {
+          token = ""; user = null; sessionStorage.removeItem(TOKEN_KEY);
+          resetAccountWorkspace(); renderAuth(); notifyCloudAccountChange();
+        }
+        const error = new Error(data?.error || "Video sa nepodarilo stiahnuť (" + response.status + ").");
+        error.status = response.status;
+        throw error;
+      }
+      if (!token || accountEpoch !== requestEpoch || user?.id !== accountId) {
+        throw new Error("Zákaznícky účet sa počas sťahovania zmenil. Sťahovanie bolo zastavené.");
+      }
+      return response.blob();
+    },
     getSyncState(record) {
       if (!user?.id || !record) return null;
       return record.cloudSyncByAccount?.[user.id] || (record.cloudSync?.accountId === user.id ? record.cloudSync : null);
