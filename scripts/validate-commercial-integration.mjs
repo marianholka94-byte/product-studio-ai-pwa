@@ -77,3 +77,11 @@ assert.ok(nav.includes('new Blob([bytes]'), "Local project and product reads mus
 assert.ok(nav.includes('const putProject=async project=>{const stored=await prepareRecord(project)'), "Project writes must serialize image bytes before opening IndexedDB write transactions");
 assert.ok(nav.includes('const putProduct=async product=>{const stored=await prepareRecord(product)'), "Product writes must serialize image bytes before opening IndexedDB write transactions");
 assert.ok(nav.includes('const hydrateRecord=record=>'), "Existing local records must be hydrated on read for backwards compatibility");
+
+assert.ok(cloud.includes('"Otvoriť v štúdiu"'), "Cloud project cards must expose an explicit open-in-Studio action");
+assert.ok(cloud.includes('api("/api/products/" + encodeURIComponent(linkedProduct.id) + "/images")'), "Opening a cloud project must fetch its linked product image manifest");
+assert.ok(cloud.includes('Authorization: "Bearer " + token'), "Cloud project media must be fetched with the authenticated session");
+assert.ok(cloud.includes('prompt: project.prompt || ""'), "Cloud project import must restore the saved prompt");
+assert.ok(cloud.includes('style: settings.style || ""') && cloud.includes('resolution: settings.resolution || "720p"') && cloud.includes('model: settings.model || "seedance2_mini"'), "Cloud project import must restore saved Studio settings");
+assert.ok(cloud.includes("project.exportPreset || \"custom\""), "Cloud project import must restore the export preset");
+assert.ok(cloud.includes("cloudový originál zostal nezmenený"), "Cloud project import must remain read-only");
