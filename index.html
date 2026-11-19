@@ -64,14 +64,10 @@ a{color:#174ea6;overflow-wrap:anywhere}
 <header><div><h1>PRODUCT STUDIO AI</h1><div class="muted">Súkromné štúdio produktových reklám</div></div><span class="muted">V2 · AI video</span></header>
 
 <section class="panel">
-<h2>1. Pripojenie generátora</h2>
-<label for="apiUrl">Adresa nášho zabezpečeného backendu</label>
-<input id="apiUrl" type="url" placeholder="https://tvoj-worker.workers.dev">
-<label for="appPassword">Súkromný prístupový kód</label>
-<input id="appPassword" type="password" placeholder="Nastaví sa pri nasadení backendu">
-<p class="note">API kľúč Runway sa zadáva iba do tajných premenných backendu, nikdy nie sem do aplikácie.</p>
-<button class="secondary" id="saveConfig">Uložiť pripojenie</button>
-<div id="connectionStatus" class="status">Backend zatiaľ nie je overený.</div>
+<h2>1. Zákaznícky účet a generátor</h2>
+<p class="note">Generovanie je prepojené s tvojím samostatným zákazníckym účtom v cloudovej knižnici. Spoločné prístupové heslo aplikácie sa už na tejto preview verzii nepoužíva.</p>
+<div id="connectionStatus" class="status">Prihlás sa do svojho zákazníckeho účtu v paneli Cloudová knižnica.</div>
+<p id="generationUsage" class="note">Skúšobný limit: najviac 3 generovania denne na jeden účet.</p>
 </section>
 
 <section class="panel">
@@ -137,12 +133,9 @@ a{color:#174ea6;overflow-wrap:anywhere}
 
 <script>
 const $=id=>document.getElementById(id);
-let promptText='', selectedFiles=[], currentTask=null;
-const API_BASE='https://square-feather-4b83.marianholka94.workers.dev';
+let promptText='', selectedFiles=[], currentTask=null, currentVideoBlob=null, currentVideoObjectUrl=null;
+const API_BASE='https://product-studio-ai-commercial-preview.marianholka94.workers.dev';
 const photo=$('photo'), previewGallery=$('previewGallery');
-const apiUrl=$('apiUrl'), appPassword=$('appPassword');
-if(apiUrl) apiUrl.value=API_BASE;
-if(appPassword) appPassword.value='';
 
 function setStatus(message,kind=''){const el=$('status');el.textContent=message;el.className='status '+kind}
 let progressStartedAt=0, progressClock=null;
@@ -161,13 +154,38 @@ function completeGenerationProgress(title,detail){stopGenerationProgress();setGe
 
 
 function updateReadyStatus(){
-  const hasBackend=!!localStorage.getItem('psai_session_token');
+  const hasAccount=!!window.PSAICloudLibrary?.getCurrentUser();
   const hasPhoto=selectedFiles.length>0;
-  if(hasBackend && hasPhoto) setStatus(`Pripravené: backend je nastavený a vybraných je ${selectedFiles.length} fotografií produktu.`);
-  else if(!hasBackend && !hasPhoto) setStatus('Najskôr nastav backend a vyber fotografiu produktu.');
-  else if(!hasBackend) setStatus('Najskôr nastav a over backend.');
-  else setStatus('Backend je nastavený. Teraz vyber fotografiu produktu.');
+  if(hasAccount && hasPhoto) setStatus(`Pripravené: zákaznícky účet je prihlásený a vybraných je ${selectedFiles.length} fotografií produktu.`);
+  else if(!hasAccount && !hasPhoto) setStatus('Najskôr sa prihlás do zákazníckeho účtu a vyber fotografiu produktu.');
+  else if(!hasAccount) setStatus('Najskôr sa prihlás do zákazníckeho účtu v paneli Cloudová knižnica.');
+  else setStatus('Zákaznícky účet je prihlásený. Teraz vyber fotografiu produktu.');
 }
+async function refreshCommercialConnection(){
+  const account=window.PSAICloudLibrary?.getCurrentUser();
+  const status=$('connectionStatus'), usageLabel=$('generationUsage');
+  if(!account){
+    status.textContent='Nie si prihlásený. Prihlás sa v paneli Cloudová knižnica.';
+    usageLabel.textContent='Skúšobný limit: najviac 3 generovania denne na jeden účet.';
+    return;
+  }
+  status.textContent='Overujem komerčný generátor…';
+  try{
+    const [health,usage]=await Promise.all([
+      fetch(API_BASE+'/api/health',{cache:'no-store'}).then(r=>r.json()),
+      window.PSAICloudLibrary.request('/api/generation/usage')
+    ]);
+    if(window.PSAICloudLibrary?.getCurrentUser()?.id!==account.id)return;
+    status.textContent=health.generation?.configured
+      ? 'Účet '+account.email+' je pripojený. Generátor je pripravený.'
+      : 'Účet '+account.email+' je pripojený. Čaká sa na samostatný API kľúč preview generátora.';
+    usageLabel.textContent=`Dnešné skúšobné generovania: ${usage.usedToday} / ${usage.dailyLimit}. Zostáva: ${usage.remainingToday}.`;
+  }catch(error){
+    status.textContent='Účet '+account.email+' je prihlásený, ale stav generátora sa nepodarilo overiť.';
+    usageLabel.textContent=error.message;
+  }
+}
+window.addEventListener('psai-cloud-account-change',()=>{updateReadyStatus();refreshCommercialConnection();});
 function buildPrompt(){
  const product=$('product').value.trim()||'the uploaded product';
  const extra=$('extra').value.trim();
@@ -270,42 +288,28 @@ async function imageToDataUri(file){
  if(data.length>5*1024*1024)throw new Error('Jedna fotografia je príliš veľká. Vyber menší obrázok.');
  return data;
 }
-function requestAppPassword(){
- return new Promise(resolve=>{
-  const overlay=document.createElement('div');
-  overlay.style.cssText='position:fixed;inset:0;z-index:1000000;background:rgba(0,0,0,.78);display:flex;align-items:center;justify-content:center;padding:22px;';
-  const panel=document.createElement('form');
-  panel.style.cssText='width:100%;max-width:420px;background:#171d27;color:#f3f5f8;border:1px solid #394456;border-radius:18px;padding:22px;box-sizing:border-box;font:16px system-ui,sans-serif;';
-  panel.innerHTML='<h2 style="margin:0 0 12px;font-size:21px">Prístupový kód</h2><p style="color:#aeb8c7;line-height:1.5;margin:0 0 16px">Zadaj súkromný prístupový kód pre PRODUCT STUDIO AI.</p><input id="psaiAccessCode" type="password" autocomplete="current-password" placeholder="Súkromný prístupový kód" style="box-sizing:border-box;width:100%;padding:14px;border-radius:10px;border:1px solid #465366;background:#0e131a;color:#fff;font-size:16px;margin-bottom:16px"><div style="display:flex;gap:10px"><button type="button" id="psaiCancel" style="flex:1;padding:13px;border:0;border-radius:10px;background:#303947;color:#fff;font-size:15px">Zrušiť</button><button type="submit" style="flex:1;padding:13px;border:0;border-radius:10px;background:#d9bd7d;color:#17130b;font-size:15px;font-weight:700">Pokračovať</button></div>';
-  const finish=value=>{overlay.remove();resolve(value);};
-  panel.addEventListener('submit',event=>{event.preventDefault();finish(panel.querySelector('#psaiAccessCode').value.trim());});
-  panel.querySelector('#psaiCancel').addEventListener('click',()=>finish(''));
-  overlay.addEventListener('click',event=>{if(event.target===overlay)finish('');});
-  overlay.appendChild(panel);document.body.appendChild(overlay);
-  panel.querySelector('#psaiAccessCode').focus();
+async function api(path,body){
+ const bridge=window.PSAICloudLibrary;
+ if(!bridge?.request)throw new Error('Cloudová knižnica sa ešte načítava. Obnov stránku a skús to znova.');
+ return bridge.request(path,{
+  method:body?'POST':'GET',
+  headers:body?{'Content-Type':'application/json'}:{},
+  body:body?JSON.stringify(body):undefined
  });
 }
-window.requestAppPassword=requestAppPassword;
-async function loginAndGetToken(){
- let password=sessionStorage.getItem('psai_password')||'';
- if(!password) password=await requestAppPassword();
- if(!password) throw new Error('Prihlásenie bolo zrušené.');
- const response=await fetch(API_BASE+'/api/session',{method:'POST',headers:{'X-App-Password':password}});
- const data=await response.json().catch(()=>({}));
- if(!response.ok) throw new Error(data.error||'Prihlásenie sa nepodarilo.');
- localStorage.setItem('psai_session_token',data.token);
- sessionStorage.removeItem('psai_password');
- return data.token;
-}
-async function api(path,body){
- let token=localStorage.getItem('psai_session_token')||'';
- if(!token) token=await loginAndGetToken();
- const send=async current=>fetch(API_BASE+path,{method:body?'POST':'GET',headers:{'Authorization':'Bearer '+current,...(body?{'Content-Type':'application/json'}:{})},body:body?JSON.stringify(body):undefined});
- let res=await send(token);
- if(res.status===401){localStorage.removeItem('psai_session_token');token=await loginAndGetToken();res=await send(token);}
- const data=await res.json().catch(()=>({error:'Server vrátil nečitateľnú odpoveď.'}));
- if(!res.ok)throw new Error(data.error||`Chyba servera ${res.status}`);
- return data;
+async function generationRequestCheckpoint(payload){
+ const account=window.PSAICloudLibrary?.getCurrentUser();
+ if(!account)throw new Error('Najskôr sa prihlás do zákazníckeho účtu.');
+ const digest=new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(payload))));
+ if(window.PSAICloudLibrary?.getCurrentUser()?.id!==account.id)throw new Error('Zákaznícky účet sa počas prípravy zmenil.');
+ const fingerprint=Array.from(digest,byte=>byte.toString(16).padStart(2,'0')).join('');
+ const storageKey='psai_generation_pending_'+account.id;
+ let saved=null;
+ try{saved=JSON.parse(sessionStorage.getItem(storageKey)||'null')}catch{}
+ if(saved?.fingerprint===fingerprint&&/^[0-9a-f-]{36}$/i.test(saved.requestId||''))return {requestId:saved.requestId,storageKey};
+ const requestId=crypto.randomUUID();
+ sessionStorage.setItem(storageKey,JSON.stringify({requestId,fingerprint}));
+ return {requestId,storageKey};
 }
 $('generate').onclick=async()=>{
  const btn=$('generate');btn.disabled=true;$('videoWrap').innerHTML='';
@@ -325,7 +329,11 @@ $('generate').onclick=async()=>{
    seedance2:{'480p':{'9:16':'496:864','1:1':'640:640','16:9':'864:496'},'720p':{'9:16':'720:1280','1:1':'960:960','16:9':'1280:720'},'1080p':{'9:16':'1080:1920','1:1':'1440:1440','16:9':'1920:1080'},'4K':{'9:16':'2160:3840','1:1':'3840:3840','16:9':'3840:2160'}}
   };
   const ratio=ratios[model][$('resolution').value][$('format').value];
-  const created=await api('/api/generate',{image:images[0],images,prompt:promptText,model,ratio,duration:Number($('duration').value),});
+  const payload={image:images[0],images,prompt:promptText,model,resolution:$('resolution').value,ratio,duration:Number($('duration').value)};
+  const checkpoint=await generationRequestCheckpoint(payload);
+  payload.requestId=checkpoint.requestId;
+  const created=await api('/api/generate',payload);
+  sessionStorage.removeItem(checkpoint.storageKey);
   currentTask=created.id;
   $('history').textContent=`Úloha: ${created.id} · Model: ${model} · Stav: ${created.status||'odoslané'}`;
   setGenerationProgress(1,'AI generuje video','Požiadavka bola prijatá. Sledujem stav na serveri; môže to chvíľu trvať.');
@@ -337,16 +345,12 @@ $('generate').onclick=async()=>{
 async function downloadGeneratedVideo(id){
  const button=$('downloadVideo');if(button)button.disabled=true;
  try{
-  let token=localStorage.getItem('psai_session_token')||'';
-  if(!token)token=await loginAndGetToken();
-  let response=await fetch(API_BASE+'/api/download/'+encodeURIComponent(id),{headers:{'Authorization':'Bearer '+token}});
-  if(response.status===401){localStorage.removeItem('psai_session_token');token=await loginAndGetToken();response=await fetch(API_BASE+'/api/download/'+encodeURIComponent(id),{headers:{'Authorization':'Bearer '+token}});}
-  if(!response.ok){const data=await response.json().catch(()=>({}));throw new Error(data.error||'Video sa nepodarilo stiahnuť.');}
-  const blob=await response.blob();const objectUrl=URL.createObjectURL(blob);
-  const sizeMb=(blob.size/1024/1024).toFixed(1);const sizeInfo=$('downloadInfo');if(sizeInfo)sizeInfo.textContent='Veľkosť súboru: '+sizeMb+' MB';
+  const blob=currentVideoBlob||await window.PSAICloudLibrary.download('/api/download/'+encodeURIComponent(id));
+  const objectUrl=URL.createObjectURL(blob);
   const link=document.createElement('a');link.href=objectUrl;
   link.download=`product-studio-${$('format').value.replace(':','x')}-${$('resolution').value}-${$('duration').value}s.mp4`;
   document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(objectUrl),60000);
+  const sizeInfo=$('downloadInfo');if(sizeInfo)sizeInfo.textContent='Veľkosť súboru: '+(blob.size/1024/1024).toFixed(1)+' MB';
  }catch(error){setStatus(error.message,'err');}
  finally{if(button)button.disabled=false;}
 }
@@ -364,11 +368,15 @@ async function pollTask(id, outputId='videoWrap', statusId='status'){
    else if(['FINALIZING','FINALISING'].includes(status))setGenerationProgress(2,'Dokončujem video','Generátor pripravuje finálny súbor.');
   }
   if(status==='SUCCEEDED'){
-   const outputs=task.output||task.outputs||[];
-   const url=Array.isArray(outputs)?(typeof outputs[0]==='string'?outputs[0]:outputs[0]?.url||outputs[0]?.uri):outputs?.url;
-   if(!url)throw new Error('Video je hotové, ale server nevrátil odkaz na výstup.');
-   $(outputId).innerHTML=`<video controls playsinline src="${url}"></video><button type="button" id="downloadVideo">STIAHNUŤ MP4</button><p id="downloadInfo" class="note">Výstup: ${$('format').value} · ${$('resolution').value} · ${$('duration').value} s. FPS je podľa modelu Seedance. Veľkosť súboru sa zobrazí po stiahnutí.</p>`;
-   $('downloadVideo').onclick=()=>downloadGeneratedVideo(id);
+   currentVideoBlob=await window.PSAICloudLibrary.download('/api/download/'+encodeURIComponent(id));
+   if(currentVideoObjectUrl)URL.revokeObjectURL(currentVideoObjectUrl);
+   currentVideoObjectUrl=URL.createObjectURL(currentVideoBlob);
+   const output=$(outputId);output.replaceChildren();
+   const video=document.createElement('video');video.controls=true;video.playsInline=true;video.src=currentVideoObjectUrl;
+   const downloadButton=document.createElement('button');downloadButton.type='button';downloadButton.id='downloadVideo';downloadButton.textContent='STIAHNUŤ MP4';
+   const info=document.createElement('p');info.id='downloadInfo';info.className='note';info.textContent=`Výstup: ${$('format').value} · ${$('resolution').value} · ${$('duration').value} s. Video sa načítalo cez zabezpečený účet.`;
+   output.append(video,downloadButton,info);
+   downloadButton.onclick=()=>downloadGeneratedVideo(id);
    completeGenerationProgress('Video je hotové','Generovanie úspešne skončilo. Video si môžeš prehrať alebo stiahnuť.');
    $(statusId).textContent='Hotovo! Video je pripravené. Môžeš si ho prehrať a uložiť.';
    $(statusId).className='status ok';
@@ -411,16 +419,9 @@ sourceVideo.addEventListener('change',()=>{
   $('sourceVideoInfo').className='note';
  };
  });
-async function uploadFormApi(path,form){
- let token=localStorage.getItem('psai_session_token')||'';
- if(!token) token=await loginAndGetToken();
- let response=await fetch(API_BASE+path,{method:'POST',headers:{'Authorization':'Bearer '+token},body:form});
- if(response.status===401){localStorage.removeItem('psai_session_token');token=await loginAndGetToken();response=await fetch(API_BASE+path,{method:'POST',headers:{'Authorization':'Bearer '+token},body:form});}
- const data=await response.json().catch(()=>({error:'Server vrátil nečitateľnú odpoveď.'}));
- if(!response.ok)throw new Error(data.error||`Chyba servera ${response.status}`);
- return data;
-}
+async function uploadFormApi(){throw new Error('Generovanie z vlastného vstupného videa bude pridané v ďalšej etape. Zatiaľ môžeš generovať reklamu z fotografií produktu.');}
 async function generateFromCombinedInputs(){
+ throw new Error('Generovanie z vlastného vstupného videa bude pridané v ďalšej etape. Zatiaľ spusti generovanie z fotografií produktu.');
  const prompt=buildPrompt();
  if(!selectedSourceVideo)return false;
  if(!selectedFiles.length)throw new Error('Pri generovaní z videa pridaj aspoň jednu fotografiu produktu ako referenciu.');
@@ -498,6 +499,7 @@ window.PSAIProjectBridge = {
 
 updateResolutionOptions();
 updateReadyStatus();
+refreshCommercialConnection();
 </script>
   <script>
 if ('serviceWorker' in navigator && new URLSearchParams(location.search).get('native') !== '1') {
