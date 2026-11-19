@@ -28,7 +28,7 @@ assert.match(worker, /image_url: \{ url: image \}/);
 assert.match(worker, /role: "reference_image"/);
 assert.match(worker, /type: "video_url"/, "Seedance requests must support reference video inputs.");
 assert.match(worker, /role: "reference_video"/, "Reference video input must use the ModelArk reference_video role.");
-assert.match(worker, /video_url: \{ url: url\.origin \+ "\/api\/provider-input\//, "The provider must receive a temporary Worker URL, not a public permanent R2 object URL.");
+assert.match(worker, /video_url: \{ url: PREVIEW_WORKER_ORIGIN \+ "\/api\/provider-input\//, "The provider must receive a temporary Worker URL, not a public permanent R2 object URL.");
 assert.match(worker, /access_token_hash = \?/);
 assert.match(worker, /access_expires_at > \?/);
 assert.match(worker, /function cleanupExpiredGenerationInputs/);
