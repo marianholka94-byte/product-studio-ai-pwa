@@ -227,7 +227,10 @@ assert.ok(html.includes("refreshHistoryGenerationStatus") && html.includes("/api
 
 assert.ok(html.includes("resumeHistoryGeneration") && html.includes("POKRAČOVAŤ V SLEDOVANÍ"), "Pending generations in history must be resumable without submitting a second generation.");
 assert.ok(html.includes('id="accountBadge"') && html.includes('id="accountEmail"') && html.includes('id="dailyUsageValue"'), "The Studio must render a customer account overview with account and daily usage.");
-assert.ok(html.includes('id="creditState"') && html.includes("Kreditový systém je odložený; žiadne kredity sa neúčtujú."), "The account overview must clearly disclose that credits are not yet active or charged.");
+assert.ok(html.includes('id="creditState"') && html.includes('id="availableCredits"') && html.includes('id="reservedCredits"') && html.includes('id="creditHistory"'), "The account overview must show available credits, reserved credits, and transaction history.");
+assert.ok(html.includes("refreshCreditWallet") && html.includes("PSAICloudLibrary.request('/api/credits')"), "The wallet UI must load its account-scoped balance and history through the authenticated cloud bridge.");
+assert.ok(html.includes("PSAICloudLibrary.request('/api/credits/admin-grant'") && html.includes("wallet.isAdmin"), "Only an owner account identified by the server may see and invoke manual preview credit grants.");
+assert.ok(!html.includes("Kreditový systém je odložený; žiadne kredity sa neúčtujú."), "The account overview must not claim that credits are disabled while generation billing is active.");
 assert.ok(!/zákazníck(?:y|eho) účet|komerčný generátor/i.test(html + cloud), "The daily workspace UI must not expose retired customer/commercial wording.");
 const androidWrapper = readFileSync("android/app/src/main/java/com/marianholka/productstudioai/MainActivity.java", "utf8");
 assert.ok(androidWrapper.includes("webView.saveState(outState)") && androidWrapper.includes("webView.restoreState(savedInstanceState)"), "Android WebView must preserve page state across Activity recreation instead of always restarting the app.");
