@@ -44,6 +44,8 @@ assert.ok(worker.includes("client_request_id") && worker.includes("request_finge
 assert.ok(worker.includes("PREVIEW_DAILY_GENERATION_LIMIT = 3") && worker.includes("generation_daily_limit"), "Preview generation must enforce a daily per-account limit, including concurrent requests.");
 assert.ok(worker.includes("if (!env.RUNWAY_API_KEY)"), "Paid provider requests must fail closed until a dedicated preview API secret is configured.");
 assert.ok(cloud.includes("async request(path, options = {})") && cloud.includes("getCurrentUser()"), "The generator integration must use the commercial account session without exposing its token.");
+assert.ok(cloud.includes("Hľadať v cloudovej knižnici produktov") && cloud.includes("Hľadať v cloudových reklamných projektoch"), "Cloud product and project libraries must expose accessible search fields.");
+assert.ok(cloud.includes("applyLibraryFilter") && cloud.includes("data-search-text"), "Cloud library search must filter rendered account-scoped records without extra network requests.");
 
 
 const ownedProduct = worker.match(/async function ownedProduct[\s\S]*?\n}/)?.[0] || "";
@@ -171,9 +173,9 @@ assert.ok(cloud.includes("const remoteProduct = await accountApi(\"/api/products
 assert.ok(nav.includes("latest.cloudSyncByAccount={...(latest.cloudSyncByAccount||{}),[sync.accountId]:sync}"), "Cloud save checkpoints must be persisted under their owning account.");
 assert.ok(nav.includes("[result.accountId]:result"), "Completed cloud saves must remain associated with the account that owns them.");
 assert.ok(nav.includes("psai-cloud-account-change"), "Switching cloud accounts must refresh local project cloud-status labels.");
-assert.ok(html.includes("cloud-library.js?v=commercial-generator-account-20261119") && html.includes("app-navigation.js?v=commercial-generator-account-20261119"), "PWA HTML must request the account-scoped cloud-sync asset versions.");
-assert.ok(serviceWorker.includes("product-studio-ai-v44-account-overview-20261119"), "PWA service worker cache must be versioned for the account-scoped cloud-sync release.");
-assert.ok(serviceWorker.includes("/cloud-library.js?v=commercial-generator-account-20261119") && serviceWorker.includes("/app-navigation.js?v=commercial-generator-account-20261119"), "Offline precache must include the exact project-conflict-recovery asset URLs.");
+assert.ok(html.includes("cloud-library.js?v=commercial-library-search-20261119") && html.includes("app-navigation.js?v=commercial-generator-account-20261119"), "PWA HTML must request the account-scoped cloud-sync asset versions.");
+assert.ok(serviceWorker.includes("product-studio-ai-v45-cloud-library-search-20261119"), "PWA service worker cache must be versioned for the account-scoped cloud-sync release.");
+assert.ok(serviceWorker.includes("/cloud-library.js?v=commercial-library-search-20261119") && serviceWorker.includes("/app-navigation.js?v=commercial-generator-account-20261119"), "Offline precache must include the exact project-conflict-recovery asset URLs.");
 assert.ok(worker.includes("const expectedUpdatedAt = body.expectedUpdatedAt"), "Cloud project edits must accept the version the user originally opened.");
 assert.ok(worker.includes("AND updated_at = ?"), "Cloud project updates must use an atomic version condition to prevent stale overwrites.");
 assert.ok(worker.includes("currentProject: publicProject(current)"), "A stale cloud edit must return the latest project so the user can review and reapply their changes.");
@@ -213,4 +215,4 @@ assert.ok(html.includes('id="accountBadge"') && html.includes('id="accountEmail"
 assert.ok(html.includes('id="creditState"') && html.includes("Kredity zatiaľ nie sú aktívne ani účtované."), "The account overview must clearly disclose that credits are not yet active or charged.");
 assert.ok(html.includes("renderAccountOverview(account,usage,health)") && html.includes("usage.remainingToday"), "The account overview must use server-returned usage values.");
 assert.ok(html.includes('id="historySummary"') && html.includes("Rozpracované") && html.includes("Neúspešné/zrušené"), "The generation history must summarize completed, active, and failed jobs.");
-assert.ok(readFileSync("sw.js", "utf8").includes("product-studio-ai-v44-account-overview-20261119"), "The PWA cache must refresh for the account overview UI.");
+assert.ok(readFileSync("sw.js", "utf8").includes("product-studio-ai-v45-cloud-library-search-20261119"), "The PWA cache must refresh for the account overview UI.");
