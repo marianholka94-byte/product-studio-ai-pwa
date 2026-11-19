@@ -215,11 +215,7 @@ function generationStatus(providerStatus) {
   if (["pending","throttled","queued"].includes(value)) return "queued";
   return "processing";
 }
-function estimatedGenerationCredits(model, resolution, duration) {
-  const rates = model === "seedance2" ? { "480p": 14, "720p": 30, "1080p": 40, "4K": 150 } : { "480p": 7, "720p": 15 };
-  const rate = rates[resolution];
-  return rate ? Math.max(rate * 4, duration * rate) : null;
-}
+
 function validText(value, max, fallback = "") {
   if (value == null) return fallback;
   if (typeof value !== "string") return null;
