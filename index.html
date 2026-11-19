@@ -129,10 +129,10 @@ a{color:#174ea6;overflow-wrap:anywhere}
 <input id="photo" type="file" accept="image/jpeg,image/png,image/webp" multiple>
 <p class="note">Pridaj rôzne uhly alebo detaily toho istého produktu. Čím lepšie fotografie, tým presnejší výsledok.</p>
 <div id="previewGallery" class="preview-gallery" aria-live="polite"></div>
-<label for="sourceVideo">Vlastné produktové video (zatiaľ nedostupné v Preview)</label>
-<input id="sourceVideo" type="file" accept="video/mp4,video/quicktime,video/webm" disabled>
-<video id="sourceVideoPreview" controls playsinline style="display:none;max-height:280px"></video>
-<div id="sourceVideoInfo" class="note">Generovanie z vlastného zdrojového videa pripravujeme. Aktuálne funguje generovanie z fotografií produktu.</div>
+<label for="sourceVideo">Voliteľné zdrojové video (MP4 alebo MOV, 2–15 sekúnd, max. 50 MB)</label>
+<input id="sourceVideo" type="file" accept="video/mp4,video/quicktime,.mp4,.mov">
+<video id="sourceVideoPreview" controls playsinline preload="metadata" style="display:none;max-height:280px"></video>
+<div id="sourceVideoInfo" class="note">Môžeš pridať krátke video produktu spolu s fotografiami. Video sa uloží do súkromného úložiska a Seedance ho použije ako referenciu.</div>
 <label for="product">Názov alebo typ produktu</label>
 <input id="product" type="text" name="product-name" autocomplete="off" autocapitalize="sentences" placeholder="Napr. čierny parfum MUSTANG">
 </section>
@@ -217,7 +217,9 @@ function completeGenerationProgress(title,detail){stopGenerationProgress();setGe
 function updateReadyStatus(){
   const hasAccount=!!window.PSAICloudLibrary?.getCurrentUser();
   const hasPhoto=selectedFiles.length>0;
-  if(hasAccount && hasPhoto) setStatus(`Pripravené: cloudový účet je prihlásený a vybraných je ${selectedFiles.length} fotografií produktu.`);
+  const hasVideo=!!selectedSourceVideo;
+  if(hasAccount && hasPhoto && hasVideo) setStatus(`Pripravené: ${selectedFiles.length} fotografií a zdrojové video sú vybrané.`);
+  else if(hasAccount && hasPhoto) setStatus(`Pripravené: cloudový účet je prihlásený a vybraných je ${selectedFiles.length} fotografií produktu.`);
   else if(!hasAccount && !hasPhoto) setStatus('Najskôr sa prihlás do cloudového účtu a vyber fotografiu produktu.');
   else if(!hasAccount) setStatus('Najskôr sa prihlás do cloudového účtu v paneli Cloudová knižnica.');
   else setStatus('Cloudový účet je prihlásený. Teraz vyber fotografiu produktu.');
@@ -576,7 +578,7 @@ $('generate').onclick=async()=>{
  currentVideoBlob=null;
  if(currentVideoObjectUrl){URL.revokeObjectURL(currentVideoObjectUrl);currentVideoObjectUrl=null;}
  try{
-  if(!selectedFiles.length)throw new Error('Najskôr nahraj aspoň jednu fotografiu produktu.');
+  if(!selectedFiles.length)throw new Error('Pri reklame so zdrojovým videom pridaj aspoň jednu fotografiu produktu.');
   if(selectedSourceVideo){
    await generateFromCombinedInputs();
    return;
@@ -652,44 +654,72 @@ async function pollTask(id, outputId='videoWrap', statusId='status'){
  throw new Error('Automatické čakanie dosiahlo 10 minút. Úloha môže stále bežať; nespúšťaj ju znova, kým neoveríš jej stav.');
 }
 
-// Voliteľné vstupné video – v kombinácii s fotografiami tvorí jeden reklamný projekt.
-let selectedSourceVideo=null;
+// Voliteľné zdrojové video: súkromné nahratie do R2 a časovo obmedzený odkaz pre ModelArk.
+let selectedSourceVideo=null, selectedSourceVideoDuration=null, selectedSourceVideoUploadId=null, sourceVideoObjectUrl=null;
 const sourceVideo=$('sourceVideo'), sourceVideoPreview=$('sourceVideoPreview');
+function clearSelectedSourceVideo(message='Môžeš pridať krátke video produktu spolu s fotografiami.'){
+ selectedSourceVideo=null;selectedSourceVideoDuration=null;selectedSourceVideoUploadId=null;sourceVideo.value='';
+ sourceVideoPreview.pause();sourceVideoPreview.removeAttribute('src');sourceVideoPreview.load();sourceVideoPreview.style.display='none';
+ if(sourceVideoObjectUrl){URL.revokeObjectURL(sourceVideoObjectUrl);sourceVideoObjectUrl=null;}
+ $('sourceVideoInfo').textContent=message;$('sourceVideoInfo').className='note';updateReadyStatus();
+}
 sourceVideo.addEventListener('change',()=>{
- selectedSourceVideo=sourceVideo.files?.[0]||null;
+ const file=sourceVideo.files?.[0]||null;
  sourceVideoPreview.pause();sourceVideoPreview.removeAttribute('src');sourceVideoPreview.load();
- if(!selectedSourceVideo){sourceVideoPreview.style.display='none';$('sourceVideoInfo').textContent='Môžeš pridať video spolu s fotografiami. Ak video nepridáš, reklama sa vytvorí iba z fotografií.';return;}
- if(selectedSourceVideo.size>50*1024*1024){
-  selectedSourceVideo=null;sourceVideo.value='';
-  $('sourceVideoInfo').textContent='Video je väčšie než 50 MB. Exportuj menší súbor.';
-  $('sourceVideoInfo').className='status err';return;
- }
- if(!['video/mp4','video/quicktime','video/webm'].includes(selectedSourceVideo.type)){
-  selectedSourceVideo=null;sourceVideo.value='';
-  $('sourceVideoInfo').textContent='Použi MP4, MOV alebo WebM.';
-  $('sourceVideoInfo').className='status err';return;
- }
- sourceVideoPreview.src=URL.createObjectURL(selectedSourceVideo);
- sourceVideoPreview.style.display='block';
+ if(sourceVideoObjectUrl){URL.revokeObjectURL(sourceVideoObjectUrl);sourceVideoObjectUrl=null;}
+ selectedSourceVideo=file;selectedSourceVideoDuration=null;selectedSourceVideoUploadId=file?crypto.randomUUID():null;
+ if(!file){clearSelectedSourceVideo();return;}
+ if(file.size>50*1024*1024){clearSelectedSourceVideo('Video je väčšie než 50 MB. Vyber menší súbor.');$('sourceVideoInfo').className='status err';return;}
+ if(!['video/mp4','video/quicktime'].includes(file.type)){clearSelectedSourceVideo('Použi video MP4 alebo MOV. Formát WebM nie je podporovaný.');$('sourceVideoInfo').className='status err';return;}
+ sourceVideoObjectUrl=URL.createObjectURL(file);sourceVideoPreview.src=sourceVideoObjectUrl;sourceVideoPreview.style.display='block';
  sourceVideoPreview.onloadedmetadata=()=>{
+  if(!selectedSourceVideo||selectedSourceVideo!==file)return;
   const seconds=sourceVideoPreview.duration;
-  if(Number.isFinite(seconds)&&seconds>15){
-   selectedSourceVideo=null;sourceVideo.value='';sourceVideoPreview.pause();sourceVideoPreview.removeAttribute('src');sourceVideoPreview.style.display='none';
-   $('sourceVideoInfo').textContent='Vstupné video môže mať najviac 15 sekúnd. Vyber kratší záber.';
+  if(!Number.isFinite(seconds)||seconds<2||seconds>15){
+   clearSelectedSourceVideo('Zdrojové video musí mať 2 až 15 sekúnd. Vyber kratší alebo dlhší záber.');
    $('sourceVideoInfo').className='status err';return;
   }
-  $('sourceVideoInfo').textContent=`Vybrané: ${selectedSourceVideo.name} · ${(selectedSourceVideo.size/1024/1024).toFixed(1)} MB · ${Number.isFinite(seconds)?seconds.toFixed(1)+' s':'dĺžka sa zisťuje'}`;
-  $('sourceVideoInfo').className='note';
+  selectedSourceVideoDuration=Number(seconds.toFixed(2));
+  $('sourceVideoInfo').textContent=`Vybrané: ${file.name} · ${(file.size/1024/1024).toFixed(1)} MB · ${seconds.toFixed(1)} s. Video je pripravené na bezpečné nahratie.`;
+  $('sourceVideoInfo').className='note';updateReadyStatus();
  };
+ sourceVideoPreview.onerror=()=>{
+  if(selectedSourceVideo===file)clearSelectedSourceVideo('Prehliadač nedokázal načítať metadáta videa. Skús MP4 alebo MOV.');
+  $('sourceVideoInfo').className='status err';
+ };
+});
+async function uploadFormApi(path, form){
+ if(path!=='/api/generate-video'||!(form instanceof FormData))throw new Error('Nepodporovaná požiadavka na generovanie videa.');
+ const video=form.get('video');
+ if(!(video instanceof File)||!selectedSourceVideoDuration||!selectedSourceVideoUploadId)throw new Error('Vyber platné zdrojové video s dĺžkou 2 až 15 sekúnd.');
+ const bridge=window.PSAICloudLibrary;
+ if(!bridge?.request)throw new Error('Cloudová knižnica sa ešte načítava. Obnov stránku a skús to znova.');
+ setStatus('Nahrávam zdrojové video do súkromného úložiska…');
+ const uploaded=await bridge.request('/api/generation-input-video',{
+  method:'POST',
+  headers:{'Content-Type':video.type,'X-Upload-Id':selectedSourceVideoUploadId,'X-Video-Duration':String(selectedSourceVideoDuration)},
+  body:video
  });
-async function uploadFormApi(){throw new Error('Generovanie z vlastného vstupného videa bude pridané v ďalšej etape. Zatiaľ môžeš generovať reklamu z fotografií produktu.');}
+ const references=JSON.parse(String(form.get('references')||'[]'));
+ const model=String(form.get('model')||$('model').value);
+ const resolution=String(form.get('resolution')||$('resolution').value);
+ const duration=Number(form.get('duration')||$('duration').value);
+ const ratio=String(form.get('ratio')||'');
+ const prompt=String(form.get('prompt')||'');
+ const payload={videoId:uploaded.videoId,images:references,image:references[0],prompt,model,resolution,ratio,duration};
+ const checkpoint=await generationRequestCheckpoint(payload);
+ payload.requestId=checkpoint.requestId;
+ const created=await bridge.request('/api/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+ sessionStorage.removeItem(checkpoint.storageKey);
+ return created;
+}
 async function generateFromCombinedInputs(){
- throw new Error('Generovanie z vlastného vstupného videa bude pridané v ďalšej etape. Zatiaľ spusti generovanie z fotografií produktu.');
  const prompt=buildPrompt();
  if(!selectedSourceVideo)return false;
+ if(!selectedSourceVideoDuration)throw new Error('Počkaj, kým sa načítajú metadáta zdrojového videa.');
  if(!selectedFiles.length)throw new Error('Pri generovaní z videa pridaj aspoň jednu fotografiu produktu ako referenciu.');
- startGenerationProgress('Pripravujem fotografie a nahrávam zdrojové video.');
- $('status').textContent='Pripravujem fotografie a nahrávam video do generátora…';
+ startGenerationProgress('Pripravujem fotografie a bezpečne nahrávam zdrojové video.');
+ $('status').textContent='Pripravujem fotografie a nahrávam video do súkromného úložiska…';
  $('status').className='status';
  const references=await Promise.all(selectedFiles.map(imageToDataUri));
  const form=new FormData();
@@ -703,6 +733,7 @@ async function generateFromCombinedInputs(){
  const ratio=ratios[$('model').value][$('resolution').value][$('format').value];
  form.append('ratio',ratio);
  form.append('model',$('model').value);
+ form.append('resolution',$('resolution').value);
  form.append('duration',$('duration').value);
  const created=await uploadFormApi('/api/generate-video',form);
  currentTask=created.id;
@@ -710,6 +741,7 @@ async function generateFromCombinedInputs(){
  setGenerationProgress(1,'AI spracúva zdrojové video','Video a referenčné fotografie boli odoslané. Sledujem stav úlohy.');
  $('status').textContent='Video a referenčné fotografie boli odoslané. Prebieha AI spracovanie…';
  await pollTask(created.id);
+ await Promise.all([refreshGenerationHistory(),refreshCommercialConnection()]);
  return true;
 }
 
