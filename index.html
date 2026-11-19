@@ -744,6 +744,7 @@ async function generateFromCombinedInputs(){
  setGenerationProgress(1,'AI spracúva zdrojové video','Video a referenčné fotografie boli odoslané. Sledujem stav úlohy.');
  $('status').textContent='Video a referenčné fotografie boli odoslané. Prebieha AI spracovanie…';
  await pollTask(created.id);
+ selectedSourceVideoUploadId=crypto.randomUUID();
  await Promise.all([refreshGenerationHistory(),refreshCommercialConnection()]);
  return true;
 }
