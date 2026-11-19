@@ -90,6 +90,12 @@ jobs:
               ("cl_bad","u2","g1","charge",-5,1))
 
           db.execute("INSERT INTO credit_ledger (id,user_id,generation_id,entry_type,amount,idempotency_key,created_at) VALUES ('cl1','u1','g1','reservation',-5,'test-reservation',1)")
+          must_reject("negative grant amount",
+              "INSERT INTO credit_ledger (id,user_id,entry_type,amount,created_at) VALUES (?,?,?,?,?)",
+              ("cl_bad_sign_1","u1","grant",-5,1))
+          must_reject("positive charge amount",
+              "INSERT INTO credit_ledger (id,user_id,entry_type,amount,created_at) VALUES (?,?,?,?,?)",
+              ("cl_bad_sign_2","u1","charge",5,1))
           must_reject("credit ledger update",
               "UPDATE credit_ledger SET amount = -1 WHERE id = ?",
               ("cl1",))
