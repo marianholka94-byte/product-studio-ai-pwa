@@ -38,6 +38,7 @@ assert.ok(cloud.includes("method: isEditing ? \"PATCH\" : \"POST\""), "Cloud UI 
 assert.ok(cloud.includes('method: "DELETE"'), "Cloud UI must support archive operations");
 assert.ok(worker.includes("ALLOWED_ORIGINS"), "Worker must enforce an origin allowlist");
 assert.ok(worker.includes("user.id"), "Worker must scope library operations to the authenticated account");
+assert.ok(worker.includes("body.productId != null && productId === null") && worker.includes("body.productId !== undefined && body.productId !== null && productId === null"), "Project creation and updates must accept an intentionally unlinked product while rejecting invalid product IDs.");
 assert.ok(worker.includes("generationStatusMatch") && worker.includes("generationDownloadMatch"), "Generation status and download routes must exist.");
 assert.ok(worker.includes("const user = await currentUser(request, env)") && worker.includes("WHERE id = ? AND user_id = ? LIMIT 1"), "Generation endpoints must resolve identity from D1 sessions and scope task lookups to the owner.");
 assert.ok(worker.includes("client_request_id") && worker.includes("request_fingerprint"), "Generation submissions must persist account-scoped idempotency keys and payload fingerprints.");
