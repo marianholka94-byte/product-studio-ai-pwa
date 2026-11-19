@@ -66,6 +66,7 @@ The deploy workflow automatically configures the preview provider key and runs t
 ## Commercial model
 
 - [x] Credit ledger design documented: account-scoped integer units, append-only audit ledger, idempotent reservation/capture/release, ambiguous-provider reconciliation, and rollout gates. Design only; no deductions or payment integration are enabled.
+- [x] Preview D1 credit-ledger foundation migration added: account balances, immutable ledger entries, generation reservations, owner-scoped idempotency constraints, and non-negative integer checks. No accounts are funded and no generation route reads or mutates these tables; deployment health reports the schema as disabled until transaction logic and tests are complete.
 
 - [ ] Define free and paid plan limits, credit pricing, and generation cost assumptions.
 - [ ] Implement server-authoritative credit reservation, settlement, and refund flows.
