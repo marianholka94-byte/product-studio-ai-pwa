@@ -652,10 +652,10 @@
     async request(path, options = {}) {
       const accountId = user?.id;
       const requestEpoch = accountEpoch;
-      if (!token || !accountId) throw new Error("Najskôr sa prihlás do svojho zákazníckeho účtu.");
+      if (!token || !accountId) throw new Error("Najskôr sa prihlás do svojho cloudového účtu.");
       const result = await api(path, options);
       if (!token || accountEpoch !== requestEpoch || user?.id !== accountId) {
-        throw new Error("Zákaznícky účet sa počas požiadavky zmenil. Skús to znova.");
+        throw new Error("Cloudový účet sa počas požiadavky zmenil. Skús to znova.");
       }
       return result;
     },
@@ -663,7 +663,7 @@
       const accountId = user?.id;
       const requestEpoch = accountEpoch;
       const requestToken = token;
-      if (!requestToken || !accountId) throw new Error("Najskôr sa prihlás do svojho zákazníckeho účtu.");
+      if (!requestToken || !accountId) throw new Error("Najskôr sa prihlás do svojho cloudového účtu.");
       const response = await fetch(API + path, { headers: { Authorization: "Bearer " + requestToken } });
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
@@ -676,7 +676,7 @@
         throw error;
       }
       if (!token || accountEpoch !== requestEpoch || user?.id !== accountId) {
-        throw new Error("Zákaznícky účet sa počas sťahovania zmenil. Sťahovanie bolo zastavené.");
+        throw new Error("Cloudový účet sa počas sťahovania zmenil. Sťahovanie bolo zastavené.");
       }
       return response.blob();
     },
