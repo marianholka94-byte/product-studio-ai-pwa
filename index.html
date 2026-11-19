@@ -187,6 +187,32 @@ async function refreshCommercialConnection(){
     usageLabel.textContent=error.message;
   }
 }
+async function downloadHistoryGeneration(item,button){
+ const account=window.PSAICloudLibrary?.getCurrentUser();
+ if(!account)throw new Error('Prihlásenie vypršalo. Prihlás sa znova.');
+ button.disabled=true;
+ try{
+  const blob=await window.PSAICloudLibrary.download('/api/download/'+encodeURIComponent(item.id));
+  if(window.PSAICloudLibrary?.getCurrentUser()?.id!==account.id)throw new Error('Zákaznícky účet sa počas sťahovania zmenil.');
+  const objectUrl=URL.createObjectURL(blob);
+  const link=document.createElement('a');link.href=objectUrl;
+  link.download='product-studio-'+item.id+'.mp4';
+  document.body.append(link);link.click();link.remove();
+  setTimeout(()=>URL.revokeObjectURL(objectUrl),60000);
+ }catch(error){setStatus(error.message,'err');}
+ finally{button.disabled=false;}
+}
+async function refreshHistoryGenerationStatus(id,button){
+ const account=window.PSAICloudLibrary?.getCurrentUser();
+ if(!account)return;
+ button.disabled=true;button.textContent='KONTROLUJEM…';
+ try{
+  await window.PSAICloudLibrary.request('/api/status/'+encodeURIComponent(id));
+  if(window.PSAICloudLibrary?.getCurrentUser()?.id!==account.id)return;
+  await refreshGenerationHistory();
+ }catch(error){setStatus(error.message,'err');}
+ finally{button.disabled=false;button.textContent='AKTUALIZOVAŤ STAV';}
+}
 async function refreshGenerationHistory(){
  const account=window.PSAICloudLibrary?.getCurrentUser();
  const panel=$('history');
@@ -207,6 +233,17 @@ async function refreshGenerationHistory(){
    const date=item.createdAt?new Date(item.createdAt*1000).toLocaleString('sk-SK'):'Dátum neznámy';
    details.textContent=[date,item.resolution||'',item.aspectRatio||'',item.durationSeconds?item.durationSeconds+' s':''].filter(Boolean).join(' · ');
    card.append(heading,details);
+   const actions=document.createElement('div');actions.className='photo-card-actions';
+   if(item.status==='succeeded'){
+    const download=document.createElement('button');download.type='button';download.textContent='STIAHNUŤ VIDEO';
+    download.addEventListener('click',()=>downloadHistoryGeneration(item,download));
+    actions.append(download);
+   }else if(['queued','processing'].includes(item.status)){
+    const check=document.createElement('button');check.type='button';check.className='secondary';check.textContent='AKTUALIZOVAŤ STAV';
+    check.addEventListener('click',()=>refreshHistoryGenerationStatus(item.id,check));
+    actions.append(check);
+   }
+   if(actions.childElementCount)card.append(actions);
    if(item.status==='failed'&&item.errorMessage){const error=document.createElement('p');error.className='note';error.textContent=item.errorMessage;card.append(error);}
    list.append(card);
   }
