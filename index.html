@@ -333,7 +333,7 @@ async function refreshCommercialConnection(){
       ? 'Účet '+account.email+' je pripojený. Chýba samostatný serverový API kľúč BytePlus ModelArk.'
       : modelReady
         ? 'Účet '+account.email+' je pripojený. Poskytovateľ aj vybraný model sú pripravené.'
-        : 'Účet '+account.email+' je pripojený, ale Seedance je pripravený cez BytePlus ModelArk, ale platené generovanie zostáva vypnuté, kým ho správca výslovne neaktivuje.';
+        : 'Účet '+account.email+' je pripojený. Seedance používa BytePlus ModelArk, no platené generovanie zostáva vypnuté, kým ho správca výslovne neaktivuje.';
     usageLabel.textContent=`Dnešné skúšobné generovania: ${usage.usedToday} / ${usage.dailyLimit}. Zostáva: ${usage.remainingToday}.`;
   }catch(error){
     if(window.PSAICloudLibrary?.getCurrentUser()?.id!==account.id)return;
