@@ -14,3 +14,6 @@ database_id = "ba1dc564-6f76-4587-a113-e53091baed56"
 [[r2_buckets]]
 binding = "MEDIA"
 bucket_name = "product-studio-ai-media-preview"
+
+[triggers]
+crons = ["17 * * * *"]
