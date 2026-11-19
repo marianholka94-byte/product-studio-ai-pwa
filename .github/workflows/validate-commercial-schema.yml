@@ -4,12 +4,14 @@ on:
   push:
     branches:
       - feature/commercial-foundation-schema
+      - feature/commercial-worker-preview
     paths:
       - "migrations/**"
       - ".github/workflows/validate-commercial-schema.yml"
   pull_request:
     branches:
       - feature/social-export-presets-2026-11-18
+      - feature/commercial-foundation-schema
     paths:
       - "migrations/**"
       - ".github/workflows/validate-commercial-schema.yml"
@@ -27,17 +29,20 @@ jobs:
         run: |
           python3 - <<'PY'
           import sqlite3
+          import time
           from pathlib import Path
 
           migration = Path("migrations/0001_commercial_foundation.sql").read_text(encoding="utf-8")
           db = sqlite3.connect(":memory:")
           db.execute("PRAGMA foreign_keys = ON")
           db.executescript(migration)
+          for migration_path in sorted(Path("migrations").glob("000[2-9]_*.sql")):
+              db.executescript(migration_path.read_text(encoding="utf-8"))
 
           expected = {
               "users", "sessions", "products", "projects", "assets",
               "product_images", "generations", "credit_ledger", "plans",
-              "subscriptions", "payment_events", "audit_log",
+              "subscriptions", "payment_events", "audit_log", "auth_rate_limits",
           }
           actual = {
               row[0] for row in db.execute(
@@ -56,8 +61,33 @@ jobs:
           # product, project, asset or generation to their own records.
           db.execute("INSERT INTO users (id,email,created_at,updated_at) VALUES ('u1','one@example.test',1,1)")
           db.execute("INSERT INTO users (id,email,created_at,updated_at) VALUES ('u2','two@example.test',1,1)")
+          db.execute("INSERT INTO users (id,email,created_at,updated_at) VALUES ('u3','three@example.test',1,1)")
           db.execute("INSERT INTO products (id,user_id,name,created_at,updated_at) VALUES ('p1','u1','One',1,1)")
+
+          product_columns = {row[1] for row in db.execute("PRAGMA table_info(products)")}
+          if "client_operation_id" not in product_columns:
+              raise SystemExit("Missing products.client_operation_id idempotency column")
+          db.execute("INSERT INTO products (id,user_id,name,client_operation_id,created_at,updated_at) VALUES ('p_idem1','u1','Idempotent','product-operation-123456',1,1)")
+          try:
+              db.execute("INSERT INTO products (id,user_id,name,client_operation_id,created_at,updated_at) VALUES ('p_idem2','u1','Duplicate','product-operation-123456',1,1)")
+          except sqlite3.IntegrityError:
+              pass
+          else:
+              raise SystemExit("Product save idempotency key was not unique per account")
+          db.execute("INSERT INTO products (id,user_id,name,client_operation_id,created_at,updated_at) VALUES ('p_idem3','u2','Other tenant','product-operation-123456',1,1)")
           db.execute("INSERT INTO projects (id,user_id,name,created_at,updated_at) VALUES ('pr1','u1','Project one',1,1)")
+
+          project_columns = {row[1] for row in db.execute("PRAGMA table_info(projects)")}
+          if "client_operation_id" not in project_columns:
+              raise SystemExit("Missing projects.client_operation_id idempotency column")
+          db.execute("INSERT INTO projects (id,user_id,name,client_operation_id,created_at,updated_at) VALUES ('pr_idem1','u1','Idempotent','save-operation-123456',1,1)")
+          try:
+              db.execute("INSERT INTO projects (id,user_id,name,client_operation_id,created_at,updated_at) VALUES ('pr_idem2','u1','Duplicate','save-operation-123456',1,1)")
+          except sqlite3.IntegrityError:
+              pass
+          else:
+              raise SystemExit("Project save idempotency key was not unique per account")
+          db.execute("INSERT INTO projects (id,user_id,name,client_operation_id,created_at,updated_at) VALUES ('pr_idem3','u2','Other tenant','save-operation-123456',1,1)")
           db.execute("INSERT INTO assets (id,user_id,product_id,kind,r2_key,content_type,byte_size,created_at) VALUES ('a1','u1','p1','product_image','u1/a1','image/jpeg',100,1)")
 
           def must_reject(label, statement, values):
@@ -84,7 +114,24 @@ jobs:
               "INSERT INTO generations (id,user_id,project_id,model,duration_seconds,status,prompt_snapshot,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?)",
               ("g_bad","u2","pr1","test-model",5,"queued","test",1,1))
 
-          db.execute("INSERT INTO generations (id,user_id,project_id,model,duration_seconds,status,prompt_snapshot,created_at,updated_at) VALUES ('g1','u1','pr1','test-model',5,'queued','test prompt',1,1)")
+          generation_columns = {row[1] for row in db.execute("PRAGMA table_info(generations)")}
+          if not {"client_request_id", "request_fingerprint"}.issubset(generation_columns):
+              raise SystemExit("Missing account-bound generation idempotency columns")
+          db.execute("INSERT INTO generations (id,user_id,project_id,model,duration_seconds,status,prompt_snapshot,client_request_id,request_fingerprint,created_at,updated_at) VALUES ('g1','u1','pr1','test-model',5,'queued','test prompt','same-request-id','fingerprint-a',1,1)")
+          try:
+              db.execute("INSERT INTO generations (id,user_id,model,duration_seconds,status,prompt_snapshot,client_request_id,request_fingerprint,created_at,updated_at) VALUES ('g1_dup','u1','test-model',5,'queued','duplicate','same-request-id','fingerprint-b',1,1)")
+          except sqlite3.IntegrityError:
+              pass
+          else:
+              raise SystemExit("Generation idempotency key was not unique within one account")
+          db.execute("INSERT INTO generations (id,user_id,model,duration_seconds,status,prompt_snapshot,client_request_id,request_fingerprint,created_at,updated_at) VALUES ('g2','u2','test-model',5,'queued','other tenant','same-request-id','fingerprint-c',1,1)")
+          now = int(time.time())
+          for index in range(3):
+              db.execute("INSERT INTO generations (id,user_id,model,duration_seconds,status,prompt_snapshot,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?)",
+                  (f"g3_{index}","u3","test-model",5,"queued","daily quota test",now,now))
+          must_reject("fourth generation within the UTC day",
+              "INSERT INTO generations (id,user_id,model,duration_seconds,status,prompt_snapshot,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?)",
+              ("g3_over","u3","test-model",5,"queued","daily quota overflow",now,now))
           must_reject("cross-user credit ledger/generation link",
               "INSERT INTO credit_ledger (id,user_id,generation_id,entry_type,amount,created_at) VALUES (?,?,?,?,?,?)",
               ("cl_bad","u2","g1","charge",-5,1))
@@ -109,6 +156,20 @@ jobs:
               "INSERT INTO product_images (product_id,asset_id,user_id,is_primary,created_at) VALUES (?,?,?,?,?)",
               ("p1","a3","u1",1,2))
 
+          for index in range(4, 7):
+              asset_id = f"a{index}"
+              db.execute(
+                  "INSERT INTO assets (id,user_id,product_id,kind,r2_key,content_type,byte_size,created_at) VALUES (?,?,?,?,?,?,?,?)",
+                  (asset_id,"u1","p1","product_image",f"u1/{asset_id}","image/jpeg",100,1)
+              )
+          db.execute("INSERT INTO product_images (product_id,asset_id,user_id,is_primary,created_at) VALUES ('p1','a3','u1',0,2)")
+          db.execute("INSERT INTO product_images (product_id,asset_id,user_id,is_primary,created_at) VALUES ('p1','a4','u1',0,3)")
+          db.execute("INSERT INTO product_images (product_id,asset_id,user_id,is_primary,created_at) VALUES ('p1','a5','u1',0,4)")
+          db.execute("INSERT INTO product_images (product_id,asset_id,user_id,is_primary,created_at) VALUES ('p1','a6','u1',0,5)")
+          must_reject("sixth product image",
+              "INSERT INTO product_images (product_id,asset_id,user_id,is_primary,created_at) VALUES (?,?,?,?,?)",
+              ("p1","a7","u1",0,6))
+
           # Financial and generated-media history must not disappear through
           # parent deletion. Explicit detach/archive flows belong in the app.
           must_reject("delete product with retained asset",
@@ -118,5 +179,5 @@ jobs:
           must_reject("delete generation referenced by credit ledger",
               "DELETE FROM generations WHERE id = ?", ("g1",))
 
-          print(f"Commercial D1 schema valid: {len(expected)} tables; tenant isolation, primary-image and immutable-credit-ledger constraints passed.")
+          print(f"Commercial D1 schema valid: {len(expected)} tables; tenant isolation, generation idempotency/daily quota, primary-image and immutable-credit-ledger constraints passed.")
           PY

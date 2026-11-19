@@ -254,40 +254,11 @@
   studio.append(welcome,product,advertising,generation);
 
   const projectsIntro=document.createElement('div');projectsIntro.className='app-placeholder';projectsIntro.dataset.sectionIcon='📁';
-  projectsIntro.innerHTML='<h2>Moje projekty</h2><p>Všetky tvoje produktové projekty a reklamné výstupy budú na jednom mieste.</p><p><strong>Pracovný priestor PRODUCT STUDIO AI</strong></p>';
+  projectsIntro.innerHTML='<h2>Moje projekty</h2><p>Lokálne projekty uložené v tomto zariadení. Nie sú viazané na cloudový účet a zostávajú tu aj po prepnutí účtu.</p><p>Cloudové projekty a produkty nájdeš v samostatnej sekcii <strong>Cloudová knižnica</strong>.</p><p><strong>Pracovný priestor PRODUCT STUDIO AI</strong></p>';
 
 
   connection.remove();
-  settings.innerHTML='<section class="app-placeholder"><h2>Zabezpečenie</h2><p>Najskôr bezpečne over pripojenie generátora. Tento test nevytvára video a nemíňa Runway kredity.</p><button id="verifyConnection" class="secondary">Overiť pripojenie</button><p id="connectionCheckStatus" role="status">Pripojenie zatiaľ nebolo overené.</p><button id="logoutButton" class="secondary">Odhlásiť toto zariadenie</button></section>';
-  settings.querySelector('#verifyConnection').addEventListener('click',async()=>{
-    const button=settings.querySelector('#verifyConnection'),status=settings.querySelector('#connectionCheckStatus');
-    const apiBase='https://square-feather-4b83.marianholka94.workers.dev';
-    button.disabled=true;status.textContent='Overujem bezpečné pripojenie…';
-    try {
-      let token=localStorage.getItem('psai_session_token')||'';
-      let health=token?await fetch(apiBase+'/api/health',{headers:{Authorization:'Bearer '+token}}):null;
-      if(!health||health.status===401) {
-        localStorage.removeItem('psai_session_token');
-        const password=await window.requestAppPassword();
-        if(!password)throw new Error('Prihlásenie bolo zrušené.');
-        const login=await fetch(apiBase+'/api/session',{method:'POST',headers:{'X-App-Password':password}});
-        const loginData=await login.json().catch(()=>({}));
-        if(!login.ok||!loginData.token)throw new Error(loginData.error||'Prihlásenie sa nepodarilo.');
-        token=loginData.token;health=await fetch(apiBase+'/api/health',{headers:{Authorization:'Bearer '+token}});
-      }
-      const result=await health.json().catch(()=>({}));
-      if(!health.ok||!result.ok)throw new Error(result.error||'Backend neodpovedá správne.');
-      localStorage.setItem('psai_session_token',token);
-      status.textContent='Pripojenie je úspešne overené. Generátor je pripravený.';status.style.color='#9ce0b8';
-    } catch(error) {
-      status.textContent=error.message||'Overenie pripojenia zlyhalo.';status.style.color='#ffb5b5';
-    } finally { button.disabled=false; }
-  });
-  settings.querySelector('#logoutButton').addEventListener('click',()=>{
-    localStorage.removeItem('psai_session_token');
-    settings.querySelector('#connectionCheckStatus').textContent='Zariadenie bolo odhlásené.';
-    alert('Zariadenie bolo odhlásené. Pri ďalšom overení sa prihlásiš znova.');
-  });
+  settings.innerHTML='<section class="app-placeholder"><h2>Účet a bezpečnosť</h2><p>Cloudový účet a pripojenie generátora spravuješ v časti Projekty → Cloudová knižnica.</p><p>Odhlásenie z cloudovej knižnice zruší cloudovú reláciu. Lokálne projekty a produkty v tomto zariadení zostanú zachované.</p><p>Táto aplikácia už nepoužíva staré prihlásenie spoločným aplikačným heslom.</p></section>';
 
   views.append(studio,projects,settings);
   const header=document.querySelector('header');
@@ -300,7 +271,10 @@
       const target=button.dataset.screen;
       document.querySelectorAll('.app-screen').forEach(screen=>screen.classList.toggle('active',screen.id===target));
       nav.querySelectorAll('button').forEach(item=>item.classList.toggle('active',item===button));
-      if(target==='screenProjects'){renderProjects().catch(error=>{projectsList.textContent='Knižnicu projektov sa nepodarilo načítať: '+error.message;});renderProducts().catch(error=>{productsList.textContent='Knižnicu produktov sa nepodarilo načítať: '+error.message;});}renderProducts().catch(error=>{productsList.textContent='Knižnicu produktov sa nepodarilo načítať: '+error.message;});
+      if(target==='screenProjects'){
+        renderProjects().catch(error=>{projectsList.textContent='Knižnicu projektov sa nepodarilo načítať: '+error.message;});
+        renderProducts().catch(error=>{productsList.textContent='Knižnicu produktov sa nepodarilo načítať: '+error.message;});
+      }
       window.scrollTo({top:0,behavior:'smooth'});
     });
   });
@@ -309,34 +283,79 @@
   // Local project library backed by IndexedDB (project metadata + original image files).
   const projectDbName='product-studio-ai-projects', projectStoreName='projects';
   let activeProjectId=null, activeProductId=null, projectDbPromise=null;
+  const localProductObjectUrls=new Set();
+  const localProjectObjectUrls=new Set();
+  const productManagerObjectUrls=new Set();
+  const revokeObjectUrls=set=>{for(const url of set)URL.revokeObjectURL(url);set.clear();};
+  const clearLocalProductObjectUrls=()=>{
+    revokeObjectUrls(localProductObjectUrls);
+  };
   const openProjectDb=()=>{
     if(projectDbPromise)return projectDbPromise;
     projectDbPromise=new Promise((resolve,reject)=>{
       const request=indexedDB.open(projectDbName,2);
       request.onupgradeneeded=()=>{const db=request.result;if(!db.objectStoreNames.contains(projectStoreName)){const store=db.createObjectStore(projectStoreName,{keyPath:'id'});store.createIndex('updatedAt','updatedAt');}if(!db.objectStoreNames.contains('products')){const products=db.createObjectStore('products',{keyPath:'id'});products.createIndex('updatedAt','updatedAt');}};
-      request.onsuccess=()=>resolve(request.result);
-      request.onerror=()=>reject(request.error||new Error('Databázu projektov sa nepodarilo otvoriť.'));
+      request.onsuccess=()=>{
+        const db=request.result;
+        db.onversionchange=()=>{db.close();projectDbPromise=null;};
+        resolve(db);
+      };
+      request.onerror=()=>{projectDbPromise=null;reject(request.error||new Error('Databázu projektov sa nepodarilo otvoriť.'));};
+      request.onblocked=()=>{projectDbPromise=null;reject(new Error('Databázu projektov blokuje iná otvorená verzia aplikácie. Zavri ostatné okná aplikácie a skús to znova.'));};
     });return projectDbPromise;
+  };
+  const localDatabaseError=(error,kind)=>{
+    if(error?.name==='QuotaExceededError')return 'V zariadení nie je dosť voľného miesta na uloženie '+kind+'. Uvoľni miesto alebo zmenši fotografie a skús to znova.';
+    if(error?.name==='DataCloneError'||error?.name==='InvalidStateError')return 'Údaje sa nepodarilo bezpečne uložiť. Obnov aplikáciu a skús to znova.';
+    return error?.message||'Lokálne údaje sa nepodarilo uložiť.';
   };
   const projectRequest=(mode,operation)=>openProjectDb().then(db=>new Promise((resolve,reject)=>{
     const tx=db.transaction(projectStoreName,mode);let request;
     try{request=operation(tx.objectStore(projectStoreName));}catch(error){reject(error);return;}
-    tx.oncomplete=()=>resolve(request?.result);tx.onerror=()=>reject(tx.error||new Error('Operácia s projektom zlyhala.'));
-    tx.onabort=()=>reject(tx.error||new Error('Operácia s projektom bola prerušená.'));
+    tx.oncomplete=()=>resolve(request?.result);tx.onerror=()=>reject(new Error(localDatabaseError(tx.error,'projekt')));
+    tx.onabort=()=>reject(new Error(localDatabaseError(tx.error,'projekt')));
   }));
-  const getAllProjects=()=>projectRequest('readonly',store=>store.getAll());
+  // Chromium on some Android devices can reject File/Blob structured clones with
+  // "Failed to write blobs (InvalidBlob)". Persist image bytes as ArrayBuffers
+  // and reconstruct Blob objects only when records are read.
+  const serializeImageRecord=async image=>{
+    const copy={...image};
+    const source=image?.blob;
+    if(source instanceof Blob){
+      copy.blobBytes=await source.arrayBuffer();
+      copy.blobType=image.type||source.type||'application/octet-stream';
+      delete copy.blob;
+    } else if(image?.blobBytes instanceof ArrayBuffer || ArrayBuffer.isView(image?.blobBytes)){
+      copy.blobBytes=image.blobBytes instanceof ArrayBuffer?image.blobBytes:image.blobBytes.buffer.slice(image.blobBytes.byteOffset,image.blobBytes.byteOffset+image.blobBytes.byteLength);
+      copy.blobType=image.blobType||image.type||'application/octet-stream';
+      delete copy.blob;
+    } else if(source!=null) throw new Error('Fotografiu sa nepodarilo bezpečne pripraviť na lokálne uloženie.');
+    return copy;
+  };
+  const deserializeImageRecord=image=>{
+    if(!image||image.blob instanceof Blob)return image;
+    if(image.blobBytes instanceof ArrayBuffer || ArrayBuffer.isView(image.blobBytes)){
+      const bytes=image.blobBytes instanceof ArrayBuffer?image.blobBytes:image.blobBytes.buffer.slice(image.blobBytes.byteOffset,image.blobBytes.byteOffset+image.blobBytes.byteLength);
+      const {blobBytes,...rest}=image;
+      return {...rest,blob:new Blob([bytes],{type:image.blobType||image.type||'application/octet-stream'})};
+    }
+    return image;
+  };
+  const hydrateRecord=record=>record?{...record,images:Array.isArray(record.images)?record.images.map(deserializeImageRecord):record.images}:record;
+  const prepareRecord=async record=>({...record,images:Array.isArray(record.images)?await Promise.all(record.images.map(serializeImageRecord)):record.images});
+  const getAllProjects=async()=>((await projectRequest('readonly',store=>store.getAll()))||[]).map(hydrateRecord);
   const productRequest=(mode,operation)=>openProjectDb().then(db=>new Promise((resolve,reject)=>{
     const tx=db.transaction('products',mode);let request;
     try{request=operation(tx.objectStore('products'));}catch(error){reject(error);return;}
-    tx.oncomplete=()=>resolve(request?.result);tx.onerror=()=>reject(tx.error||new Error('Operácia s produktom zlyhala.'));
-    tx.onabort=()=>reject(tx.error||new Error('Operácia s produktom bola prerušená.'));
+    tx.oncomplete=()=>resolve(request?.result);tx.onerror=()=>reject(new Error(localDatabaseError(tx.error,'produkt')));
+    tx.onabort=()=>reject(new Error(localDatabaseError(tx.error,'produkt')));
   }));
-  const getAllProducts=()=>productRequest('readonly',store=>store.getAll());
-  const getProduct=id=>productRequest('readonly',store=>store.get(id));
-  const putProduct=product=>productRequest('readwrite',store=>store.put(product));
+  const getAllProducts=async()=>((await productRequest('readonly',store=>store.getAll()))||[]).map(hydrateRecord);
+  const getProduct=async id=>hydrateRecord(await productRequest('readonly',store=>store.get(id)));
+  const putProduct=async product=>{const stored=await prepareRecord(product);return productRequest('readwrite',store=>store.put(stored));};
   const removeProduct=id=>productRequest('readwrite',store=>store.delete(id));
-  const getProject=id=>projectRequest('readonly',store=>store.get(id));
-  const putProject=project=>projectRequest('readwrite',store=>store.put(project));
+  const getProject=async id=>hydrateRecord(await projectRequest('readonly',store=>store.get(id)));
+  const putProject=async project=>{const stored=await prepareRecord(project);return projectRequest('readwrite',store=>store.put(stored));};
   const removeProject=id=>projectRequest('readwrite',store=>store.delete(id));
 
   const projectsList=document.createElement('div');projectsList.id='savedProjectsList';
@@ -346,6 +365,8 @@
   const productsList=document.createElement('div');productsList.id='savedProductsList';
   productsList.innerHTML='<div class="projects-empty"><span class="empty-icon">▧</span><strong>Zatiaľ nemáš uložené produkty</strong><p>V štúdiu môžeš uložiť produkt spolu s jeho fotografiami.</p></div>';
   projects.append(projectsIntro,productsIntro,productsList,history,projectsList);
+  const cloudLibraryPanel=document.getElementById('commercialCloudPanel');
+  if(cloudLibraryPanel)projects.append(cloudLibraryPanel);
   productsIntro.querySelector('#productLibraryInfoButton').addEventListener('click',()=>{
     const button=productsIntro.querySelector('#productLibraryInfoButton');
     const info=productsIntro.querySelector('#productLibraryInfo');
@@ -444,12 +465,13 @@
   const setProjectMessage=(message,isError=false)=>{const status=document.getElementById('projectSaveStatus');if(status){status.textContent=message;status.style.color=isError?'#ffb5b5':'#9ce0b8';}};
   const formatProjectDate=value=>new Intl.DateTimeFormat('sk-SK',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}).format(new Date(value));
   const renderProjects=async()=>{
+    revokeObjectUrls(localProjectObjectUrls);
     const records=(await getAllProjects()).sort((a,b)=>b.updatedAt-a.updatedAt);const linkedProducts=await getAllProducts();const linkedProductNames=new Map(linkedProducts.map(item=>[item.id,item.name]));projectsList.innerHTML='';
     if(!records.length){projectsList.innerHTML='<div class="projects-empty"><span class="empty-icon">▣</span><strong>Zatiaľ tu nemáš žiadne projekty</strong><p>Vytvor projekt v štúdiu a ulož si fotografie, nastavenia aj reklamný prompt.</p></div>';return;}
     records.forEach(record=>{
       const card=document.createElement('article');card.className='saved-project-card';
       const thumb=document.createElement('img');thumb.className='saved-project-thumb';thumb.alt='';
-      const firstImage=record.images?.[0]?.blob;if(firstImage)thumb.src=URL.createObjectURL(firstImage);
+      const firstImage=record.images?.[0]?.blob;if(firstImage){const objectUrl=URL.createObjectURL(firstImage);localProjectObjectUrls.add(objectUrl);thumb.src=objectUrl;}
       const info=document.createElement('div');info.className='saved-project-info';
       const title=document.createElement('strong');title.textContent=record.name||'Nepomenovaný projekt';
       const linkedProductName=record.productId?linkedProductNames.get(record.productId):null;const meta=document.createElement('small');meta.textContent=(record.images?.length||0)+' fotografií'+(linkedProductName?' · Produkt: '+linkedProductName:'')+' · '+formatProjectDate(record.updatedAt);
@@ -469,9 +491,35 @@
       });
       const remove=document.createElement('button');remove.type='button';remove.className='delete-project';remove.textContent='Vymazať';
       remove.addEventListener('click',async()=>{if(!confirm('Naozaj chceš vymazať projekt „'+(record.name||'Nepomenovaný projekt')+'“?'))return;try{await removeProject(record.id);if(activeProjectId===record.id)activeProjectId=null;await renderProjects();}catch(error){alert(error.message||'Projekt sa nepodarilo vymazať.');}});
-      buttons.append(open,duplicate,remove);info.append(title,meta,buttons);card.append(thumb,info);projectsList.append(card);
+      const accountCloudSync=window.PSAICloudLibrary?.getSyncState(record)||null;
+      const saveCloud=document.createElement('button');saveCloud.type='button';saveCloud.className='secondary';saveCloud.textContent=accountCloudSync?.projectId?'Uložené v cloude':'Uložiť do cloudu';saveCloud.disabled=!!accountCloudSync?.projectId;
+      saveCloud.addEventListener('click',async()=>{
+        if(!window.PSAICloudLibrary?.saveLocalProject){alert('Cloudová knižnica ešte nie je pripravená. Obnov stránku a skús to znova.');return;}
+        if(!confirm('Uložiť projekt „'+(record.name||'Nepomenovaný projekt')+'“ a jeho fotografie do prihláseného cloudového účtu? Lokálny originál zostane zachovaný.'))return;
+        saveCloud.disabled=true;
+        try{
+          const latest=await getProject(record.id);if(!latest)throw new Error('Lokálny projekt sa už nenašiel.');
+          const result=await window.PSAICloudLibrary.saveLocalProject(latest,async sync=>{
+            latest.cloudSyncByAccount={...(latest.cloudSyncByAccount||{}),[sync.accountId]:sync};latest.updatedAt=Date.now();await putProject(latest);
+          });
+          latest.cloudSyncByAccount={...(latest.cloudSyncByAccount||{}),[result.accountId]:result};latest.updatedAt=Date.now();await putProject(latest);
+          saveCloud.textContent='Uložené v cloude';saveCloud.disabled=true;
+          setProjectMessage('Projekt „'+latest.name+'“ bol uložený v cloude. Lokálna kópia zostala zachovaná.');
+          await renderProjects();
+        }catch(error){
+          const latest=await getProject(record.id).catch(()=>null);
+          saveCloud.disabled=false;
+          const currentSync=latest?window.PSAICloudLibrary?.getSyncState(latest):null;
+          saveCloud.textContent=currentSync?.productId?'Pokračovať v ukladaní':'Uložiť do cloudu';
+          setProjectMessage(error.message||'Projekt sa nepodarilo uložiť do cloudu.',true);
+        }
+      });
+      buttons.append(open,duplicate,remove,saveCloud);info.append(title,meta,buttons);card.append(thumb,info);projectsList.append(card);
     });
   };
+  window.addEventListener('psai-cloud-account-change',()=>{
+    renderProjects().catch(error=>{projectsList.textContent='Knižnicu projektov sa nepodarilo obnoviť: '+error.message;});
+  });
 
   const productManagerBackdrop=document.createElement('div');
   productManagerBackdrop.className='product-manager-backdrop';
@@ -479,16 +527,17 @@
   productManagerBackdrop.innerHTML='<section class="product-manager" role="dialog" aria-modal="true" aria-labelledby="productManagerTitle"><div class="product-manager-head"><h3 id="productManagerTitle">Správa produktu</h3><button type="button" class="secondary product-manager-close" aria-label="Zavrieť">×</button></div><p class="product-manager-sub">Spravuj fotografie produktu. Môžeš pridať nové, odstrániť nepotrebné alebo zmeniť hlavnú fotografiu.</p><div class="product-manager-grid" id="productManagerGrid"></div><p class="product-manager-count" id="productManagerCount"></p><div class="product-manager-actions"><button type="button" class="secondary product-manager-add" id="addProductPhotos">＋ Pridať fotografie</button><button type="button" class="secondary" id="cancelProductManager">Zavrieť</button><button type="button" id="saveProductPhotos">Uložiť zmeny</button><button type="button" class="secondary product-manager-create" id="createProjectFromProduct">＋ Vytvoriť reklamný projekt</button></div><input type="file" id="productPhotoInput" accept="image/*" multiple hidden></section>';
   document.body.append(productManagerBackdrop);
   let managingProductId=null,managingProductName='',managingProductImages=[];
-  const closeProductManager=()=>{productManagerBackdrop.hidden=true;managingProductId=null;managingProductName='';managingProductImages=[];productManagerBackdrop.querySelector('#productManagerGrid').innerHTML='';};
+  const closeProductManager=()=>{revokeObjectUrls(productManagerObjectUrls);productManagerBackdrop.hidden=true;managingProductId=null;managingProductName='';managingProductImages=[];productManagerBackdrop.querySelector('#productManagerGrid').innerHTML='';};
   productManagerBackdrop.querySelector('.product-manager-close').addEventListener('click',closeProductManager);
   productManagerBackdrop.querySelector('#cancelProductManager').addEventListener('click',closeProductManager);
   productManagerBackdrop.addEventListener('click',event=>{if(event.target===productManagerBackdrop)closeProductManager();});
   const showProductManagerMessage=message=>{const count=productManagerBackdrop.querySelector('#productManagerCount');count.textContent=message;count.style.color='#ffb5b5';};
   const renderProductManagerImages=()=>{
+    revokeObjectUrls(productManagerObjectUrls);
     const grid=productManagerBackdrop.querySelector('#productManagerGrid');grid.innerHTML='';
     managingProductImages.forEach((photo,index)=>{
       const tile=document.createElement('div');tile.className='product-manager-image';
-      const img=document.createElement('img');img.alt='Fotografia '+(index+1);img.src=URL.createObjectURL(photo.blob);
+      const img=document.createElement('img');img.alt='Fotografia '+(index+1);const objectUrl=URL.createObjectURL(photo.blob);productManagerObjectUrls.add(objectUrl);img.src=objectUrl;
       const name=document.createElement('small');name.textContent=(index===0?'★ Hlavná fotografia · ':'Fotografia '+(index+1)+' · ')+(photo.name||'produktová fotografia');
       const main=document.createElement('button');main.type='button';main.className='secondary';main.textContent=index===0?'Hlavná fotografia':'Nastaviť ako hlavnú';
       main.disabled=index===0;main.addEventListener('click',()=>{const selected=managingProductImages.splice(index,1)[0];managingProductImages.unshift(selected);renderProductManagerImages();});
@@ -544,12 +593,13 @@
   });
 
   const renderProducts=async()=>{
+    clearLocalProductObjectUrls();
     const records=(await getAllProducts()).sort((a,b)=>b.updatedAt-a.updatedAt);const linkedProjects=await getAllProjects();const linkedProjectCounts=new Map(records.map(item=>[item.id,linkedProjects.filter(project=>project.productId===item.id).length]));productsList.innerHTML='';
     if(!records.length){productsList.innerHTML='<div class="projects-empty"><span class="empty-icon">▧</span><strong>Zatiaľ nemáš uložené produkty</strong><p>V štúdiu môžeš uložiť produkt spolu s jeho fotografiami.</p></div>';return;}
     records.forEach(record=>{
       const card=document.createElement('article');card.className='saved-product-card';
       const thumb=document.createElement('img');thumb.className='saved-product-thumb';thumb.alt='';
-      const first=record.images?.[0]?.blob;if(first)thumb.src=URL.createObjectURL(first);
+      const first=record.images?.[0]?.blob;if(first){const objectUrl=URL.createObjectURL(first);localProductObjectUrls.add(objectUrl);thumb.src=objectUrl;}
       const info=document.createElement('div');info.className='saved-product-info';
       const title=document.createElement('strong');title.textContent=record.name;
       const linkedCount=linkedProjectCounts.get(record.id)||0;const meta=document.createElement('small');meta.textContent=(record.images?.length||0)+' fotografií · '+linkedCount+' reklamných projektov · '+formatProjectDate(record.updatedAt);
@@ -605,7 +655,7 @@
     if(!state.product.trim()&&!state.images.length)throw new Error('Najskôr zadaj názov produktu alebo pridaj fotografiu.');
     if(!state.images.length)throw new Error('Projekt musí obsahovať aspoň jednu fotografiu produktu.');
     const now=Date.now(),existing=activeProjectId?await getProject(activeProjectId):null;
-    const editedPrompt=promptDraft.value.trim()||state.prompt;const record={id:activeProjectId||('project-'+now+'-'+Math.random().toString(36).slice(2,8)),name:state.product.trim()||'Nový produkt',createdAt:existing?.createdAt||now,updatedAt:now,product:state.product,productId:activeProductId||existing?.productId||null,style:state.style,scenePreset:state.scenePreset||'',format:state.format,motion:state.motion,duration:state.duration,lighting:state.lighting,extra:state.extra,prompt:editedPrompt,images:state.images};
+    const editedPrompt=promptDraft.value.trim()||state.prompt;const record={id:activeProjectId||('project-'+now+'-'+Math.random().toString(36).slice(2,8)),name:state.product.trim()||'Nový produkt',createdAt:existing?.createdAt||now,updatedAt:now,product:state.product,productId:activeProductId||existing?.productId||null,style:state.style,scenePreset:state.scenePreset||'',format:state.format,exportPreset:state.exportPreset||'custom',motion:state.motion,duration:state.duration,resolution:state.resolution||'720p',model:state.model||'seedance2_mini',lighting:state.lighting,extra:state.extra,prompt:editedPrompt,images:state.images};
     await putProject(record);activeProjectId=record.id;await renderProjects();setProjectMessage('Projekt „'+record.name+'“ bol uložený v tomto zariadení.');return record;
   };
   const startNewProject=async()=>{
