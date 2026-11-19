@@ -257,8 +257,8 @@ export default {
         const user = await currentUser(request, env);
         if (!user) return json({ error: "Prihlásenie vypršalo. Prihlás sa znova." }, 401, origin);
         const now = Math.floor(Date.now() / 1000);
-        const productMatch = /^\\/api\\/products(?:\\/([a-zA-Z0-9_-]{1,80}))?$/.exec(url.pathname);
-        const projectMatch = /^\\/api\\/projects(?:\\/([a-zA-Z0-9_-]{1,80}))?$/.exec(url.pathname);
+        const productMatch = /^\/api\/products(?:\/([a-zA-Z0-9_-]{1,80}))?$/.exec(url.pathname);
+        const projectMatch = /^\/api\/projects(?:\/([a-zA-Z0-9_-]{1,80}))?$/.exec(url.pathname);
 
         if (productMatch) {
           const productId = productMatch[1];
