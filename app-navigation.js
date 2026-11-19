@@ -302,11 +302,16 @@
       request.onblocked=()=>{projectDbPromise=null;reject(new Error('Databázu projektov blokuje iná otvorená verzia aplikácie. Zavri ostatné okná aplikácie a skús to znova.'));};
     });return projectDbPromise;
   };
+  const localDatabaseError=(error,kind)=>{
+    if(error?.name==='QuotaExceededError')return 'V zariadení nie je dosť voľného miesta na uloženie '+kind+'. Uvoľni miesto alebo zmenši fotografie a skús to znova.';
+    if(error?.name==='DataCloneError'||error?.name==='InvalidStateError')return 'Údaje sa nepodarilo bezpečne uložiť. Obnov aplikáciu a skús to znova.';
+    return error?.message||'Lokálne údaje sa nepodarilo uložiť.';
+  };
   const projectRequest=(mode,operation)=>openProjectDb().then(db=>new Promise((resolve,reject)=>{
     const tx=db.transaction(projectStoreName,mode);let request;
     try{request=operation(tx.objectStore(projectStoreName));}catch(error){reject(error);return;}
-    tx.oncomplete=()=>resolve(request?.result);tx.onerror=()=>reject(tx.error||new Error('Operácia s projektom zlyhala.'));
-    tx.onabort=()=>reject(tx.error||new Error('Operácia s projektom bola prerušená.'));
+    tx.oncomplete=()=>resolve(request?.result);tx.onerror=()=>reject(new Error(localDatabaseError(tx.error,'projekt')));
+    tx.onabort=()=>reject(new Error(localDatabaseError(tx.error,'projekt')));
   }));
   // Chromium on some Android devices can reject File/Blob structured clones with
   // "Failed to write blobs (InvalidBlob)". Persist image bytes as ArrayBuffers
@@ -340,8 +345,8 @@
   const productRequest=(mode,operation)=>openProjectDb().then(db=>new Promise((resolve,reject)=>{
     const tx=db.transaction('products',mode);let request;
     try{request=operation(tx.objectStore('products'));}catch(error){reject(error);return;}
-    tx.oncomplete=()=>resolve(request?.result);tx.onerror=()=>reject(tx.error||new Error('Operácia s produktom zlyhala.'));
-    tx.onabort=()=>reject(tx.error||new Error('Operácia s produktom bola prerušená.'));
+    tx.oncomplete=()=>resolve(request?.result);tx.onerror=()=>reject(new Error(localDatabaseError(tx.error,'produkt')));
+    tx.onabort=()=>reject(new Error(localDatabaseError(tx.error,'produkt')));
   }));
   const getAllProducts=async()=>((await productRequest('readonly',store=>store.getAll()))||[]).map(hydrateRecord);
   const getProduct=async id=>hydrateRecord(await productRequest('readonly',store=>store.get(id)));
