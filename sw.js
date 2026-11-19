@@ -1,5 +1,5 @@
-const CACHE = "product-studio-ai-v38-commercial-generation-identity-20261119";
-const FILES = ["/", "/index.html", "/manifest.webmanifest", "/icon.svg", "/cloud-library.js?v=commercial-generation-identity-20261119", "/app-navigation.js?v=commercial-generation-identity-20261119"];
+const CACHE = "product-studio-ai-v39-commercial-generator-account-20261119";
+const FILES = ["/", "/index.html", "/manifest.webmanifest", "/icon.svg", "/cloud-library.js?v=commercial-generator-account-20261119", "/app-navigation.js?v=commercial-generator-account-20261119"];
 self.addEventListener("install", event => event.waitUntil(
   caches.open(CACHE).then(cache => cache.addAll(FILES)).then(() => self.skipWaiting())
 ));
