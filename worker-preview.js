@@ -261,6 +261,21 @@ export default {
         const sessionColumnNames = (sessionColumns.results || []).map(column => column.name);
         const generationColumns = await env.DB.prepare("PRAGMA table_info(generations)").all();
         const generationColumnNames = (generationColumns.results || []).map(column => column.name);
+        const creditTables = await env.DB.prepare(
+          "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('credit_accounts','credit_ledger','generation_credit_reservations')"
+        ).all();
+        const creditTriggers = await env.DB.prepare(
+          "SELECT name FROM sqlite_master WHERE type = 'trigger' AND name IN ('trg_credit_ledger_no_update','trg_credit_ledger_no_delete')"
+        ).all();
+        const creditTableNames = (creditTables.results || []).map(row => row.name);
+        const creditTriggerNames = (creditTriggers.results || []).map(row => row.name);
+        const creditSchema = {
+          accounts: creditTableNames.includes("credit_accounts"),
+          ledger: creditTableNames.includes("credit_ledger"),
+          reservations: creditTableNames.includes("generation_credit_reservations"),
+          appendOnly: creditTriggerNames.includes("trg_credit_ledger_no_update") && creditTriggerNames.includes("trg_credit_ledger_no_delete"),
+          enabled: false
+        };
         const authSchema = {
           usersTable: userColumnNames.length > 0,
           passwordHash: userColumnNames.includes("password_hash"),
@@ -275,6 +290,7 @@ export default {
           service: "PRODUCT STUDIO AI commercial preview",
           storage: { d1: db?.ok === 1, r2: Array.isArray(objects?.objects) },
           authSchema,
+          creditSchema,
           generation: { configured: Boolean(env.RUNWAY_API_KEY), dailyLimit: PREVIEW_DAILY_GENERATION_LIMIT }
         }, 200, origin);
       }
