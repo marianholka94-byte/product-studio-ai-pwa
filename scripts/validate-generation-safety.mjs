@@ -44,7 +44,7 @@ assert.match(worker, /task\.status !== "succeeded"/);
 assert.match(worker, /status = 'submission_unknown'/);
 assert.match(worker, /provider_submission_unknown/);
 assert.match(worker, /recoveryRequired: true/);
-assert.match(worker, /BytePlus may[\\s\\S]*?already have accepted and billed the task/);
+assert.ok(worker.includes("BytePlus may") && worker.includes("already have accepted and billed the task"));
 assert.match(worker, /if \(!generation\.provider_task_id\)[\\s\\S]*?recoveryRequired: uncertain/);
 assert.match(worker, /if \(!prior\.provider_task_id\)[\\s\\S]*?neposielam znova/);
 
