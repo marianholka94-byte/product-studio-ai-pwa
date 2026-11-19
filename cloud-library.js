@@ -818,11 +818,21 @@
   panel.appendChild(workspace);
   renderAuth();
   if (token) {
+    // A restored session may resolve after the user has already signed in or out.
+    // Never let this older bootstrap request overwrite a newer account session.
+    const bootstrapToken = token;
+    const bootstrapEpoch = accountEpoch;
+    const isCurrentBootstrap = () => token === bootstrapToken && accountEpoch === bootstrapEpoch;
     api("/api/auth/me").then(data => {
+      if (!isCurrentBootstrap()) return;
       user = data.user; notifyCloudAccountChange(); auth.hidden = true; workspace.hidden = false;
       accountLine.textContent = "Prihlásený účet: " + user.email;
       return refresh();
-    }).then(() => setStatus("Cloudová knižnica je synchronizovaná."))
-      .catch(() => { token = ""; user = null; sessionStorage.removeItem(TOKEN_KEY); resetAccountWorkspace(); renderAuth(); notifyCloudAccountChange(); });
+    }).then(() => {
+      if (isCurrentBootstrap()) setStatus("Cloudová knižnica je synchronizovaná.");
+    }).catch(() => {
+      if (!isCurrentBootstrap()) return;
+      token = ""; user = null; sessionStorage.removeItem(TOKEN_KEY); resetAccountWorkspace(); renderAuth(); notifyCloudAccountChange();
+    });
   }
 })();
