@@ -497,7 +497,8 @@
       });
       const remove=document.createElement('button');remove.type='button';remove.className='delete-project';remove.textContent='Vymazať';
       remove.addEventListener('click',async()=>{if(!confirm('Naozaj chceš vymazať projekt „'+(record.name||'Nepomenovaný projekt')+'“?'))return;try{await removeProject(record.id);if(activeProjectId===record.id)activeProjectId=null;await renderProjects();}catch(error){alert(error.message||'Projekt sa nepodarilo vymazať.');}});
-      const saveCloud=document.createElement('button');saveCloud.type='button';saveCloud.className='secondary';saveCloud.textContent=record.cloudSync?.projectId?'Uložené v cloude':'Uložiť do cloudu';saveCloud.disabled=!!record.cloudSync?.projectId;
+      const accountCloudSync=window.PSAICloudLibrary?.getSyncState(record)||null;
+      const saveCloud=document.createElement('button');saveCloud.type='button';saveCloud.className='secondary';saveCloud.textContent=accountCloudSync?.projectId?'Uložené v cloude':'Uložiť do cloudu';saveCloud.disabled=!!accountCloudSync?.projectId;
       saveCloud.addEventListener('click',async()=>{
         if(!window.PSAICloudLibrary?.saveLocalProject){alert('Cloudová knižnica ešte nie je pripravená. Obnov stránku a skús to znova.');return;}
         if(!confirm('Uložiť projekt „'+(record.name||'Nepomenovaný projekt')+'“ a jeho fotografie do prihláseného cloudového účtu? Lokálny originál zostane zachovaný.'))return;
@@ -521,6 +522,9 @@
       buttons.append(open,duplicate,remove,saveCloud);info.append(title,meta,buttons);card.append(thumb,info);projectsList.append(card);
     });
   };
+  window.addEventListener('psai-cloud-account-change',()=>{
+    renderProjects().catch(error=>{projectsList.textContent='Knižnicu projektov sa nepodarilo obnoviť: '+error.message;});
+  });
 
   const productManagerBackdrop=document.createElement('div');
   productManagerBackdrop.className='product-manager-backdrop';
