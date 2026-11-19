@@ -370,7 +370,7 @@
       }));
       const fingerprint = JSON.stringify({
         name: record.name || record.product || "Nový produkt", product: record.product || "",
-        prompt: record.prompt || "", settings,
+        prompt: record.prompt || "", settings, exportPreset: record.exportPreset || null,
         images: images.map((x, index) => ({ name: x.name, type: x.type, size: x.blob.size, sha256: imageDigests[index] }))
       });
       let sync = record.cloudSync || null;
