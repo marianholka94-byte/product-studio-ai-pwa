@@ -425,7 +425,7 @@ export default {
           }, 200, origin);
         } catch (error) {
           console.error("Credit wallet read failed", { stage: creditStage, name: String(error?.name || "Error"), message: String(error?.message || "Unknown error") });
-          return json({ error: "Kreditový účet sa nepodarilo načítať.", stage: creditStage }, 500, origin);
+          return json({ error: "Kreditový účet sa nepodarilo načítať.", stage: creditStage, diagnostic: String(error?.message || error?.name || "Unknown database error").slice(0, 240) }, 500, origin);
         }
       }
 
