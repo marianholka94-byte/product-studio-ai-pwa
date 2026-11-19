@@ -46,6 +46,16 @@ try {
   const accountB = await login(credentials[1]);
   tokenB = accountB.token;
   assert.notEqual(accountA.userId, accountB.userId, "The two test logins must resolve to different customer accounts.");
+  const [historyAResponse, historyBResponse] = await Promise.all([
+    request("/api/generations?limit=20", { token: tokenA }),
+    request("/api/generations?limit=20", { token: tokenB })
+  ]);
+  await expectStatus("Account A generation history", historyAResponse, 200);
+  await expectStatus("Account B generation history", historyBResponse, 200);
+  const [historyA, historyB] = await Promise.all([historyAResponse.json(), historyBResponse.json()]);
+  assert.ok(Array.isArray(historyA.generations) && Array.isArray(historyB.generations), "Generation history must return a list for each account.");
+  const historyAIds = new Set(historyA.generations.map(item => item.id));
+  assert.ok(!historyB.generations.some(item => historyAIds.has(item.id)), "Account B generation history leaked an Account A generation.");
   const [productsAResponse, projectsAResponse, productsBResponse, projectsBResponse] = await Promise.all([
     request("/api/products", { token: tokenA }),
     request("/api/projects", { token: tokenA }),
@@ -132,7 +142,7 @@ try {
   await expectStatus("Account B logout", await request("/api/auth/logout", { token: tokenB, method: "POST" }), 200);
   await expectStatus("Account B revoked session", await request("/api/auth/me", { token: tokenB }), 401);
 
-  console.log("PASS: two-account tenant isolation, private image authorization, and server-side logout revocation.");
+  console.log("PASS: two-account tenant isolation, generation history isolation, private image authorization, and server-side logout revocation.");
 } finally {
   // Revoke any session left active if an earlier assertion fails. Never print tokens.
   await Promise.all([tokenA, tokenB].filter(Boolean).map(token =>
