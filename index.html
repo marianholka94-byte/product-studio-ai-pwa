@@ -132,7 +132,7 @@ a{color:#174ea6;overflow-wrap:anywhere}
 <label for="sourceVideo">Voliteľné zdrojové video (MP4 alebo MOV, 2–15 sekúnd, max. 50 MB)</label>
 <input id="sourceVideo" type="file" accept="video/mp4,video/quicktime,.mp4,.mov">
 <video id="sourceVideoPreview" controls playsinline preload="metadata" style="display:none;max-height:280px"></video>
-<div id="sourceVideoInfo" class="note">Môžeš pridať krátke video produktu spolu s fotografiami. Video sa uloží do súkromného úložiska a Seedance ho použije ako referenciu. Priame referenčné videá s rozpoznateľnými ľudskými tvárami model nepodporuje.</div>
+<div id="sourceVideoInfo" class="note">Po aktivácii Seedance môžeš pridať krátke video produktu spolu s fotografiami. Video sa bezpečne uloží do súkromného úložiska. Priame referenčné videá s rozpoznateľnými ľudskými tvárami model nepodporuje.</div>
 <label for="product">Názov alebo typ produktu</label>
 <input id="product" type="text" name="product-name" autocomplete="off" autocapitalize="sentences" placeholder="Napr. čierny parfum MUSTANG">
 </section>
@@ -681,7 +681,7 @@ sourceVideo.addEventListener('change',()=>{
    $('sourceVideoInfo').className='status err';return;
   }
   selectedSourceVideoDuration=Number(seconds.toFixed(2));
-  $('sourceVideoInfo').textContent=`Vybrané: ${file.name} · ${(file.size/1024/1024).toFixed(1)} MB · ${seconds.toFixed(1)} s. Video je pripravené na bezpečné nahratie.`;
+  $('sourceVideoInfo').textContent=`Vybrané: ${file.name} · ${(file.size/1024/1024).toFixed(1)} MB · ${seconds.toFixed(1)} s. Video je vybrané. Nahrávanie sa sprístupní po aktivácii Seedance.`;
   $('sourceVideoInfo').className='note';updateReadyStatus();
  };
  sourceVideoPreview.onerror=()=>{
