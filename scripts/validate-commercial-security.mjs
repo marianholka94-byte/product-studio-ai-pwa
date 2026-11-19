@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import assert from "node:assert/strict";
 
 const worker = readFileSync("worker-preview.js", "utf8");
+const html = readFileSync("index.html", "utf8");
 const wrangler = readFileSync("wrangler.preview.toml", "utf8");
 
 function mustContain(source, pattern, message) {
