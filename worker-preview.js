@@ -115,7 +115,14 @@ export default {
       }
 
       if (request.method === "POST" && url.pathname === "/api/auth/register") {
+        // Public sign-up stays closed unless the owner explicitly configures a preview invite secret.
+        if (!env.PREVIEW_SIGNUP_CODE) {
+          return json({ error: "Registrácia v testovacej verzii zatiaľ nie je povolená." }, 503, origin);
+        }
         const body = await readJson(request);
+        if (typeof body.inviteCode !== "string" || body.inviteCode !== env.PREVIEW_SIGNUP_CODE) {
+          return json({ error: "Neplatný pozývací kód." }, 403, origin);
+        }
         const email = String(body.email || "").trim().toLowerCase();
         const password = String(body.password || "");
         const displayName = String(body.displayName || "").trim().slice(0, 80);
