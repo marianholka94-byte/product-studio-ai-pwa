@@ -24,6 +24,7 @@ This document tracks readiness work on the isolated commercial preview. It is no
 - [x] Commercial preview generation API requires a D1 customer session, stores generation requests per owner, prevents duplicate submissions with a per-account idempotency key and payload fingerprint, and enforces a three-generation UTC-day preview quota at the database layer.
 - [x] Generation status and download endpoints resolve the local generation ID through the authenticated owner; provider task IDs are never accepted as authorization. A separate `RUNWAY_API_KEY_PREVIEW` repository secret can configure the isolated preview Worker without reusing production credentials.
 - [x] Persistent generation history is available through an authenticated, owner-scoped API with a bounded result count; the Studio UI loads the signed-in account’s latest 20 jobs and refreshes after generation.
+- [x] Completed history entries can download their MP4 through the authenticated owner-scoped endpoint; queued or processing entries can refresh their provider status without resubmitting generation.
 - [x] The live two-account acceptance script checks generation-history isolation in addition to product, project, private media, and session isolation.
 - [x] Resumed cloud uploads compare ordered SHA-256 checksums against the remote image manifest before continuing.
 - [x] Schema and integration checks cover both idempotency columns and unique per-account constraints.
