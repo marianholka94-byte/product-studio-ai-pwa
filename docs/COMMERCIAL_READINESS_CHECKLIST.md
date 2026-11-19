@@ -30,7 +30,7 @@ This document tracks readiness work on the isolated commercial preview. It is no
 - [x] Schema and integration checks cover both idempotency columns and unique per-account constraints.
 - [x] Integration checks cover checksum-verified recovery of partially uploaded images.
 - [x] Manual interrupted cloud save followed by resume; user confirmed that the project saved successfully.
-- [ ] Manual lost project-create response retry test (verify idempotent replay without duplicate records).
+- [x] Automated live API acceptance: replay product/project creation after a committed response, reject changed payloads with the same idempotency key, and verify no duplicate records.
 - [x] Run live stale-project and stale-product edit acceptance tests against the deployed preview (the script verifies HTTP 409 and unchanged records).
 - [ ] Manual UI check: save the same local project to account A and account B; confirm each account shows only its own cloud-save state and cloud copy.
 - [x] Manual UI tenant-isolation check: the second account showed only its own cloud product and no products/projects from the first account.
