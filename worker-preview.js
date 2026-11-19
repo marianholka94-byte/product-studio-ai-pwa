@@ -185,18 +185,34 @@ async function clearLoginFailures(env, key) {
 const MINI_RATIOS = new Set(["864:496","640:640","496:864","1280:720","960:960","720:1280"]);
 const FULL_RATIOS = new Set([...MINI_RATIOS,"1920:1080","1440:1440","1080:1920","3840:2160","3840:3840","2160:3840"]);
 const PREVIEW_DAILY_GENERATION_LIMIT = 3;
-// No Seedance-to-Runway adapter has been verified yet. Keep this allowlist empty
-// until a provider/model mapping is implemented and covered by live-safe tests.
-const RUNWAY_MODEL_ALLOWLIST = new Set();
-function runwayHeaders(env) {
-  return { Authorization: "Bearer " + env.RUNWAY_API_KEY, "X-Runway-Version": "2024-11-06", "Content-Type": "application/json" };
+// Official BytePlus ModelArk model IDs. Paid requests remain disabled unless the
+// owner explicitly sets BYTEPLUS_MODELARK_ENABLED=true and supplies a server secret.
+const BYTEPLUS_MODEL_IDS = Object.freeze({
+  seedance2_mini: "dreamina-seedance-2-0-mini-260615",
+  seedance2: "dreamina-seedance-2-0-260128"
+});
+const BYTEPLUS_TASKS_URL = "https://ark.ap-southeast.bytepluses.com/api/v3/contents/generations/tasks";
+function byteplusReady(env) {
+  return Boolean(String(env.BYTEPLUS_MODELARK_API_KEY || "").trim()) &&
+    String(env.BYTEPLUS_MODELARK_ENABLED || "").toLowerCase() === "true";
+}
+function byteplusHeaders(env) {
+  return { Authorization: "Bearer " + env.BYTEPLUS_MODELARK_API_KEY, "Content-Type": "application/json" };
+}
+function byteplusRatio(pixelRatio) {
+  const [width, height] = String(pixelRatio || "").split(":").map(Number);
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return null;
+  const value = width / height;
+  if (value > 1.15) return "16:9";
+  if (value < 0.87) return "9:16";
+  return "1:1";
 }
 function generationStatus(providerStatus) {
-  const value = String(providerStatus || "").toUpperCase();
-  if (value === "SUCCEEDED") return "succeeded";
-  if (value === "FAILED") return "failed";
-  if (value === "CANCELED" || value === "CANCELLED") return "cancelled";
-  if (["PENDING","THROTTLED","QUEUED"].includes(value)) return "queued";
+  const value = String(providerStatus || "").toLowerCase();
+  if (value === "succeeded") return "succeeded";
+  if (value === "failed" || value === "expired") return "failed";
+  if (value === "canceled" || value === "cancelled") return "cancelled";
+  if (["pending","throttled","queued"].includes(value)) return "queued";
   return "processing";
 }
 function estimatedGenerationCredits(model, resolution, duration) {
@@ -325,11 +341,16 @@ export default {
           creditSchema,
           adminGrantConfigured: Boolean(String(env.APP_OWNER_EMAIL || "").trim()),
           generation: {
-            provider: "runway",
-            configured: Boolean(env.RUNWAY_API_KEY),
-            modelIntegrationReady: RUNWAY_MODEL_ALLOWLIST.size > 0,
-            supportedModels: [...RUNWAY_MODEL_ALLOWLIST],
-            reason: RUNWAY_MODEL_ALLOWLIST.size > 0 ? null : "Seedance model IDs exposed by the Studio do not yet have a verified Runway adapter.",
+            provider: "byteplus_modelark",
+            configured: Boolean(String(env.BYTEPLUS_MODELARK_API_KEY || "").trim()),
+            enabled: String(env.BYTEPLUS_MODELARK_ENABLED || "").toLowerCase() === "true",
+            modelIntegrationReady: byteplusReady(env),
+            supportedModels: Object.keys(BYTEPLUS_MODEL_IDS),
+            reason: !String(env.BYTEPLUS_MODELARK_API_KEY || "").trim()
+              ? "Chýba serverový BytePlus ModelArk API kľúč."
+              : !byteplusReady(env)
+                ? "Platené generovanie je vypnuté. Aktivuje sa až po výslovnom nastavení BYTEPLUS_MODELARK_ENABLED=true."
+                : null,
             dailyLimit: PREVIEW_DAILY_GENERATION_LIMIT
           }
         }, 200, origin);
@@ -483,7 +504,7 @@ export default {
       if (url.pathname === "/api/generate" && request.method === "POST") {
         const user = await currentUser(request, env);
         if (!user) return json({ error: "Na generovanie sa najskôr prihlás do svojho zákazníckeho účtu." }, 401, origin);
-        if (!env.RUNWAY_API_KEY) return json({ error: "Generátor zatiaľ nie je nakonfigurovaný pre komerčnú preview verziu." }, 503, origin);
+        if (!byteplusReady(env)) return json({ error: "Seedance API zatiaľ nie je aktivované. Platené generovanie zostáva vypnuté." }, 503, origin);
         const contentLength = Number(request.headers.get("Content-Length") || 0);
         if (contentLength > 22 * 1024 * 1024) return json({ error: "Súhrnná veľkosť fotografií je príliš veľká. Použi menšie obrázky." }, 413, origin);
         const body = await readJson(request, 22 * 1024 * 1024);
@@ -503,22 +524,30 @@ export default {
         if (typeof body.prompt !== "string" || !body.prompt.trim() || body.prompt.length > 1000) return json({ error: "Text zadania musí mať 1 až 1 000 znakov." }, 400, origin);
         const duration = Number(body.duration);
         const model = String(body.model || "seedance2_mini");
-        // Fail closed before reserving credits or contacting a paid provider.
-        if (!RUNWAY_MODEL_ALLOWLIST.has(model)) {
+        // Fail closed before recording a task or contacting the paid provider.
+        const providerModel = BYTEPLUS_MODEL_IDS[model];
+        if (!providerModel) {
           return json({
-            error: "Tento model zatiaľ nie je prepojený s poskytovateľom Runway. Generovanie je dočasne zablokované, aby sa predišlo neúspešnej platenej požiadavke.",
-            provider: "runway",
+            error: "Vybraný Seedance model nie je podporovaný cez BytePlus ModelArk.",
+            provider: "byteplus_modelark",
             model,
             code: "PROVIDER_MODEL_NOT_SUPPORTED"
           }, 503, origin);
         }
-        const resolution = String(body.resolution || (model === "seedance2" ? "1080p" : "720p"));
+        const resolution = String(body.resolution || "720p");
         const ratio = String(body.ratio || "");
-        const allowedRatios = model === "seedance2" ? FULL_RATIOS : model === "seedance2_mini" ? MINI_RATIOS : null;
-        const estimatedCredits = estimatedGenerationCredits(model, resolution, duration);
-        if (!Number.isInteger(duration) || duration < 4 || duration > 15 || !allowedRatios || !allowedRatios.has(ratio) || estimatedCredits === null) {
+        const providerRatio = byteplusRatio(ratio);
+        const allowedResolutions = model === "seedance2"
+          ? new Set(["480p","720p","1080p","4K"])
+          : new Set(["480p","720p"]);
+        if (!Number.isInteger(duration) || duration < 4 || duration > 15 ||
+            !allowedResolutions.has(resolution) || !providerRatio ||
+            !(model === "seedance2" ? FULL_RATIOS : MINI_RATIOS).has(ratio)) {
           return json({ error: "Nepodporovaná kombinácia modelu, rozlíšenia, pomeru strán alebo dĺžky." }, 400, origin);
         }
+        // BytePlus bills the owner's provider account by actual token usage. Do not
+        // present the old Runway-derived estimate or debit the app's separate wallet.
+        const estimatedCredits = 0;
         const fingerprint = await sha256(JSON.stringify({ images, prompt: body.prompt.trim(), model, resolution, ratio, duration }));
         const prior = await env.DB.prepare(
           "SELECT id, request_fingerprint, provider_task_id, status, estimated_credits FROM generations WHERE user_id = ? AND client_request_id = ? LIMIT 1"
@@ -538,7 +567,7 @@ export default {
         const generationId = crypto.randomUUID();
         try {
           await env.DB.prepare(
-            "INSERT INTO generations (id, user_id, provider, model, resolution, aspect_ratio, duration_seconds, status, prompt_snapshot, estimated_credits, client_request_id, request_fingerprint, created_at, updated_at) VALUES (?, ?, 'runway', ?, ?, ?, ?, 'queued', ?, ?, ?, ?, ?, ?)"
+            "INSERT INTO generations (id, user_id, provider, model, resolution, aspect_ratio, duration_seconds, status, prompt_snapshot, estimated_credits, client_request_id, request_fingerprint, created_at, updated_at) VALUES (?, ?, 'byteplus_modelark', ?, ?, ?, ?, 'queued', ?, ?, ?, ?, ?, ?)"
           ).bind(generationId, user.id, model, resolution, ratio, duration, body.prompt.trim(), estimatedCredits, requestId, fingerprint, now, now).run();
         } catch (error) {
           if (/generation_daily_limit/i.test(String(error))) return json({ error: "Dosiahol si denný limit " + PREVIEW_DAILY_GENERATION_LIMIT + " skúšobných generovaní.", dailyLimit: PREVIEW_DAILY_GENERATION_LIMIT }, 429, origin);
@@ -550,29 +579,29 @@ export default {
           }
           throw error;
         }
-        const reservation = await reserveGenerationCredits(env, user.id, generationId, estimatedCredits, now);
-        if (!reservation || reservation.state !== "reserved") {
-          await env.DB.prepare("DELETE FROM generations WHERE id = ? AND user_id = ? AND provider_task_id IS NULL AND NOT EXISTS (SELECT 1 FROM generation_credit_reservations WHERE generation_id = ?)")
-            .bind(generationId, user.id, generationId).run();
-          const balance = await env.DB.prepare("SELECT available_units FROM credit_accounts WHERE user_id = ?").bind(user.id).first();
-          return json({ error: "Nemáš dostatok kreditov na toto generovanie.", requiredCredits: estimatedCredits, availableCredits: Number(balance?.available_units || 0) }, 402, origin);
-        }
-        const upstream = await fetch("https://api.dev.runwayml.com/v1/image_to_video", {
+        const content = [
+          { type: "text", text: body.prompt.trim() },
+          ...images.map(image => ({
+            type: "image_url",
+            image_url: { url: image },
+            role: "reference_image"
+          }))
+        ];
+        const upstream = await fetch(BYTEPLUS_TASKS_URL, {
           method: "POST",
-          headers: runwayHeaders(env),
+          headers: byteplusHeaders(env),
           body: JSON.stringify({
-            model,
-            promptImage: images.length === 1 ? images[0] : images.map(uri => ({ uri })),
-            promptText: body.prompt.trim(),
-            ratio,
+            model: providerModel,
+            content,
+            resolution,
+            ratio: providerRatio,
             duration,
-            audio: false,
-            bitrate: "high"
+            watermark: false
           })
         });
         const result = await upstream.json().catch(() => ({}));
         if (!upstream.ok || !result.id) {
-          const message = result.error?.message || result.error || result.message || "Runway požiadavku neprijal.";
+          const message = result.error?.message || result.error || result.message || "BytePlus ModelArk požiadavku neprijal.";
           const failedAt = Math.floor(Date.now() / 1000);
           await env.DB.prepare("UPDATE generations SET status = 'failed', error_code = ?, error_message = ?, updated_at = ?, completed_at = ? WHERE id = ? AND user_id = ?")
             .bind("provider_rejected", String(message).slice(0, 500), failedAt, failedAt, generationId, user.id).run();
@@ -629,12 +658,12 @@ export default {
       if (generationStatusMatch && request.method === "GET") {
         const user = await currentUser(request, env);
         if (!user) return json({ error: "Prihlásenie vypršalo. Prihlás sa znova." }, 401, origin);
-        if (!env.RUNWAY_API_KEY) return json({ error: "Generátor zatiaľ nie je nakonfigurovaný." }, 503, origin);
+        if (!byteplusReady(env)) return json({ error: "Seedance API zatiaľ nie je aktivované." }, 503, origin);
         const generation = await env.DB.prepare("SELECT id, provider_task_id, status FROM generations WHERE id = ? AND user_id = ? LIMIT 1")
           .bind(generationStatusMatch[1], user.id).first();
         if (!generation) return json({ error: "Generovanie sa nenašlo." }, 404, origin);
         if (!generation.provider_task_id) return json({ error: "Generovanie zatiaľ nemá potvrdené ID poskytovateľa.", status: generation.status }, 409, origin);
-        const upstream = await fetch("https://api.dev.runwayml.com/v1/tasks/" + encodeURIComponent(generation.provider_task_id), { headers: runwayHeaders(env) });
+        const upstream = await fetch(BYTEPLUS_TASKS_URL + "/" + encodeURIComponent(generation.provider_task_id), { headers: byteplusHeaders(env) });
         const task = await upstream.json().catch(() => ({}));
         if (!upstream.ok) return json({ error: task.error?.message || task.error || "Stav generovania sa nepodarilo načítať.", providerStatus: upstream.status }, 502, origin);
         const mapped = generationStatus(task.status);
@@ -650,16 +679,16 @@ export default {
       if (generationDownloadMatch && request.method === "GET") {
         const user = await currentUser(request, env);
         if (!user) return json({ error: "Prihlásenie vypršalo. Prihlás sa znova." }, 401, origin);
-        if (!env.RUNWAY_API_KEY) return json({ error: "Generátor zatiaľ nie je nakonfigurovaný." }, 503, origin);
+        if (!byteplusReady(env)) return json({ error: "Seedance API zatiaľ nie je aktivované." }, 503, origin);
         const generation = await env.DB.prepare("SELECT id, provider_task_id FROM generations WHERE id = ? AND user_id = ? LIMIT 1")
           .bind(generationDownloadMatch[1], user.id).first();
         if (!generation) return json({ error: "Video sa nenašlo." }, 404, origin);
         if (!generation.provider_task_id) return json({ error: "Video ešte nie je pripravené." }, 409, origin);
-        const taskResponse = await fetch("https://api.dev.runwayml.com/v1/tasks/" + encodeURIComponent(generation.provider_task_id), { headers: runwayHeaders(env) });
+        const taskResponse = await fetch(BYTEPLUS_TASKS_URL + "/" + encodeURIComponent(generation.provider_task_id), { headers: byteplusHeaders(env) });
         const task = await taskResponse.json().catch(() => ({}));
         if (!taskResponse.ok) return json({ error: task.error?.message || task.error || "Video sa nepodarilo načítať." }, 502, origin);
-        const videoUrl = Array.isArray(task.output) && typeof task.output[0] === "string" ? task.output[0] : "";
-        if (task.status !== "SUCCEEDED" || !videoUrl) return json({ error: "Video ešte nie je pripravené na stiahnutie." }, 409, origin);
+        const videoUrl = typeof task.content?.video_url === "string" ? task.content.video_url : "";
+        if (task.status !== "succeeded" || !videoUrl) return json({ error: "Video ešte nie je pripravené na stiahnutie." }, 409, origin);
         let parsedVideoUrl;
         try { parsedVideoUrl = new URL(videoUrl); } catch { return json({ error: "Poskytovateľ vrátil neplatnú adresu videa." }, 502, origin); }
         if (parsedVideoUrl.protocol !== "https:" || parsedVideoUrl.username || parsedVideoUrl.password) return json({ error: "Poskytovateľ vrátil neplatnú adresu videa." }, 502, origin);
