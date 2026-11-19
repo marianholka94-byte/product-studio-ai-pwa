@@ -231,7 +231,7 @@ assert.ok(projectCopyHandler.includes("requestEpoch !== accountEpoch || accountI
 assert.ok(projectCopyHandler.includes("saveProjectAsCopy.disabled = true") && projectCopyHandler.includes("saveProjectAsCopy.disabled = false"), "Conflict save-as-copy must prevent overlapping submissions and restore the control for the same account.");
 
 const productUploadStart = cloud.indexOf('uploadButton.addEventListener("click"');
-const productUploadEnd = cloud.indexOf("\\n      });", productUploadStart);
+const productUploadEnd = cloud.indexOf("      });", productUploadStart);
 const productUploadHandler = productUploadStart >= 0 && productUploadEnd > productUploadStart ? cloud.slice(productUploadStart, productUploadEnd) : "";
 assert.ok(productUploadHandler.includes("const accountId = user?.id") && productUploadHandler.includes("const requestEpoch = accountEpoch"), "Cloud image uploads must capture the initiating account.");
 assert.ok(productUploadHandler.includes("requestEpoch !== accountEpoch || accountId !== user?.id"), "Cloud image uploads must stop after an account switch.");
