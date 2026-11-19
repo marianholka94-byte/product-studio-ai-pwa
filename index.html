@@ -53,6 +53,22 @@ a{color:#174ea6;overflow-wrap:anywhere}
 .account-footnote{font-size:12px;color:#666;line-height:1.45;margin:10px 0 0}
 @media(max-width:430px){.account-dashboard{gap:7px}.account-metric{padding:10px 8px}.account-metric-value{font-size:15px}.account-metric-label{font-size:10px}}
 .generation-history-list{display:grid;gap:10px;margin-top:12px}.generation-history-item{padding:12px;border:1px solid var(--border,#d8dce3);border-radius:10px}.generation-history-item p{margin:6px 0 0}
+.credit-wallet{border:1px solid #e4e5e7;border-radius:12px;padding:13px;margin:12px 0;background:#fafaf9}
+.credit-wallet-heading{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.credit-wallet-heading strong{font-size:14px}
+.credit-wallet-balances{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:10px}
+.credit-wallet-balance{padding:11px;border-radius:10px;background:#fff;border:1px solid #e4e5e7}
+.credit-wallet-balance span{display:block;font-size:11px;color:#666}
+.credit-wallet-balance strong{display:block;font-size:21px;margin-top:4px}
+.credit-wallet-history{display:grid;gap:7px;margin-top:10px}
+.credit-wallet-entry{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:9px 10px;background:#fff;border:1px solid #e8e8e5;border-radius:9px;font-size:12px}
+.credit-wallet-entry span{color:#555}
+.credit-wallet-entry strong{white-space:nowrap}
+.credit-wallet-admin{border-top:1px solid #e3e3df;margin-top:12px;padding-top:10px}
+.credit-wallet-admin button,.credit-wallet-heading button{width:auto;margin:0;padding:8px 11px;font-size:12px}
+.credit-wallet-empty{font-size:12px;color:#777;margin:8px 0}
+@media(max-width:430px){.credit-wallet-balance strong{font-size:18px}.credit-wallet-entry{align-items:flex-start}}
+
 .generation-progress{display:none;margin-top:14px;padding:14px;border:1px solid #303b49;border-radius:13px;background:#171d27;color:#f3f5f8;max-width:100%;overflow:hidden}
 .generation-progress .progress-heading{color:#f3f5f8}
 .generation-progress .progress-detail{color:#aeb8c7}
@@ -82,7 +98,26 @@ a{color:#174ea6;overflow-wrap:anywhere}
 <div class="account-dashboard">
  <div class="account-metric"><span class="account-metric-label">CLOUDOVÝ ÚČET</span><strong id="accountEmail" class="account-metric-value">Neprihlásený</strong><div id="accountStateNote" class="account-metric-note">Prihlás sa v Cloudovej knižnici.</div></div>
  <div class="account-metric"><span class="account-metric-label">DNES VYUŽITÉ</span><strong id="dailyUsageValue" class="account-metric-value">— / 3</strong><div id="dailyUsageMeta" class="account-metric-note">Denný limit preview</div><div class="account-progress"><div id="dailyUsageBar" class="account-progress-fill"></div></div></div>
- <div class="account-metric"><span class="account-metric-label">API KREDITY</span><strong id="creditState" class="account-metric-value">Pripravujeme</strong><div class="account-metric-note">Kreditový systém je odložený; žiadne kredity sa neúčtujú.</div></div>
+ <div class="account-metric"><span class="account-metric-label">API KREDITY</span><strong id="creditState" class="account-metric-value">Pripravujeme</strong><div id="creditMetricNote" class="account-metric-note">Zostatok sa načíta po prihlásení.</div></div>
+</div>
+<div class="credit-wallet" id="creditWallet">
+ <div class="credit-wallet-heading"><strong>Kreditová peňaženka</strong><button id="refreshCredits" type="button" class="secondary">Obnoviť</button></div>
+ <div class="credit-wallet-balances">
+  <div class="credit-wallet-balance"><span>Dostupné kredity</span><strong id="availableCredits">—</strong></div>
+  <div class="credit-wallet-balance"><span>Rezervované kredity</span><strong id="reservedCredits">—</strong></div>
+ </div>
+ <div class="account-footnote" id="creditWalletNote">Zostatok a história sa načítajú po prihlásení.</div>
+ <div id="creditHistory" class="credit-wallet-history" aria-live="polite"><p class="credit-wallet-empty">Zatiaľ bez načítanej histórie.</p></div>
+ <div id="creditAdminPanel" class="credit-wallet-admin" hidden>
+  <strong>Správa kreditov</strong>
+  <p class="small">Manuálne dobitie testovacieho účtu správcom. Platobná brána zatiaľ nie je pripojená.</p>
+  <div class="grid">
+   <div><label for="creditGrantUnits">Počet kreditov</label><input id="creditGrantUnits" type="number" min="1" max="100000" step="1" value="100"></div>
+   <div><label for="creditGrantNote">Poznámka</label><input id="creditGrantNote" type="text" maxlength="160" value="Testovacie dobitie"></div>
+  </div>
+  <button id="grantCredits" type="button">Pridať kredity</button>
+  <p id="creditGrantStatus" class="small" role="status"></p>
+ </div>
 </div>
 <div id="connectionStatus" class="status">Prihlás sa do svojho cloudového účtu v paneli Cloudová knižnica.</div>
 <p id="generationUsage" class="account-footnote">Bezpečnostný limit preview: najviac 3 generovania denne na účet.</p>
@@ -199,10 +234,67 @@ function renderAccountOverview(account,usage=null,health=null){
  }
  $('creditState').textContent=health?.creditSchema?.enabled?'Aktívny':'Pripravujeme';
 }
+let creditWalletSequence=0;
+const creditTypeLabels={grant:"Dobitie",reserve:"Rezervácia",capture:"Spotrebované",release:"Uvoľnená rezervácia",refund:"Vrátenie",adjustment:"Úprava",expiry:"Exspirácia"};
+function formatCreditNumber(value){return Number(value||0).toLocaleString('sk-SK');}
+function renderCreditWallet(wallet,accountId){
+ if(window.PSAICloudLibrary?.getCurrentUser()?.id!==accountId)return;
+ $('availableCredits').textContent=formatCreditNumber(wallet.available);
+ $('reservedCredits').textContent=formatCreditNumber(wallet.reserved);
+ $('creditState').textContent=formatCreditNumber(wallet.available);
+ $('creditMetricNote').textContent='kreditov k dispozícii';
+ $('creditWalletNote').textContent='Zostatok sa aktualizuje po každom generovaní. 1 kredit = 0,01 USD.';
+ $('creditAdminPanel').hidden=!wallet.isAdmin;
+ const history=$('creditHistory');history.replaceChildren();
+ const entries=Array.isArray(wallet.history)?wallet.history:[];
+ if(!entries.length){const empty=document.createElement('p');empty.className='credit-wallet-empty';empty.textContent='Zatiaľ nemáš žiadne pohyby na kreditovom účte.';history.append(empty);return;}
+ for(const entry of entries){
+  const row=document.createElement('div');row.className='credit-wallet-entry';
+  const left=document.createElement('span');
+  const date=new Date(Number(entry.createdAt||0)*1000);
+  const dateText=Number.isFinite(date.getTime())?date.toLocaleString('sk-SK',{dateStyle:'short',timeStyle:'short'}):'';
+  left.textContent=(creditTypeLabels[entry.type]||entry.type||'Pohyb')+' · '+dateText;
+  const amount=document.createElement('strong');
+  const sign=['grant','refund','release','adjustment'].includes(entry.type)?'+':'−';
+  amount.textContent=sign+formatCreditNumber(entry.units);
+  row.append(left,amount);history.append(row);
+ }
+}
+async function refreshCreditWallet(account=window.PSAICloudLibrary?.getCurrentUser()){
+ const sequence=++creditWalletSequence;
+ if(!account){
+  $('availableCredits').textContent='—';$('reservedCredits').textContent='—';$('creditState').textContent='—';
+  $('creditMetricNote').textContent='Zostatok sa načíta po prihlásení.';$('creditWalletNote').textContent='Prihlás sa, aby si videl svoj zostatok.';
+  $('creditHistory').replaceChildren();$('creditAdminPanel').hidden=true;return;
+ }
+ $('creditWalletNote').textContent='Načítavam kreditový účet…';
+ try{
+  const wallet=await window.PSAICloudLibrary.request('/api/credits');
+  if(sequence!==creditWalletSequence||window.PSAICloudLibrary?.getCurrentUser()?.id!==account.id)return;
+  renderCreditWallet(wallet,account.id);
+ }catch(error){
+  if(sequence!==creditWalletSequence||window.PSAICloudLibrary?.getCurrentUser()?.id!==account.id)return;
+  $('creditWalletNote').textContent='Kreditový účet sa nepodarilo načítať: '+error.message;
+  $('creditState').textContent='Chyba';$('creditMetricNote').textContent='Skontroluj pripojenie účtu.';
+ }
+}
+$('refreshCredits').addEventListener('click',()=>refreshCreditWallet());
+$('grantCredits').addEventListener('click',async()=>{
+ const account=window.PSAICloudLibrary?.getCurrentUser();if(!account)return;
+ const units=Number($('creditGrantUnits').value),note=$('creditGrantNote').value.trim();
+ if(!Number.isSafeInteger(units)||units<1||units>100000){$('creditGrantStatus').textContent='Zadaj celé číslo od 1 do 100 000.';return;}
+ const button=$('grantCredits');button.disabled=true;$('creditGrantStatus').textContent='Dobíjam…';
+ try{
+  await window.PSAICloudLibrary.request('/api/credits/admin-grant',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({units,note,idempotencyKey:crypto.randomUUID()})});
+  $('creditGrantStatus').textContent='Kredity boli pridané.';await refreshCreditWallet(account);
+ }catch(error){$('creditGrantStatus').textContent=error.message;}
+ finally{button.disabled=false;}
+});
 async function refreshCommercialConnection(){
   const account=window.PSAICloudLibrary?.getCurrentUser();
   const status=$('connectionStatus'), usageLabel=$('generationUsage');
   renderAccountOverview(account);
+  refreshCreditWallet(account);
   if(!account){
     status.textContent='Nie si prihlásený. Prihlás sa v paneli Cloudová knižnica.';
     usageLabel.textContent='Bezpečnostný limit preview: najviac 3 generovania denne na účet.';
