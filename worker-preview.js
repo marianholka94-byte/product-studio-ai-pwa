@@ -409,6 +409,15 @@ export default {
             const updated = await ownedProduct(env, user.id, productId);
             return json({ product: publicProduct(updated) }, 200, origin);
           }
+          if (productId && request.method === "POST" && url.pathname === `/api/products/${productId}/restore`) {
+            const existing = await ownedProduct(env, user.id, productId);
+            if (!existing) return json({ error: "Produkt sa nenašiel." }, 404, origin);
+            if (!existing.archived_at) return json({ product: publicProduct(existing), restored: false }, 200, origin);
+            await env.DB.prepare("UPDATE products SET archived_at = NULL, updated_at = ? WHERE id = ? AND user_id = ?")
+              .bind(now, productId, user.id).run();
+            const restored = await ownedProduct(env, user.id, productId);
+            return json({ product: publicProduct(restored), restored: true }, 200, origin);
+          }
           if (productId && request.method === "DELETE") {
             const existing = await ownedProduct(env, user.id, productId);
             if (!existing) return json({ error: "Produkt sa nenašiel." }, 404, origin);
