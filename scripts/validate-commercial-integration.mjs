@@ -47,3 +47,8 @@ assert.ok(cloud.includes("Cloudový originál zostal nezmenený."), "Studio impo
 assert.ok(cloud.includes("if (!confirm("), "Studio import must confirm before replacing unsaved editor state");
 
 console.log("Commercial cloud integration contract checks passed.");
+
+assert.ok(worker.includes('/restore`)'), "Archived products must have an explicit restore endpoint");
+assert.ok(worker.includes("SET archived_at = NULL, updated_at = ?"), "Product restore must clear archive state within the authenticated owner scope");
+assert.ok(cloud.includes('"Obnoviť produkt"'), "Cloud library must expose an explicit restore action for archived products");
+assert.ok(cloud.includes('api("/api/products/" + encodeURIComponent(product.id) + "/restore"'), "Restore action must call the owner-scoped API endpoint");
