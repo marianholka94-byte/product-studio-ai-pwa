@@ -304,6 +304,9 @@ export default {
         const rateLimitTable = await env.DB.prepare(
           "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'auth_rate_limits'"
         ).first();
+        const generationOutputsTable = await env.DB.prepare(
+          "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'generation_outputs'"
+        ).first();
         const userColumnNames = (userColumns.results || []).map(column => column.name);
         const sessionColumnNames = (sessionColumns.results || []).map(column => column.name);
         const generationColumns = await env.DB.prepare("PRAGMA table_info(generations)").all();
@@ -330,7 +333,8 @@ export default {
           sessionTokenHash: sessionColumnNames.includes("token_hash"),
           rateLimitsTable: !!rateLimitTable,
           generationRequestId: generationColumnNames.includes("client_request_id"),
-          generationFingerprint: generationColumnNames.includes("request_fingerprint")
+          generationFingerprint: generationColumnNames.includes("request_fingerprint"),
+          generationOutputsTable: !!generationOutputsTable
         };
         return json({
           ok: db?.ok === 1 && Array.isArray(objects?.objects),
