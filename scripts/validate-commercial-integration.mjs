@@ -65,8 +65,8 @@ assert.ok(worker.includes("(?:images|restore)"), "Product route matcher must acc
 
 assert.ok(cloud.includes("window.PSAICloudLibrary"), "Cloud library must expose the explicit local project save bridge");
 assert.ok(cloud.includes("async saveLocalProject(record, onProgress"), "Cloud save bridge must accept a local project and durable progress callback");
-assert.ok(cloud.includes('api("/api/products", {'), "Cloud save must create an account-scoped product before uploading media");
-assert.ok(cloud.includes('api("/api/products/" + encodeURIComponent(sync.productId) + "/images"'), "Cloud save must upload images through the authenticated product media API");
+assert.ok(cloud.includes('accountApi("/api/products", {'), "Cloud save must create an account-scoped product before uploading media");
+assert.ok(cloud.includes('accountApi("/api/products/" + encodeURIComponent(sync.productId) + "/images"'), "Cloud save must upload images through the authenticated product media API");
 assert.ok(cloud.includes("await onProgress({ ...sync })"), "Cloud save must persist every upload checkpoint before continuing");
 
 assert.ok(cloud.includes("if (!sync.idempotencyKey)"), "Cloud save must create a stable idempotency key before project creation.");
