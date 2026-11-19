@@ -146,9 +146,9 @@ assert.ok(cloud.includes("const remoteProduct = await accountApi(\"/api/products
 assert.ok(nav.includes("latest.cloudSyncByAccount={...(latest.cloudSyncByAccount||{}),[sync.accountId]:sync}"), "Cloud save checkpoints must be persisted under their owning account.");
 assert.ok(nav.includes("[result.accountId]:result"), "Completed cloud saves must remain associated with the account that owns them.");
 assert.ok(nav.includes("psai-cloud-account-change"), "Switching cloud accounts must refresh local project cloud-status labels.");
-assert.ok(html.includes("cloud-library.js?v=manual-create-idempotency-20261119") && html.includes("app-navigation.js?v=manual-create-idempotency-20261119"), "PWA HTML must request the account-scoped cloud-sync asset versions.");
-assert.ok(serviceWorker.includes("product-studio-ai-v33-manual-create-idempotency-20261119"), "PWA service worker cache must be versioned for the account-scoped cloud-sync release.");
-assert.ok(serviceWorker.includes("/cloud-library.js?v=manual-create-idempotency-20261119") && serviceWorker.includes("/app-navigation.js?v=manual-create-idempotency-20261119"), "Offline precache must include the exact project-conflict-recovery asset URLs.");
+assert.ok(html.includes("cloud-library.js?v=product-conflict-recovery-20261119") && html.includes("app-navigation.js?v=product-conflict-recovery-20261119"), "PWA HTML must request the account-scoped cloud-sync asset versions.");
+assert.ok(serviceWorker.includes("product-studio-ai-v33-product-conflict-recovery-20261119"), "PWA service worker cache must be versioned for the account-scoped cloud-sync release.");
+assert.ok(serviceWorker.includes("/cloud-library.js?v=product-conflict-recovery-20261119") && serviceWorker.includes("/app-navigation.js?v=product-conflict-recovery-20261119"), "Offline precache must include the exact project-conflict-recovery asset URLs.");
 assert.ok(worker.includes("const expectedUpdatedAt = body.expectedUpdatedAt"), "Cloud project edits must accept the version the user originally opened.");
 assert.ok(worker.includes("AND updated_at = ?"), "Cloud project updates must use an atomic version condition to prevent stale overwrites.");
 assert.ok(worker.includes("currentProject: publicProject(current)"), "A stale cloud edit must return the latest project so the user can review and reapply their changes.");
@@ -163,5 +163,8 @@ assert.ok(cloud.includes("async function operationFor(scope, payload)") && cloud
 assert.ok(cloud.includes('payload.idempotencyKey = await operationFor("product-create"') && cloud.includes('payload.idempotencyKey = await operationFor("project-create"'), "Manual product and project creation must send persisted idempotency keys.");
 assert.ok(cloud.includes('clearOperation("product-create", accountId)') && cloud.includes('clearOperation("project-create", accountId)'), "Successful manual create operations must clear their pending idempotency checkpoint.");
 assert.ok(cloud.includes("if (addProduct.disabled) return") && cloud.includes("if (addProject.disabled) return"), "Manual create controls must prevent overlapping submissions.");
+assert.ok(worker.includes("WHERE id = ? AND user_id = ? AND updated_at = ?") && worker.includes("currentProduct: publicProduct(current)"), "Product edits must use an atomic updated_at precondition and return the current owned product on conflict.");
+assert.ok(cloud.includes("if (data?.currentProduct) error.currentProduct = data.currentProduct") && cloud.includes("Načítať najnovšiu verziu produktu"), "Cloud product editor must expose latest-version recovery after a conflict.");
+assert.ok(cloud.includes("payload.expectedUpdatedAt = editingProductRecord?.updatedAt") && cloud.includes("if (e.currentProduct && editingProductId)"), "Cloud product edits must submit and handle their baseline version.");
 assert.ok((cloud.match(/resetAccountWorkspace\(\)/g) || []).length >= 5, "Login, logout, expired sessions, and restored-session failures must reset stale account UI state.");
 assert.ok(cloud.includes("projectConflict.hidden = false") && cloud.includes("projectConflict.hidden = true"), "Cloud project conflict recovery panel must be shown and cleared deliberately.");
