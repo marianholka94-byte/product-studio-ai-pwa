@@ -16,6 +16,13 @@ function mustNotContain(source, pattern, message) {
 mustContain(worker, /if \(url\.pathname\.startsWith\("\/api\/products"\)[\s\S]*?const user = await currentUser\(request, env\);[\s\S]*?if \(!user\) return json\([\s\S]*?401/, "Library routes must require an authenticated session before accessing tenant data.");
 mustContain(worker, /FROM sessions s JOIN users u ON u\.id = s\.user_id[\s\S]*?s\.token_hash = \? AND s\.revoked_at IS NULL AND s\.expires_at > \? AND u\.status = 'active'/, "Session identity must be resolved from a valid, active server-side session.");
 
+mustContain(worker, /password\.length < 12 \|\| password\.length > 128/, "Account registration must enforce the documented password length bounds.");
+mustContain(worker, /if \(!env\.PREVIEW_SIGNUP_CODE\)[\s\S]*?body\.inviteCode !== env\.PREVIEW_SIGNUP_CODE/, "Preview account registration must remain invite-gated.");
+mustContain(worker, /UPDATE sessions SET revoked_at = \? WHERE token_hash = \? AND revoked_at IS NULL/, "Logout must revoke the server-side session.");
+mustContain(worker, /blocked_until[\s\S]*?>= 5[\s\S]*?now \+ 900/, "Repeated failed logins must trigger a temporary server-side block.");
+mustContain(worker, /matchesImageSignature\(bytes, contentType\)/, "Image upload must verify file signatures rather than trusting MIME headers.");
+mustContain(worker, /await env\.MEDIA\.delete\(r2Key\)/, "Failed D1 image metadata writes must clean up the corresponding R2 object.");
+
 // Collection reads are tenant-scoped; a valid account must never receive another
 // account's product or project list.
 mustContain(worker, /FROM products WHERE user_id = \? ORDER BY updated_at DESC[\s\S]*?bind\(user\.id\)/, "Product collection query must filter by authenticated user.");
