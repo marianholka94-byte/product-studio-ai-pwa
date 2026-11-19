@@ -13,7 +13,7 @@ assert.ok(nav.includes("Nie sú viazané na cloudový účet"), "The local proje
 for (const route of [
   "/api/auth/register", "/api/auth/login", "/api/auth/me", "/api/auth/logout",
   "/api/products", "/api/projects", "/api/assets/", "/api/generate",
-  "/api/generation/usage"
+  "/api/generation/usage", "/api/generations"
 ]) assert.ok(worker.includes(route), "Missing Worker route: " + route);
 
 for (const method of ["POST", "GET", "PATCH", "DELETE"]) {
@@ -195,3 +195,8 @@ assert.ok(cloud.includes("if (data?.currentProduct) error.currentProduct = data.
 assert.ok(cloud.includes("payload.expectedUpdatedAt = editingProductRecord?.updatedAt") && cloud.includes("if (e.currentProduct && editingProductId)"), "Cloud product edits must submit and handle their baseline version.");
 assert.ok((cloud.match(/resetAccountWorkspace\(\)/g) || []).length >= 5, "Login, logout, expired sessions, and restored-session failures must reset stale account UI state.");
 assert.ok(cloud.includes("projectConflict.hidden = false") && cloud.includes("projectConflict.hidden = true"), "Cloud project conflict recovery panel must be shown and cleared deliberately.");
+
+assert.ok(worker.includes('url.pathname === "/api/generations"') && worker.includes("WHERE user_id = ? ORDER BY created_at DESC, id DESC LIMIT ?"), "Generation history must be limited and scoped to the authenticated owner.");
+assert.ok(worker.includes("const requestedLimit = Number(url.searchParams.get(\"limit\") || 20)") && worker.includes("Math.min(50, Math.max(1, requestedLimit))"), "Generation history pagination size must be bounded.");
+assert.ok(html.includes("/api/generations?limit=20") && html.includes("refreshGenerationHistory"), "The Studio UI must load persistent generation history from the authenticated account.");
+assert.ok(html.includes("generation-history-item") && html.includes("História generovaní"), "The Studio UI must render saved generation history.");
