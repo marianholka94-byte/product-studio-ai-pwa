@@ -300,7 +300,10 @@
       const target=button.dataset.screen;
       document.querySelectorAll('.app-screen').forEach(screen=>screen.classList.toggle('active',screen.id===target));
       nav.querySelectorAll('button').forEach(item=>item.classList.toggle('active',item===button));
-      if(target==='screenProjects'){renderProjects().catch(error=>{projectsList.textContent='Knižnicu projektov sa nepodarilo načítať: '+error.message;});renderProducts().catch(error=>{productsList.textContent='Knižnicu produktov sa nepodarilo načítať: '+error.message;});}renderProducts().catch(error=>{productsList.textContent='Knižnicu produktov sa nepodarilo načítať: '+error.message;});
+      if(target==='screenProjects'){
+        renderProjects().catch(error=>{projectsList.textContent='Knižnicu projektov sa nepodarilo načítať: '+error.message;});
+        renderProducts().catch(error=>{productsList.textContent='Knižnicu produktov sa nepodarilo načítať: '+error.message;});
+      }
       window.scrollTo({top:0,behavior:'smooth'});
     });
   });
@@ -314,8 +317,13 @@
     projectDbPromise=new Promise((resolve,reject)=>{
       const request=indexedDB.open(projectDbName,2);
       request.onupgradeneeded=()=>{const db=request.result;if(!db.objectStoreNames.contains(projectStoreName)){const store=db.createObjectStore(projectStoreName,{keyPath:'id'});store.createIndex('updatedAt','updatedAt');}if(!db.objectStoreNames.contains('products')){const products=db.createObjectStore('products',{keyPath:'id'});products.createIndex('updatedAt','updatedAt');}};
-      request.onsuccess=()=>resolve(request.result);
-      request.onerror=()=>reject(request.error||new Error('Databázu projektov sa nepodarilo otvoriť.'));
+      request.onsuccess=()=>{
+        const db=request.result;
+        db.onversionchange=()=>{db.close();projectDbPromise=null;};
+        resolve(db);
+      };
+      request.onerror=()=>{projectDbPromise=null;reject(request.error||new Error('Databázu projektov sa nepodarilo otvoriť.'));};
+      request.onblocked=()=>{projectDbPromise=null;reject(new Error('Databázu projektov blokuje iná otvorená verzia aplikácie. Zavri ostatné okná aplikácie a skús to znova.'));};
     });return projectDbPromise;
   };
   const projectRequest=(mode,operation)=>openProjectDb().then(db=>new Promise((resolve,reject)=>{
