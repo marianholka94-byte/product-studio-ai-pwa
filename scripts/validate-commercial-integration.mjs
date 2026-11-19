@@ -187,7 +187,7 @@ assert.ok(nav.includes("latest.cloudSyncByAccount={...(latest.cloudSyncByAccount
 assert.ok(nav.includes("[result.accountId]:result"), "Completed cloud saves must remain associated with the account that owns them.");
 assert.ok(nav.includes("psai-cloud-account-change"), "Switching cloud accounts must refresh local project cloud-status labels.");
 assert.ok(html.includes("cloud-library.js?v=personal-workspace-20261119g") && html.includes("app-navigation.js?v=personal-workspace-20261119g"), "PWA HTML must request the account-scoped cloud-sync asset versions.");
-assert.ok(serviceWorker.includes("product-studio-ai-v52-personal-workspace-20261119"), "PWA service worker cache must be versioned for the account-scoped cloud-sync release.");
+assert.ok(serviceWorker.includes("product-studio-ai-v53-credit-wallet-20261119"), "PWA service worker cache must be versioned for the account-scoped cloud-sync release.");
 assert.ok(serviceWorker.includes("/cloud-library.js?v=personal-workspace-20261119g") && serviceWorker.includes("/app-navigation.js?v=personal-workspace-20261119g"), "Offline precache must include the exact project-conflict-recovery asset URLs.");
 assert.ok(serviceWorker.includes('url.pathname.startsWith("/api/")') && !serviceWorker.includes("cache.put(event.request"), "The PWA service worker must never cache authenticated API responses.");
 assert.ok(serviceWorker.includes('request.mode === "navigate"') && serviceWorker.includes("cache.put(\"/index.html\""), "The PWA service worker must refresh the app shell and keep an offline navigation fallback.");
@@ -240,7 +240,7 @@ assert.ok(androidWrapper.includes("networkErrorView.setVisibility(View.VISIBLE)"
 assert.ok(androidWrapper.includes("params.getAcceptTypes()") && androidWrapper.includes("params.getMode() == WebChromeClient.FileChooserParams.MODE_OPEN_MULTIPLE") && androidWrapper.includes("Intent.ACTION_OPEN_DOCUMENT"), "Android file picker must respect the web input MIME types and multiple-selection mode.");
 assert.ok(html.includes("renderAccountOverview(account,usage,health)") && html.includes("usage.remainingToday"), "The account overview must use server-returned usage values.");
 assert.ok(html.includes('id="historySummary"') && html.includes("Rozpracované") && html.includes("Neúspešné/zrušené"), "The generation history must summarize completed, active, and failed jobs.");
-assert.ok(readFileSync("sw.js", "utf8").includes("product-studio-ai-v52-personal-workspace-20261119"), "The PWA cache must refresh for the account overview UI.");
+assert.ok(readFileSync("sw.js", "utf8").includes("product-studio-ai-v53-credit-wallet-20261119"), "The PWA cache must refresh for the account overview UI.");
 
 const projectCopyStart = cloud.indexOf('saveProjectAsCopy.addEventListener("click"');
 const projectCopyEnd = cloud.indexOf("\n  });", projectCopyStart);
