@@ -1,11 +1,12 @@
 # Cloud ↔ Studio synchronization plan
 
-Status: design only; no synchronization or migration is enabled by this document.
+Status: Phases A and B are implemented in the isolated commercial preview. This plan records the current behavior and the remaining conflict-management work; production remains unchanged.
 
 ## Current source-of-truth boundaries
 
 - The local Studio project library is stored in IndexedDB database `product-studio-ai-projects`, object stores `projects` and `products`. Local records contain browser `Blob` objects for original photographs.
 - The commercial cloud library uses authenticated D1 records (`products`, `projects`, `assets`, `product_images`) and private R2 objects. Its API scopes records to the authenticated account.
+- Local cloud-sync checkpoints are stored in `cloudSyncByAccount`, keyed by the authenticated cloud user ID. Switching accounts never treats another account's cloud copy as already saved. Legacy unscoped checkpoints are adopted only after the current account proves ownership of the remote product and project.
 - The current cloud project payload stores `name`, `productId`, `prompt`, `settings`, and `exportPreset`. The local Studio project contains more individual settings (product, style, scene preset, format, motion, duration, lighting, extra, prompt, images).
 - The existing AI generator uses its own legacy backend session in `localStorage`. Cloud-library auth is separate and uses `sessionStorage`. These sessions must not be conflated.
 - The existing local save/open/duplicate/delete workflow must continue to work offline and must not silently change when cloud sync is introduced.
@@ -36,7 +37,7 @@ Status: design only; no synchronization or migration is enabled by this document
 
 ## Phased implementation
 
-### Phase A — read-only cloud import
+### Phase A — read-only cloud import <complete in preview>
 
 - Add an explicit **Použiť v štúdiu** action to active cloud products.
 - Fetch product image metadata and image bytes using the logged-in cloud token.
@@ -45,7 +46,7 @@ Status: design only; no synchronization or migration is enabled by this document
 - Require confirmation before replacing current editor contents.
 - If a product has no active images, show a clear error and leave the editor untouched.
 
-### Phase B — explicit local-to-cloud save
+### Phase B — explicit local-to-cloud save <complete in preview>
 
 - Add an explicit action to a local product/project card.
 - Create or select the cloud product first; upload images sequentially, preserving order and primary image.
@@ -53,31 +54,37 @@ Status: design only; no synchronization or migration is enabled by this document
 - If a later step fails, report the partial result and provide a retry path; do not delete existing cloud data automatically.
 - Persist the returned cloud IDs locally as optional metadata only after the cloud save succeeds. Existing local fields remain unchanged.
 
-### Phase C — explicit cloud project open/update
+### Phase C — explicit cloud project open/update <partially implemented in preview>
 
-- Load project data and its linked cloud product's private images.
+- [x] Load project data and its linked cloud product's private images.
+- [x] Open as a read-only local Studio working copy; the cloud source remains unchanged.
+- [x] Allow explicit metadata edits through the cloud library UI while preserving settings and export preset.
 - Validate and normalize settings before calling `PSAIProjectBridge.restore`.
-- Open as a new local working copy by default. Updating an existing cloud project must be a separate explicit action.
+- [ ] Add conflict detection and explicit update-versus-save-as-copy decisions before enabling full cloud project editing from Studio.
 - Track `cloudId`, `cloudUpdatedAt`, and a local sync version so stale edits can be detected.
 
-### Phase D — conflict handling and recovery
+### Phase D — conflict handling and recovery <not yet implemented>
 
 - Compare cloud `updatedAt` with the last synced version before updates.
 - If cloud data changed elsewhere, stop and offer reload or save-as-copy; never silently last-write-wins.
 - Keep a retry-safe operation identifier for uploads; avoid duplicate assets on retries.
 - Add a manual disconnect/revoke flow and document what remains in local IndexedDB versus cloud storage.
 
-## Acceptance tests before enabling write sync
+## Acceptance tests for current preview write-sync
 
 - Import a cloud product and verify the editor receives the correct product name and every image in order.
 - Confirm import does not change local IndexedDB records or cloud records.
-- Save a local project to cloud and verify all settings, prompt, product relation, image order, and primary image after refresh.
+- [x] Save a local project to cloud with retry-safe checkpoints, image checksums, and idempotent product/project creation.
+- [x] Keep a separate cloud save state for each customer account; verify a local project saved to account A is still eligible for a separate save to account B.
+- [ ] Run the two-account API acceptance script against two real preview accounts.
 - Interrupt upload halfway and verify the UI reports partial completion without losing the local project.
 - Open the same cloud project in two browser sessions; ensure stale updates are detected rather than overwritten.
-- Verify account B cannot read, update, archive, or download account A's project or media.
-- Verify logout/expired cloud session blocks import and save without affecting the generator's independent session.
+- [x] Automated SQL/static checks cover tenant ownership constraints and authenticated resource lookups.
+- [ ] Run the live cross-account test to verify account B cannot read, update, archive, or download account A's project or media.
+- [x] Automated checks cover logout revocation, expired-session rejection, and separation from the generator's independent session.
+- [ ] Run the live two-account acceptance script to confirm logout revocation against the deployed preview.
 - Verify no AI generation endpoint is called during import/save.
 
-## First implementation target
+## Next implementation target
 
-Implement Phase A only. It is read-only and reversible, demonstrates that cloud product assets can drive the existing Studio editor, and avoids a risky two-way synchronization until the field mapping and conflict strategy have been tested.
+Complete live two-account acceptance and interrupted-save/lost-response verification. After that, implement Phase D conflict detection and explicit save-as-copy/update decisions. Do not enable paid generation or production cutover as part of this preview work.
