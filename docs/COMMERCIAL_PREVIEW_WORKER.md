@@ -22,7 +22,7 @@ Passwords are stored as PBKDF2-SHA256 hashes (310,000 iterations); session beare
 
 ## Database migrations
 
-The preview migration workflow applies pending files in `migrations/` to the preview D1 database only. It requires GitHub repository secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`. Never commit API tokens or passwords.
+The preview migration workflow applies pending files in `migrations/` to the preview D1 database only. It requires GitHub repository secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`. Preview registration is closed by default and requires the Worker secret `PREVIEW_SIGNUP_CODE`; clients must send it as `inviteCode` during registration. Configure a long random value in the preview Worker only. Never commit API tokens, invite codes or passwords.
 
 ## Deployment and safety
 
