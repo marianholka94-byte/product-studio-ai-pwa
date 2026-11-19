@@ -21,9 +21,10 @@ This document tracks readiness work on the isolated commercial preview. It is no
 - [ ] Manual UI check: save the same local project to account A and account B; confirm each account shows only its own cloud-save state and cloud copy.
 - [x] Manual UI tenant-isolation check: the second account showed only its own cloud product and no products/projects from the first account.
 - [x] Repeatable two-account API acceptance script added; checks own-account reads, cross-account product/project/asset denial, and server-side logout revocation without mutating saved records.
+- [x] Preview deployment workflow can run the live two-account acceptance script when `PREVIEW_ACCOUNT_A_EMAIL`, `PREVIEW_ACCOUNT_A_PASSWORD`, `PREVIEW_ACCOUNT_B_EMAIL`, and `PREVIEW_ACCOUNT_B_PASSWORD` are configured as repository secrets; otherwise it explicitly skips the live test.
 - [x] Local project cloud-sync checkpoints are now stored per customer account; legacy unscoped checkpoints are adopted only after the signed-in account proves ownership of the remote product/project.
 - [x] PWA asset cache version and offline precache updated for account-scoped cloud-sync code; no Android package rebuild is required for this web-only preview change.
-- [ ] Direct cross-account API/asset-ID authorization check (attempt first-account resource IDs while authenticated as the second account).
+- [x] Automated direct cross-account API/asset-ID checks added, including attempts to attach another account's product to a new project; live execution remains dependent on the two test-account secrets.
 - [ ] Manual session-expiry and logout test.
 - [x] User-confirmed: after signing out and signing back in, a cloud project opens back into Studio with its saved content and photos.
 
