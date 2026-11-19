@@ -567,6 +567,19 @@
     }
   });
   window.PSAICloudLibrary = {
+    getCurrentUser() {
+      return user ? { id: user.id, email: user.email, displayName: user.displayName || "" } : null;
+    },
+    async request(path, options = {}) {
+      const accountId = user?.id;
+      const requestEpoch = accountEpoch;
+      if (!token || !accountId) throw new Error("Najskôr sa prihlás do svojho zákazníckeho účtu.");
+      const result = await api(path, options);
+      if (!token || accountEpoch !== requestEpoch || user?.id !== accountId) {
+        throw new Error("Zákaznícky účet sa počas požiadavky zmenil. Skús to znova.");
+      }
+      return result;
+    },
     getSyncState(record) {
       if (!user?.id || !record) return null;
       return record.cloudSyncByAccount?.[user.id] || (record.cloudSync?.accountId === user.id ? record.cloudSync : null);
