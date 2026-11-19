@@ -8,6 +8,7 @@ import android.os.Build;
 import android.graphics.Color;
 import android.view.Gravity;
 import android.view.Window;
+import android.view.View;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
