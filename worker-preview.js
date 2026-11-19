@@ -455,14 +455,39 @@ export default {
             const exportPreset = body.exportPreset == null ? null : validText(body.exportPreset, 80);
             const settingsJson = validSettings(body.settings);
             const productId = body.productId == null ? null : validText(body.productId, 80);
-            if (!name || !name.length || prompt === null || exportPreset === null && body.exportPreset != null || settingsJson === null || productId === null) {
+            const operationId = body.idempotencyKey == null ? null : validText(body.idempotencyKey, 80);
+            if (!name || !name.length || prompt === null || exportPreset === null && body.exportPreset != null || settingsJson === null || productId === null || operationId !== null && !/^[a-zA-Z0-9_-]{16,80}$/.test(operationId)) {
               return json({ error: "Skontroluj údaje reklamného projektu." }, 400, origin);
             }
             if (productId && !(await ownedProduct(env, user.id, productId))) return json({ error: "Vybraný produkt sa nenašiel." }, 404, origin);
+            if (operationId) {
+              const prior = await env.DB.prepare(
+                "SELECT id, product_id, name, status, prompt, settings_json, export_preset, created_at, updated_at, archived_at FROM projects WHERE user_id = ? AND client_operation_id = ? LIMIT 1"
+              ).bind(user.id, operationId).first();
+              if (prior) {
+                const samePayload = prior.product_id === productId && prior.name === name && prior.prompt === prompt && prior.settings_json === settingsJson && prior.export_preset === exportPreset;
+                if (!samePayload) return json({ error: "Kľúč operácie už bol použitý pre iný projekt." }, 409, origin);
+                return json({ project: publicProject(prior), replayed: true }, 200, origin);
+              }
+            }
             const id = crypto.randomUUID();
-            await env.DB.prepare(
-              "INSERT INTO projects (id, user_id, product_id, name, prompt, settings_json, export_preset, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
-            ).bind(id, user.id, productId, name, prompt, settingsJson, exportPreset, now, now).run();
+            try {
+              await env.DB.prepare(
+                "INSERT INTO projects (id, user_id, product_id, name, prompt, settings_json, export_preset, client_operation_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+              ).bind(id, user.id, productId, name, prompt, settingsJson, exportPreset, operationId, now, now).run();
+            } catch (error) {
+              if (operationId && /unique|constraint/i.test(String(error))) {
+                const prior = await env.DB.prepare(
+                  "SELECT id, product_id, name, status, prompt, settings_json, export_preset, created_at, updated_at, archived_at FROM projects WHERE user_id = ? AND client_operation_id = ? LIMIT 1"
+                ).bind(user.id, operationId).first();
+                if (prior) {
+                  const samePayload = prior.product_id === productId && prior.name === name && prior.prompt === prompt && prior.settings_json === settingsJson && prior.export_preset === exportPreset;
+                  if (samePayload) return json({ project: publicProject(prior), replayed: true }, 200, origin);
+                  return json({ error: "Kľúč operácie už bol použitý pre iný projekt." }, 409, origin);
+                }
+              }
+              throw error;
+            }
             return json({ project: publicProject({ id, product_id: productId, name, status: "draft", prompt, settings_json: settingsJson, export_preset: exportPreset, created_at: now, updated_at: now, archived_at: null }) }, 201, origin);
           }
           if (projectId && request.method === "GET") {
