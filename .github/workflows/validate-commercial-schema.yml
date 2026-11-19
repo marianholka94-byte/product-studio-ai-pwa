@@ -103,5 +103,14 @@ jobs:
               "INSERT INTO product_images (product_id,asset_id,user_id,is_primary,created_at) VALUES (?,?,?,?,?)",
               ("p1","a3","u1",1,2))
 
+          # Financial and generated-media history must not disappear through
+          # parent deletion. Explicit detach/archive flows belong in the app.
+          must_reject("delete product with retained asset",
+              "DELETE FROM products WHERE id = ?", ("p1",))
+          must_reject("delete project with generation history",
+              "DELETE FROM projects WHERE id = ?", ("pr1",))
+          must_reject("delete generation referenced by credit ledger",
+              "DELETE FROM generations WHERE id = ?", ("g1",))
+
           print(f"Commercial D1 schema valid: {len(expected)} tables; tenant isolation, primary-image and immutable-credit-ledger constraints passed.")
           PY
