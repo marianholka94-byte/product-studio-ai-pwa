@@ -37,6 +37,10 @@ jobs:
         run: node --check scripts/test-preview-tenant-isolation.mjs
       - name: Validate commercial cloud integration contract
         run: node scripts/validate-commercial-integration.mjs
+      - name: Validate credit ledger foundation
+        run: |
+          node --check scripts/validate-credit-ledger.mjs
+          node scripts/validate-credit-ledger.mjs
       - name: Validate tenant isolation and private media access
         run: node scripts/validate-commercial-security.mjs
       - name: Validate preview Worker bundle without deploying
@@ -84,6 +88,7 @@ jobs:
           echo "$response" | grep -q '"rateLimitsTable":true'
           echo "$response" | grep -q '"generationRequestId":true'
           echo "$response" | grep -q '"generationFingerprint":true'
+          echo "$response" | grep -q '"creditSchema":{"accounts":true,"ledger":true,"reservations":true,"appendOnly":true,"enabled":false}'
           echo "$response" | grep -q '"dailyLimit":3'
           unauthenticated_status="$(curl --silent --output /dev/null --write-out '%{http_code}' https://product-studio-ai-commercial-preview.marianholka94.workers.dev/api/products)"
           test "$unauthenticated_status" = "401"
