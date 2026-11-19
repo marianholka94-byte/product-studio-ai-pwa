@@ -32,7 +32,7 @@ This document tracks readiness work on the isolated commercial preview. It is no
 - [x] Manual interrupted cloud save followed by resume; user confirmed that the project saved successfully.
 - [x] Automated live API acceptance: replay product/project creation after a committed response, reject changed payloads with the same idempotency key, and verify no duplicate records.
 - [x] Run live stale-project and stale-product edit acceptance tests against the deployed preview (the script verifies HTTP 409 and unchanged records).
-- [ ] Manual UI check: save the same local project to account A and account B; confirm each account shows only its own cloud-save state and cloud copy.
+- [x] Manual UI check (user-confirmed 2026-11-19): save the same local project to account A and account B; confirm each account has its own cloud copy and account-scoped save state.
 - [x] Manual UI tenant-isolation check: the second account showed only its own cloud product and no products/projects from the first account.
 - [x] Repeatable two-account API acceptance script added; checks own-account reads, cross-account product/project/asset denial, and server-side logout revocation without mutating saved records.
 - [x] Preview deployment workflow can run the live two-account acceptance script when `PREVIEW_ACCOUNT_A_EMAIL`, `PREVIEW_ACCOUNT_A_PASSWORD`, `PREVIEW_ACCOUNT_B_EMAIL`, and `PREVIEW_ACCOUNT_B_PASSWORD` are configured as repository secrets; otherwise it explicitly skips the live test.
