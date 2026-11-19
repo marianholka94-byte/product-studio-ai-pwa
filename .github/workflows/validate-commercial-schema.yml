@@ -1,13 +1,18 @@
 name: Validate commercial D1 schema
 
 on:
+  push:
+    branches:
+      - feature/commercial-foundation-schema
+    paths:
+      - "migrations/**"
+      - ".github/workflows/validate-commercial-schema.yml"
   pull_request:
     branches:
       - feature/social-export-presets-2026-11-18
     paths:
       - "migrations/**"
       - ".github/workflows/validate-commercial-schema.yml"
-  workflow_dispatch:
 
 permissions:
   contents: read
