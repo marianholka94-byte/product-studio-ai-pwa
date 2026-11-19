@@ -9,7 +9,6 @@ permissions:
 jobs:
   apply-preview-schema:
     runs-on: ubuntu-latest
-    environment: preview
     steps:
       - name: Checkout commercial foundation branch
         uses: actions/checkout@v4
