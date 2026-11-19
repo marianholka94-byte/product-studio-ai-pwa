@@ -112,7 +112,7 @@ public class MainActivity extends Activity {
             root.setBackgroundColor(Color.rgb(11, 14, 19));
             root.addView(webView, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
             networkErrorView = new TextView(this);
-            networkErrorView.setText("Nepodarilo sa načítať PRODUCT STUDIO AI\\n\\nSkontroluj internetové pripojenie a ťukni sem pre opakovanie.");
+            networkErrorView.setText("Nepodarilo sa načítať PRODUCT STUDIO AI\n\nSkontroluj internetové pripojenie a ťukni sem pre opakovanie.");
             networkErrorView.setTextColor(Color.WHITE);
             networkErrorView.setTextSize(17);
             networkErrorView.setGravity(Gravity.CENTER);
