@@ -13,6 +13,7 @@ This document tracks readiness work on the isolated commercial preview. It is no
 - [x] Cloud save progress is checkpointed locally between media uploads.
 - [x] Cloud product and project creation use persisted per-account idempotency keys, so retrying after a lost response returns the existing records instead of creating duplicates.
 - [x] Cloud project edits use an atomic `updated_at` precondition; stale edits return HTTP 409 with the current project instead of overwriting newer work.
+- [x] Cloud product edits use an atomic `updated_at` precondition; stale edits return HTTP 409 with the current product and the UI offers reload-latest or retry-with-my-edits.
 - [x] Cloud project editor preserves typed text after a conflict and updates its baseline version before the user retries.
 - [x] Cloud project conflict recovery offers explicit reload-latest, retry-with-my-edits, and idempotent save-as-copy actions.
 - [x] Cloud account changes, logout, and expired sessions clear account-specific editor state so one account's unsaved form data is not shown to another.
