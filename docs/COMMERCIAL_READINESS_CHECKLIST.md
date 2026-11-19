@@ -18,7 +18,8 @@ This document tracks readiness work on the isolated commercial preview. It is no
 - [x] Integration checks cover checksum-verified recovery of partially uploaded images.
 - [x] Manual interrupted cloud save followed by resume; user confirmed that the project saved successfully.
 - [ ] Manual lost project-create response retry test (verify idempotent replay without duplicate records).
-- [ ] Manual tenant-isolation test using two independent preview accounts.
+- [x] Manual UI tenant-isolation check: the second account showed only its own cloud product and no products/projects from the first account.
+- [ ] Direct cross-account API/asset-ID authorization check (attempt first-account resource IDs while authenticated as the second account).
 - [ ] Manual session-expiry and logout test.
 - [x] User-confirmed: after signing out and signing back in, a cloud project opens back into Studio with its saved content and photos.
 
