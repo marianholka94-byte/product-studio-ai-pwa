@@ -92,8 +92,55 @@ function publicUser(row) {
 async function readJson(request) {
   const length = Number(request.headers.get("Content-Length") || 0);
   if (length > 12000) throw new Error("Požiadavka je príliš veľká.");
-  try { return await request.json(); }
+  if (!request.body) throw new Error("Požiadavka neobsahuje platné JSON dáta.");
+  const reader = request.body.getReader();
+  const chunks = [];
+  let total = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > 12000) {
+        await reader.cancel();
+        throw new Error("Požiadavka je príliš veľká.");
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
+  try { return JSON.parse(new TextDecoder().decode(bytes)); }
   catch { throw new Error("Požiadavka neobsahuje platné JSON dáta."); }
+}
+async function authAttemptKey(request, email) {
+  const ip = request.headers.get("CF-Connecting-IP") || "unknown";
+  return sha256(ip + "|" + email);
+}
+async function loginIsBlocked(env, key, now) {
+  const row = await env.DB.prepare(
+    "SELECT blocked_until FROM auth_rate_limits WHERE key_hash = ? LIMIT 1"
+  ).bind(key).first();
+  return Number(row?.blocked_until || 0) > now;
+}
+async function recordLoginFailure(env, key, now) {
+  await env.DB.prepare(
+    `INSERT INTO auth_rate_limits (key_hash, attempts, window_started_at, blocked_until, updated_at)
+     VALUES (?, 1, ?, 0, ?)
+     ON CONFLICT(key_hash) DO UPDATE SET
+       attempts = CASE WHEN auth_rate_limits.window_started_at <= ? THEN 1 ELSE auth_rate_limits.attempts + 1 END,
+       window_started_at = CASE WHEN auth_rate_limits.window_started_at <= ? THEN ? ELSE auth_rate_limits.window_started_at END,
+       blocked_until = CASE
+         WHEN (CASE WHEN auth_rate_limits.window_started_at <= ? THEN 1 ELSE auth_rate_limits.attempts + 1 END) >= 5
+         THEN ? ELSE auth_rate_limits.blocked_until END,
+       updated_at = excluded.updated_at`
+  ).bind(key, now, now, now - 900, now - 900, now, now - 900, now + 900).run();
+}
+async function clearLoginFailures(env, key) {
+  await env.DB.prepare("DELETE FROM auth_rate_limits WHERE key_hash = ?").bind(key).run();
 }
 
 export default {
@@ -156,12 +203,19 @@ export default {
         if (!email || !password || email.length > 254 || password.length > 128) {
           return json({ error: "Skontroluj e-mail a heslo." }, 400, origin);
         }
+        const now = Math.floor(Date.now() / 1000);
+        const attemptKey = await authAttemptKey(request, email);
+        if (await loginIsBlocked(env, attemptKey, now)) {
+          return json({ error: "Príliš veľa neúspešných pokusov. Skús to znova o 15 minút." }, 429, origin);
+        }
         const user = await env.DB.prepare(
           "SELECT id, email, display_name, password_hash, created_at FROM users WHERE email = ? COLLATE NOCASE AND status = 'active' LIMIT 1"
         ).bind(email).first();
         if (!user || !user.password_hash || !(await verifyPassword(password, user.password_hash))) {
+          await recordLoginFailure(env, attemptKey, now);
           return json({ error: "Nesprávny e-mail alebo heslo." }, 401, origin);
         }
+        await clearLoginFailures(env, attemptKey);
         const session = await createSession(env, user.id);
         return json({ user: publicUser(user), ...session }, 200, origin);
       }
