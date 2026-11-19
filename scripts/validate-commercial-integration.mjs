@@ -12,7 +12,7 @@ assert.ok(nav.includes("Nie sú viazané na cloudový účet"), "The local proje
 for (const route of [
   "/api/auth/register", "/api/auth/login", "/api/auth/me", "/api/auth/logout",
   "/api/products", "/api/projects", "/api/assets/", "/api/generate",
-  "/api/generation/usage", "/api/status/", "/api/download/"
+  "/api/generation/usage"
 ]) assert.ok(worker.includes(route), "Missing Worker route: " + route);
 
 for (const method of ["POST", "GET", "PATCH", "DELETE"]) {
@@ -31,6 +31,7 @@ assert.ok(cloud.includes("method: isEditing ? \"PATCH\" : \"POST\""), "Cloud UI 
 assert.ok(cloud.includes('method: "DELETE"'), "Cloud UI must support archive operations");
 assert.ok(worker.includes("ALLOWED_ORIGINS"), "Worker must enforce an origin allowlist");
 assert.ok(worker.includes("user.id"), "Worker must scope library operations to the authenticated account");
+assert.ok(worker.includes("generationStatusMatch") && worker.includes("generationDownloadMatch"), "Generation status and download routes must exist.");
 assert.ok(worker.includes("const user = await currentUser(request, env)") && worker.includes("WHERE id = ? AND user_id = ? LIMIT 1"), "Generation endpoints must resolve identity from D1 sessions and scope task lookups to the owner.");
 assert.ok(worker.includes("client_request_id") && worker.includes("request_fingerprint"), "Generation submissions must persist account-scoped idempotency keys and payload fingerprints.");
 assert.ok(worker.includes("PREVIEW_DAILY_GENERATION_LIMIT = 3") && worker.includes("generation_daily_limit"), "Preview generation must enforce a daily per-account limit, including concurrent requests.");
