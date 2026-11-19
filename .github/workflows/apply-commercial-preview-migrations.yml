@@ -26,7 +26,7 @@ jobs:
         with:
           node-version: 22
       - name: Apply pending D1 migrations to preview only
-        run: npx --yes wrangler@4 d1 migrations apply DB --remote --config wrangler.preview.toml --yes
+        run: npx --yes wrangler@4 d1 migrations apply DB --remote --config wrangler.preview.toml --force
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
