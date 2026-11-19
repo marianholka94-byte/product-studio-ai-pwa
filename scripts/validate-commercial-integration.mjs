@@ -70,3 +70,10 @@ assert.ok(nav.includes("Uložiť do cloudu"), "Local project cards must offer an
 assert.ok(nav.includes("latest.cloudSync=sync"), "Local project must persist cloud save progress for retry");
 assert.ok(nav.includes("resolution:state.resolution||'720p',model:state.model||'seedance2_mini'"), "Local project save must retain model and resolution settings");
 
+
+assert.ok(nav.includes('serializeImageRecord'), "Local IndexedDB must serialize image files into clone-safe bytes");
+assert.ok(nav.includes('source.arrayBuffer()'), "Local image serialization must read bytes instead of persisting File/Blob objects");
+assert.ok(nav.includes('new Blob([bytes]'), "Local project and product reads must reconstruct image Blob objects");
+assert.ok(nav.includes('const putProject=async project=>{const stored=await prepareRecord(project)'), "Project writes must serialize image bytes before opening IndexedDB write transactions");
+assert.ok(nav.includes('const putProduct=async product=>{const stored=await prepareRecord(product)'), "Product writes must serialize image bytes before opening IndexedDB write transactions");
+assert.ok(nav.includes('const hydrateRecord=record=>'), "Existing local records must be hydrated on read for backwards compatibility");
