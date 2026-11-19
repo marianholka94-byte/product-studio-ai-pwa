@@ -37,8 +37,11 @@ async function expectStatus(label, response, expected) {
   assert.equal(response.status, expected, label + " returned HTTP " + response.status + "; expected " + expected + ".");
 }
 
-const [tokenA, tokenB] = await Promise.all(credentials.map(login));
+let tokenA = "";
+let tokenB = "";
 try {
+  tokenA = await login(credentials[0]);
+  tokenB = await login(credentials[1]);
   const [productsAResponse, projectsAResponse, productsBResponse, projectsBResponse] = await Promise.all([
     request("/api/products", { token: tokenA }),
     request("/api/projects", { token: tokenA }),
@@ -84,7 +87,7 @@ try {
   console.log("PASS: two-account tenant isolation, private image authorization, and server-side logout revocation.");
 } finally {
   // Revoke any session left active if an earlier assertion fails. Never print tokens.
-  await Promise.all([tokenA, tokenB].map(token =>
+  await Promise.all([tokenA, tokenB].filter(Boolean).map(token =>
     request("/api/auth/logout", { token, method: "POST" }).catch(() => null)
   ));
 }
