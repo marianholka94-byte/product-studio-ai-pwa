@@ -19,7 +19,7 @@ This document tracks readiness work on the isolated commercial preview. It is no
 - [ ] Manual interruption/retry test with a deliberately interrupted project-create response.
 - [ ] Manual tenant-isolation test using two independent preview accounts.
 - [ ] Manual session-expiry and logout test.
-- [ ] Manual verification of restored prompt, settings, export preset, image count, and image order after a fresh login.
+- [x] User-confirmed: after signing out and signing back in, a cloud project opens back into Studio with its saved content and photos.
 
 ## Security and operations
 
