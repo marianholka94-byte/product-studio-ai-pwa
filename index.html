@@ -394,9 +394,9 @@ async function refreshGenerationHistory(){
   const data=await window.PSAICloudLibrary.request('/api/generations?limit=20');
   if(window.PSAICloudLibrary?.getCurrentUser()?.id!==account.id)return;
   let items=Array.isArray(data.generations)?data.generations:[];
-  // Reconcile already-running provider tasks whenever history is opened/refreshed.
-  // This is status-only: it never creates or retries a paid generation.
-  const activeItems=items.filter(item=>['queued','processing'].includes(item.status));
+  // Reconcile existing active tasks when history opens. This is status-only;
+  // it never creates or retries a paid generation.
+  const activeItems=items.filter(item=>['queued','processing'].includes(item.status)&&item.errorCode!=='provider_submission_unknown');
   if(activeItems.length){
    await Promise.all(activeItems.map(item=>
     window.PSAICloudLibrary.request('/api/status/'+encodeURIComponent(item.id)).catch(()=>null)
@@ -409,19 +409,19 @@ async function refreshGenerationHistory(){
    }catch{}
   }
   const completed=items.filter(item=>item.status==='succeeded').length;
-  const active=items.filter(item=>['queued','processing'].includes(item.status)).length;
+  const active=items.filter(item=>['queued','processing'].includes(item.status)&&item.errorCode!=='provider_submission_unknown').length;
   const failed=items.filter(item=>['failed','cancelled'].includes(item.status)).length;
-  const uncertain=items.filter(item=>item.status==='submission_unknown').length;
+  const uncertain=items.filter(item=>item.errorCode==='provider_submission_unknown').length;
   $('historySummary').textContent=items.length
     ? `Spolu ${items.length} · Hotové ${completed} · Rozpracované ${active} · Neúspešné/zrušené ${failed} · Na overenie ${uncertain}`
     : 'Zatiaľ žiadne generovania · Po prvom videu sa tu zobrazí tvoja história.';
   panel.replaceChildren();
   if(!items.length){panel.textContent='Zatiaľ nemáš žiadne uložené generovania.';return;}
   const list=document.createElement('div');list.className='generation-history-list';
-  const labels={queued:'Čaká',processing:'Spracúva sa',succeeded:'Hotové',failed:'Neúspešné',cancelled:'Zrušené',submission_unknown:'Overenie odoslania'};
+  const labels={queued:'Čaká',processing:'Spracúva sa',succeeded:'Hotové',failed:'Neúspešné',cancelled:'Zrušené'};
   for(const item of items){
    const card=document.createElement('article');card.className='generation-history-item';
-   const heading=document.createElement('strong');heading.textContent=(item.model||'AI video')+' · '+(labels[item.status]||item.status||'Neznámy stav');
+   const heading=document.createElement('strong');heading.textContent=(item.model||'AI video')+' · '+(item.errorCode==='provider_submission_unknown'?'Overenie odoslania':(labels[item.status]||item.status||'Neznámy stav'));
    const details=document.createElement('p');details.className='note';
    const date=item.createdAt?new Date(item.createdAt*1000).toLocaleString('sk-SK'):'Dátum neznámy';
    details.textContent=[date,item.resolution||'',item.aspectRatio||'',item.durationSeconds?item.durationSeconds+' s':''].filter(Boolean).join(' · ');
@@ -437,9 +437,9 @@ async function refreshGenerationHistory(){
     actions.append(resume);
    }
    if(actions.childElementCount)card.append(actions);
-   if(['failed','submission_unknown'].includes(item.status)&&item.errorMessage){
+   if((item.status==='failed'||item.errorCode==='provider_submission_unknown')&&item.errorMessage){
     const error=document.createElement('p');error.className='note';
-    error.textContent=item.status==='submission_unknown'
+    error.textContent=item.errorCode==='provider_submission_unknown'
       ? 'Stav u poskytovateľa nie je potvrdený. Neposielaj požiadavku znova — mohla už byť prijatá a opakovanie by mohlo vytvoriť duplicitné platené video. '+item.errorMessage
       : item.errorMessage;
     card.append(error);
