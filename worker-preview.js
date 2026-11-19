@@ -271,19 +271,30 @@ export default {
         if (password.length < 12 || password.length > 128) {
           return json({ error: "Heslo musí mať 12 až 128 znakov." }, 400, origin);
         }
-        const id = crypto.randomUUID();
-        const now = Math.floor(Date.now() / 1000);
-        const hashed = await passwordHash(password);
+        let registrationStage = "password_hash";
         try {
+          const id = crypto.randomUUID();
+          const now = Math.floor(Date.now() / 1000);
+          const hashed = await passwordHash(password);
+          registrationStage = "insert_user";
           await env.DB.prepare(
             "INSERT INTO users (id, email, display_name, password_hash, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)"
           ).bind(id, email, displayName, hashed, now, now).run();
+          registrationStage = "create_session";
+          const session = await createSession(env, id);
+          return json({ user: { id, email, displayName, createdAt: now }, ...session }, 201, origin);
         } catch (error) {
-          if (/unique|constraint/i.test(String(error))) return json({ error: "Účet s touto e-mailovou adresou už existuje." }, 409, origin);
-          throw error;
+          console.error("Preview registration failed", {
+            stage: registrationStage,
+            name: String(error?.name || "Error"),
+            message: String(error?.message || "Unknown error"),
+            stack: String(error?.stack || "").slice(0, 2000)
+          });
+          if (/unique|constraint/i.test(String(error))) {
+            return json({ error: "Účet s touto e-mailovou adresou už existuje." }, 409, origin);
+          }
+          return json({ error: "Registrácia zlyhala. Diagnostický krok: " + registrationStage + "." }, 500, origin);
         }
-        const session = await createSession(env, id);
-        return json({ user: { id, email, displayName, createdAt: now }, ...session }, 201, origin);
       }
 
       if (request.method === "POST" && url.pathname === "/api/auth/login") {
