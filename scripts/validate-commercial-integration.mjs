@@ -135,3 +135,11 @@ const saveFlow = cloud.match(/async saveLocalProject\(record, onProgress = \(\) 
 assert.ok(saveFlow.indexOf("const manifest = await api(") < saveFlow.indexOf("for (let index = uploaded; index < images.length; index++)"), "Cloud save must read the remote manifest before uploading any retry images.");
 assert.ok(saveFlow.includes("if (!remoteDigests[index] || remoteDigests[index] !== imageDigests[index])"), "Cloud save must refuse to resume when a previously uploaded image cannot be checksum-verified.");
 assert.ok(saveFlow.includes("sync.idempotencyKey = crypto.randomUUID()") && saveFlow.indexOf("await onProgress({ ...sync })") < saveFlow.indexOf("api(\"/api/projects\""), "Project operation key must be persisted before the create request can lose its response.");
+
+assert.ok(cloud.includes("getSyncState(record)"), "Local project cloud status must be resolved for the currently authenticated account.");
+assert.ok(cloud.includes("record.cloudSyncByAccount?.[user.id]"), "Cloud save metadata must be stored and retrieved independently per customer account.");
+assert.ok(cloud.includes("const accountId = user.id"), "Every cloud save operation must be bound to the authenticated account identity.");
+assert.ok(cloud.includes("const remoteProduct = await api(\"/api/products/\" + encodeURIComponent(record.cloudSync.productId))"), "Legacy unscoped cloud saves must be adopted only after verifying product ownership.");
+assert.ok(nav.includes("latest.cloudSyncByAccount={...(latest.cloudSyncByAccount||{}),[sync.accountId]:sync}"), "Cloud save checkpoints must be persisted under their owning account.");
+assert.ok(nav.includes("[result.accountId]:result"), "Completed cloud saves must remain associated with the account that owns them.");
+assert.ok(nav.includes("psai-cloud-account-change"), "Switching cloud accounts must refresh local project cloud-status labels.");
