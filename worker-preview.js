@@ -765,6 +765,7 @@ export default {
         const r2Key = `users/${user.id}/generations/${generation.id}/output.mp4`;
         try {
           await env.MEDIA.put(r2Key, limitedBody, { httpMetadata: { contentType: "video/mp4" } });
+          if (streamedBytes < 1) throw new Error("Poskytovateľ vrátil prázdny video súbor.");
           await env.DB.prepare("INSERT INTO generation_outputs (id, generation_id, user_id, r2_key, content_type, byte_size, created_at) VALUES (?, ?, ?, ?, 'video/mp4', ?, ?) ON CONFLICT(generation_id) DO NOTHING")
             .bind(crypto.randomUUID(), generation.id, user.id, r2Key, streamedBytes, Math.floor(Date.now() / 1000)).run();
         } catch (error) {
