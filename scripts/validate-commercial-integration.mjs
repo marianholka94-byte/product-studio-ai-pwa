@@ -46,6 +46,7 @@ assert.ok(worker.includes("if (!env.RUNWAY_API_KEY)"), "Paid provider requests m
 assert.ok(cloud.includes("async request(path, options = {})") && cloud.includes("getCurrentUser()"), "The generator integration must use the commercial account session without exposing its token.");
 assert.ok(cloud.includes("Hľadať v cloudovej knižnici produktov") && cloud.includes("Hľadať v cloudových reklamných projektoch"), "Cloud product and project libraries must expose accessible search fields.");
 assert.ok(cloud.includes("applyLibraryFilter") && cloud.includes("data-search-text"), "Cloud library search must filter rendered account-scoped records without extra network requests.");
+assert.ok(cloud.includes("cloud-search-empty") && cloud.includes("Nenašli sa žiadne produkty") && cloud.includes("Nenašli sa žiadne projekty"), "Cloud library search must explain when a query has no matching products or projects.");
 
 
 const ownedProduct = worker.match(/async function ownedProduct[\s\S]*?\n}/)?.[0] || "";
