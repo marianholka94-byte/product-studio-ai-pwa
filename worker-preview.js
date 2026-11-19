@@ -11,7 +11,9 @@ const ALLOWED_ORIGINS = new Set([
   "capacitor://localhost",
   "ionic://localhost"
 ]);
-const PASSWORD_ITERATIONS = 310000;
+// Cloudflare Workers currently caps PBKDF2 at 100,000 iterations.
+// This is preview-only authentication; production should use a managed identity provider.
+const PASSWORD_ITERATIONS = 100000;
 const SESSION_SECONDS = 30 * 24 * 60 * 60;
 const encoder = new TextEncoder();
 
