@@ -143,6 +143,38 @@ async function clearLoginFailures(env, key) {
   await env.DB.prepare("DELETE FROM auth_rate_limits WHERE key_hash = ?").bind(key).run();
 }
 
+function validText(value, max, fallback = "") {
+  if (value == null) return fallback;
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed.length <= max ? trimmed : null;
+}
+function validSettings(value) {
+  if (value == null) return "{}";
+  if (typeof value !== "object" || Array.isArray(value)) return null;
+  const encoded = JSON.stringify(value);
+  return encoded.length <= 12000 ? encoded : null;
+}
+async function ownedProduct(env, userId, productId) {
+  return env.DB.prepare(
+    "SELECT id, name, description, created_at, updated_at, archived_at FROM products WHERE id = ? AND user_id = ? LIMIT 1"
+  ).bind(productId, userId).first();
+}
+async function ownedProject(env, userId, projectId) {
+  return env.DB.prepare(
+    "SELECT id, product_id, name, status, prompt, settings_json, export_preset, created_at, updated_at, archived_at FROM projects WHERE id = ? AND user_id = ? LIMIT 1"
+  ).bind(projectId, userId).first();
+}
+function publicProduct(row) {
+  return { id: row.id, name: row.name, description: row.description, createdAt: row.created_at, updatedAt: row.updated_at, archivedAt: row.archived_at };
+}
+function publicProject(row) {
+  let settings = {};
+  try { settings = JSON.parse(row.settings_json || "{}"); } catch {}
+  return { id: row.id, productId: row.product_id, name: row.name, status: row.status, prompt: row.prompt, settings, exportPreset: row.export_preset, createdAt: row.created_at, updatedAt: row.updated_at, archivedAt: row.archived_at };
+}
+
+
 export default {
   async fetch(request, env) {
     const origin = request.headers.get("Origin");
@@ -218,6 +250,117 @@ export default {
         await clearLoginFailures(env, attemptKey);
         const session = await createSession(env, user.id);
         return json({ user: publicUser(user), ...session }, 200, origin);
+      }
+
+      // Every library endpoint is scoped to the authenticated account. Client-supplied user IDs are ignored.
+      if (url.pathname.startsWith("/api/products") || url.pathname.startsWith("/api/projects")) {
+        const user = await currentUser(request, env);
+        if (!user) return json({ error: "Prihlásenie vypršalo. Prihlás sa znova." }, 401, origin);
+        const now = Math.floor(Date.now() / 1000);
+        const productMatch = /^\\/api\\/products(?:\\/([a-zA-Z0-9_-]{1,80}))?$/.exec(url.pathname);
+        const projectMatch = /^\\/api\\/projects(?:\\/([a-zA-Z0-9_-]{1,80}))?$/.exec(url.pathname);
+
+        if (productMatch) {
+          const productId = productMatch[1];
+          if (request.method === "GET" && !productId) {
+            const result = await env.DB.prepare(
+              "SELECT id, name, description, created_at, updated_at, archived_at FROM products WHERE user_id = ? ORDER BY updated_at DESC LIMIT 100"
+            ).bind(user.id).all();
+            return json({ products: (result.results || []).map(publicProduct) }, 200, origin);
+          }
+          if (request.method === "POST" && !productId) {
+            const body = await readJson(request);
+            const name = validText(body.name, 120);
+            const description = validText(body.description, 2000, "");
+            if (!name || !name.length || description === null) return json({ error: "Skontroluj názov a popis produktu." }, 400, origin);
+            const id = crypto.randomUUID();
+            await env.DB.prepare(
+              "INSERT INTO products (id, user_id, name, description, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)"
+            ).bind(id, user.id, name, description, now, now).run();
+            return json({ product: publicProduct({ id, name, description, created_at: now, updated_at: now, archived_at: null }) }, 201, origin);
+          }
+          if (productId && request.method === "GET") {
+            const row = await ownedProduct(env, user.id, productId);
+            return row ? json({ product: publicProduct(row) }, 200, origin) : json({ error: "Produkt sa nenašiel." }, 404, origin);
+          }
+          if (productId && request.method === "PATCH") {
+            const existing = await ownedProduct(env, user.id, productId);
+            if (!existing) return json({ error: "Produkt sa nenašiel." }, 404, origin);
+            const body = await readJson(request);
+            const name = body.name === undefined ? existing.name : validText(body.name, 120);
+            const description = body.description === undefined ? existing.description : validText(body.description, 2000);
+            if (!name || !name.length || description === null) return json({ error: "Skontroluj názov a popis produktu." }, 400, origin);
+            await env.DB.prepare("UPDATE products SET name = ?, description = ?, updated_at = ? WHERE id = ? AND user_id = ?")
+              .bind(name, description, now, productId, user.id).run();
+            const updated = await ownedProduct(env, user.id, productId);
+            return json({ product: publicProduct(updated) }, 200, origin);
+          }
+          if (productId && request.method === "DELETE") {
+            const existing = await ownedProduct(env, user.id, productId);
+            if (!existing) return json({ error: "Produkt sa nenašiel." }, 404, origin);
+            await env.DB.prepare("UPDATE products SET archived_at = ?, updated_at = ? WHERE id = ? AND user_id = ?")
+              .bind(now, now, productId, user.id).run();
+            return json({ ok: true, archivedAt: now }, 200, origin);
+          }
+        }
+
+        if (projectMatch) {
+          const projectId = projectMatch[1];
+          if (request.method === "GET" && !projectId) {
+            const result = await env.DB.prepare(
+              "SELECT id, product_id, name, status, prompt, settings_json, export_preset, created_at, updated_at, archived_at FROM projects WHERE user_id = ? ORDER BY updated_at DESC LIMIT 100"
+            ).bind(user.id).all();
+            return json({ projects: (result.results || []).map(publicProject) }, 200, origin);
+          }
+          if (request.method === "POST" && !projectId) {
+            const body = await readJson(request);
+            const name = validText(body.name, 120);
+            const prompt = validText(body.prompt, 8000, "");
+            const exportPreset = body.exportPreset == null ? null : validText(body.exportPreset, 80);
+            const settingsJson = validSettings(body.settings);
+            const productId = body.productId == null ? null : validText(body.productId, 80);
+            if (!name || !name.length || prompt === null || exportPreset === null && body.exportPreset != null || settingsJson === null || productId === null) {
+              return json({ error: "Skontroluj údaje reklamného projektu." }, 400, origin);
+            }
+            if (productId && !(await ownedProduct(env, user.id, productId))) return json({ error: "Vybraný produkt sa nenašiel." }, 404, origin);
+            const id = crypto.randomUUID();
+            await env.DB.prepare(
+              "INSERT INTO projects (id, user_id, product_id, name, prompt, settings_json, export_preset, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            ).bind(id, user.id, productId, name, prompt, settingsJson, exportPreset, now, now).run();
+            return json({ project: publicProject({ id, product_id: productId, name, status: "draft", prompt, settings_json: settingsJson, export_preset: exportPreset, created_at: now, updated_at: now, archived_at: null }) }, 201, origin);
+          }
+          if (projectId && request.method === "GET") {
+            const row = await ownedProject(env, user.id, projectId);
+            return row ? json({ project: publicProject(row) }, 200, origin) : json({ error: "Projekt sa nenašiel." }, 404, origin);
+          }
+          if (projectId && request.method === "PATCH") {
+            const existing = await ownedProject(env, user.id, projectId);
+            if (!existing) return json({ error: "Projekt sa nenašiel." }, 404, origin);
+            const body = await readJson(request);
+            const name = body.name === undefined ? existing.name : validText(body.name, 120);
+            const prompt = body.prompt === undefined ? existing.prompt : validText(body.prompt, 8000);
+            const exportPreset = body.exportPreset === undefined ? existing.export_preset : (body.exportPreset == null ? null : validText(body.exportPreset, 80));
+            const settingsJson = body.settings === undefined ? existing.settings_json : validSettings(body.settings);
+            const productId = body.productId === undefined ? existing.product_id : (body.productId == null ? null : validText(body.productId, 80));
+            if (!name || !name.length || prompt === null || exportPreset === null && body.exportPreset != null || settingsJson === null || productId === null) {
+              return json({ error: "Skontroluj údaje reklamného projektu." }, 400, origin);
+            }
+            if (productId && !(await ownedProduct(env, user.id, productId))) return json({ error: "Vybraný produkt sa nenašiel." }, 404, origin);
+            await env.DB.prepare(
+              "UPDATE projects SET product_id = ?, name = ?, prompt = ?, settings_json = ?, export_preset = ?, updated_at = ? WHERE id = ? AND user_id = ?"
+            ).bind(productId, name, prompt, settingsJson, exportPreset, now, projectId, user.id).run();
+            const updated = await ownedProject(env, user.id, projectId);
+            return json({ project: publicProject(updated) }, 200, origin);
+          }
+          if (projectId && request.method === "DELETE") {
+            const existing = await ownedProject(env, user.id, projectId);
+            if (!existing) return json({ error: "Projekt sa nenašiel." }, 404, origin);
+            await env.DB.prepare("UPDATE projects SET status = 'archived', archived_at = ?, updated_at = ? WHERE id = ? AND user_id = ?")
+              .bind(now, now, projectId, user.id).run();
+            return json({ ok: true, archivedAt: now }, 200, origin);
+          }
+        }
+        return json({ error: "Nepodporovaná operácia knižnice." }, 405, origin);
       }
 
       if (request.method === "GET" && url.pathname === "/api/auth/me") {
