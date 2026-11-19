@@ -62,7 +62,7 @@ a{color:#174ea6;overflow-wrap:anywhere}
 .credit-wallet-balance strong{display:block;font-size:21px;margin-top:4px}
 .credit-wallet-history{display:grid;gap:7px;margin-top:10px}
 .credit-wallet-entry{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:9px 10px;background:#fff;border:1px solid #e8e8e5;border-radius:9px;font-size:12px}
-.credit-wallet-entry span{color:#555}
+.credit-wallet-entry span{color:#555}.credit-wallet-entry small{display:block;color:#777;margin-top:3px;line-height:1.35}
 .credit-wallet-entry strong{white-space:nowrap}
 .credit-wallet-admin{border-top:1px solid #e3e3df;margin-top:12px;padding-top:10px}
 .credit-wallet-admin button,.credit-wallet-heading button{width:auto;margin:0;padding:8px 11px;font-size:12px}
@@ -250,12 +250,15 @@ function renderCreditWallet(wallet,accountId){
  if(!entries.length){const empty=document.createElement('p');empty.className='credit-wallet-empty';empty.textContent='Zatiaľ nemáš žiadne pohyby na kreditovom účte.';history.append(empty);return;}
  for(const entry of entries){
   const row=document.createElement('div');row.className='credit-wallet-entry';
-  const left=document.createElement('span');
+  const left=document.createElement('div');
+  const title=document.createElement('span');
   const date=new Date(Number(entry.createdAt||0)*1000);
   const dateText=Number.isFinite(date.getTime())?date.toLocaleString('sk-SK',{dateStyle:'short',timeStyle:'short'}):'';
-  left.textContent=(creditTypeLabels[entry.type]||entry.type||'Pohyb')+' · '+dateText;
+  title.textContent=(creditTypeLabels[entry.type]||entry.type||'Pohyb')+' · '+dateText;
+  left.append(title);
+  if(entry.note){const note=document.createElement('small');note.textContent=entry.note;left.append(note);}
   const amount=document.createElement('strong');
-  const sign=['grant','refund','release','adjustment'].includes(entry.type)?'+':'−';
+  const sign=entry.type==='adjustment'?'±':(['grant','refund','release'].includes(entry.type)?'+':'−');
   amount.textContent=sign+formatCreditNumber(entry.units);
   row.append(left,amount);history.append(row);
  }
@@ -283,9 +286,18 @@ $('grantCredits').addEventListener('click',async()=>{
  const account=window.PSAICloudLibrary?.getCurrentUser();if(!account)return;
  const units=Number($('creditGrantUnits').value),note=$('creditGrantNote').value.trim();
  if(!Number.isSafeInteger(units)||units<1||units>100000){$('creditGrantStatus').textContent='Zadaj celé číslo od 1 do 100 000.';return;}
- const button=$('grantCredits');button.disabled=true;$('creditGrantStatus').textContent='Dobíjam…';
+ const button=$('grantCredits'),storageKey='psai_credit_grant_pending_'+account.id;
+ button.disabled=true;$('creditGrantStatus').textContent='Dobíjam…';
  try{
-  await window.PSAICloudLibrary.request('/api/credits/admin-grant',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({units,note,idempotencyKey:crypto.randomUUID()})});
+  let pending=null;
+  try{pending=JSON.parse(sessionStorage.getItem(storageKey)||'null');}catch{}
+  if(pending&&(pending.units!==units||pending.note!==note)){
+   $('creditGrantStatus').textContent='Predchádzajúce dobitie nemá potvrdený výsledok. Zopakuj ho s rovnakým počtom kreditov a poznámkou.';
+   return;
+  }
+  if(!pending){pending={units,note,idempotencyKey:crypto.randomUUID()};sessionStorage.setItem(storageKey,JSON.stringify(pending));}
+  await window.PSAICloudLibrary.request('/api/credits/admin-grant',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(pending)});
+  sessionStorage.removeItem(storageKey);
   $('creditGrantStatus').textContent='Kredity boli pridané.';await refreshCreditWallet(account);
  }catch(error){$('creditGrantStatus').textContent=error.message;}
  finally{button.disabled=false;}
