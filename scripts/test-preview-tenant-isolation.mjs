@@ -64,7 +64,7 @@ try {
     const walletResponse = await request("/api/credits", { token });
     const walletBody = await walletResponse.json().catch(() => ({}));
     assert.equal(walletResponse.status, 200,
-      label + " credit wallet returned HTTP " + walletResponse.status + ": " + String(walletBody.error || "unknown error"));
+      label + " credit wallet returned HTTP " + walletResponse.status + ": " + JSON.stringify(walletBody));
     assert.ok(Number.isSafeInteger(walletBody.available) && walletBody.available >= 0,
       label + " credit wallet must return a non-negative integer balance.");
     assert.ok(Number.isSafeInteger(walletBody.reserved) && walletBody.reserved >= 0,
