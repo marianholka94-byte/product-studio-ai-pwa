@@ -49,6 +49,11 @@ assert.ok(generationDownloadRoute.includes("const maxVideoBytes = 250 * 1024 * 1
 assert.ok(generationDownloadRoute.includes("parsedVideoUrl.protocol !== \"https:\"") && generationDownloadRoute.includes("parsedVideoUrl.username || parsedVideoUrl.password"), "Provider video URLs must be HTTPS and must not embed credentials.");
 assert.ok(generationDownloadRoute.includes('Cache-Control": "private, no-store"') && generationDownloadRoute.includes('X-Content-Type-Options": "nosniff"'), "Private generated video downloads must disable caching and MIME sniffing.");
 assert.ok(worker.includes("delete safeTask.content.video_url"), "Temporary provider video URLs must never be exposed by the status API.");
+assert.ok(worker.includes('url.pathname === "/api/generation-input-video"') && worker.includes('url.pathname === "/api/provider-input/"') === false, "Reference video upload endpoint must be present.");
+assert.ok(worker.includes('role: "reference_video"') && worker.includes('type: "video_url"'), "Combined generation must send reference video content to Seedance.");
+assert.ok(worker.includes("access_expires_at") && worker.includes("cleanupExpiredGenerationInputs"), "Temporary provider access must expire and old source videos must be cleaned up.");
+assert.ok(html.includes('accept="video/mp4,video/quicktime,.mp4,.mov"') && !html.includes('id="sourceVideo" type="file" accept="video/mp4,video/quicktime,video/webm" disabled'), "The UI must enable only supported MP4/MOV source video formats.");
+assert.ok(html.includes("selectedSourceVideoDuration") && html.includes("X-Video-Duration") && html.includes("generation-input-video"), "The UI must validate source video duration and upload it through the authenticated cloud bridge.");
 assert.ok(worker.includes("const user = await currentUser(request, env)") && worker.includes("WHERE id = ? AND user_id = ? LIMIT 1"), "Generation endpoints must resolve identity from D1 sessions and scope task lookups to the owner.");
 assert.ok(worker.includes("client_request_id") && worker.includes("request_fingerprint"), "Generation submissions must persist account-scoped idempotency keys and payload fingerprints.");
 assert.ok(worker.includes("PREVIEW_DAILY_GENERATION_LIMIT = 3") && worker.includes("generation_daily_limit"), "Preview generation must enforce a daily per-account limit, including concurrent requests.");
