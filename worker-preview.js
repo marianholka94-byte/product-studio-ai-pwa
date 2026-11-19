@@ -364,6 +364,72 @@ export default {
       }
 
 
+      // Account-scoped credit wallet and owner-only manual top-ups.
+      if (url.pathname === "/api/credits" && request.method === "GET") {
+        const user = await currentUser(request, env);
+        if (!user) return json({ error: "Prihlásenie vypršalo. Prihlás sa znova." }, 401, origin);
+        const now = Math.floor(Date.now() / 1000);
+        await env.DB.prepare(
+          "INSERT INTO credit_accounts (user_id, available_units, reserved_units, version, created_at, updated_at) VALUES (?, 0, 0, 0, ?, ?) ON CONFLICT(user_id) DO NOTHING"
+        ).bind(user.id, now, now).run();
+        const account = await env.DB.prepare(
+          "SELECT available_units, reserved_units, version FROM credit_accounts WHERE user_id = ? LIMIT 1"
+        ).bind(user.id).first();
+        const ledger = await env.DB.prepare(
+          "SELECT id, entry_type, units, reference_type, note, created_at FROM credit_ledger WHERE user_id = ? ORDER BY created_at DESC, id DESC LIMIT 20"
+        ).bind(user.id).all();
+        return json({
+          available: Number(account?.available_units || 0),
+          reserved: Number(account?.reserved_units || 0),
+          version: Number(account?.version || 0),
+          isAdmin: Boolean(env.PREVIEW_ADMIN_EMAIL && user.email.toLowerCase() === String(env.PREVIEW_ADMIN_EMAIL).trim().toLowerCase()),
+          history: (ledger.results || []).map(row => ({
+            id: row.id, type: row.entry_type, units: Number(row.units),
+            reference: row.reference_type, note: row.note || "", createdAt: row.created_at
+          }))
+        }, 200, origin);
+      }
+
+      if (url.pathname === "/api/credits/admin-grant" && request.method === "POST") {
+        const user = await currentUser(request, env);
+        if (!user) return json({ error: "Prihlásenie vypršalo. Prihlás sa znova." }, 401, origin);
+        const adminEmail = String(env.PREVIEW_ADMIN_EMAIL || "").trim().toLowerCase();
+        if (!adminEmail || user.email.toLowerCase() !== adminEmail) {
+          return json({ error: "Manuálne dobíjanie je povolené iba správcovi aplikácie." }, 403, origin);
+        }
+        const body = await readJson(request, 2000);
+        const units = Number(body.units);
+        const note = validText(body.note, 160, "Manuálne dobitie správcom");
+        const idempotencyKey = String(body.idempotencyKey || "");
+        if (!Number.isSafeInteger(units) || units < 1 || units > 100000 || note === null ||
+            !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(idempotencyKey)) {
+          return json({ error: "Skontroluj počet kreditov a poznámku k dobitiu." }, 400, origin);
+        }
+        const existing = await env.DB.prepare(
+          "SELECT id, units, payload_fingerprint FROM credit_ledger WHERE user_id = ? AND idempotency_key = ? LIMIT 1"
+        ).bind(user.id, idempotencyKey).first();
+        const fingerprint = await sha256(JSON.stringify({ userId: user.id, units, note }));
+        if (existing) {
+          if (Number(existing.units) !== units || existing.payload_fingerprint !== fingerprint) {
+            return json({ error: "Identifikátor dobitia už bol použitý pre inú operáciu." }, 409, origin);
+          }
+          const account = await env.DB.prepare("SELECT available_units, reserved_units FROM credit_accounts WHERE user_id = ?").bind(user.id).first();
+          return json({ ok: true, replayed: true, available: Number(account?.available_units || 0), reserved: Number(account?.reserved_units || 0) }, 200, origin);
+        }
+        const now = Math.floor(Date.now() / 1000);
+        const entryId = crypto.randomUUID();
+        await env.DB.batch([
+          env.DB.prepare(
+            "INSERT INTO credit_accounts (user_id, available_units, reserved_units, version, created_at, updated_at) VALUES (?, ?, 0, 1, ?, ?) ON CONFLICT(user_id) DO UPDATE SET available_units = credit_accounts.available_units + excluded.available_units, version = credit_accounts.version + 1, updated_at = excluded.updated_at"
+          ).bind(user.id, units, now, now),
+          env.DB.prepare(
+            "INSERT INTO credit_ledger (id, user_id, entry_type, units, reference_type, reference_id, idempotency_key, payload_fingerprint, note, created_at) VALUES (?, ?, 'grant', ?, 'admin', ?, ?, ?, ?, ?)"
+          ).bind(entryId, user.id, units, entryId, idempotencyKey, fingerprint, note, now)
+        ]);
+        const account = await env.DB.prepare("SELECT available_units, reserved_units FROM credit_accounts WHERE user_id = ?").bind(user.id).first();
+        return json({ ok: true, replayed: false, available: Number(account?.available_units || 0), reserved: Number(account?.reserved_units || 0), granted: units }, 201, origin);
+      }
+
       // Commercial generation always resolves the owner from the D1 session.
       if (url.pathname === "/api/generate" && request.method === "POST") {
         const user = await currentUser(request, env);
