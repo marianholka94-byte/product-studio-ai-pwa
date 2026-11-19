@@ -229,3 +229,18 @@ assert.ok(projectCopyHandler.includes('clearOperation("project-copy", accountId)
 assert.ok(projectCopyHandler.includes("const accountId = user.id") && projectCopyHandler.includes("const requestEpoch = accountEpoch"), "Conflict save-as-copy must capture the initiating account before asynchronous work.");
 assert.ok(projectCopyHandler.includes("requestEpoch !== accountEpoch || accountId !== user?.id"), "Conflict save-as-copy must stop if the signed-in account changes during the request.");
 assert.ok(projectCopyHandler.includes("saveProjectAsCopy.disabled = true") && projectCopyHandler.includes("saveProjectAsCopy.disabled = false"), "Conflict save-as-copy must prevent overlapping submissions and restore the control for the same account.");
+
+const productUploadStart = cloud.indexOf('uploadButton.addEventListener("click"');
+const productUploadEnd = cloud.indexOf("\\n      });", productUploadStart);
+const productUploadHandler = productUploadStart >= 0 && productUploadEnd > productUploadStart ? cloud.slice(productUploadStart, productUploadEnd) : "";
+assert.ok(productUploadHandler.includes("const accountId = user?.id") && productUploadHandler.includes("const requestEpoch = accountEpoch"), "Cloud image uploads must capture the initiating account.");
+assert.ok(productUploadHandler.includes("requestEpoch !== accountEpoch || accountId !== user?.id"), "Cloud image uploads must stop after an account switch.");
+assert.ok(productUploadHandler.includes("uploadButton.disabled = true") && productUploadHandler.includes("uploadButton.disabled = false"), "Cloud image uploads must prevent duplicate submissions and restore the control only for the same account.");
+
+const studioImportStart = cloud.indexOf('useInStudio.addEventListener("click"');
+const studioImportEnd = cloud.indexOf('const editButton', studioImportStart);
+const studioImportHandler = studioImportStart >= 0 && studioImportEnd > studioImportStart ? cloud.slice(studioImportStart, studioImportEnd) : "";
+assert.ok(studioImportHandler.includes("const accountId = user?.id") && studioImportHandler.includes("const requestEpoch = accountEpoch") && studioImportHandler.includes("const requestToken = token"), "Cloud-to-Studio imports must capture the initiating account and session token.");
+assert.ok(studioImportHandler.includes('Authorization: "Bearer " + requestToken'), "Cloud image downloads must use the session token that initiated the import.");
+assert.ok((studioImportHandler.match(/requestEpoch !== accountEpoch/g) || []).length >= 4, "Cloud-to-Studio imports must recheck account identity after each asynchronous media step.");
+
