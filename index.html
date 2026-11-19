@@ -189,7 +189,7 @@ async function refreshCommercialConnection(){
 }
 async function downloadHistoryGeneration(item,button){
  const account=window.PSAICloudLibrary?.getCurrentUser();
- if(!account)throw new Error('Prihlásenie vypršalo. Prihlás sa znova.');
+ if(!account){setStatus('Prihlásenie vypršalo. Prihlás sa znova.','err');return;}
  button.disabled=true;
  try{
   const blob=await window.PSAICloudLibrary.download('/api/download/'+encodeURIComponent(item.id));
