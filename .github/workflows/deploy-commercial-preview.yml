@@ -108,7 +108,7 @@ jobs:
           test "$asset_status" = "401"
           video_upload_status="$(curl --silent --output /dev/null --write-out '%{http_code}' -X POST -H 'Content-Type: video/mp4' -H 'X-Upload-Id: 00000000-0000-4000-8000-000000000000' -H 'X-Video-Duration: 5' --data-binary 'not-a-real-video' https://product-studio-ai-commercial-preview.marianholka94.workers.dev/api/generation-input-video)"
           test "$video_upload_status" = "401"
-          provider_input_status="$(curl --silent --output /dev/null --write-out '%{http_code}' 'https://product-studio-ai-commercial-preview.marianholka94.workers.dev/api/provider-input/00000000-0000-4000-8000-000000000000?token=invalid')"
+          provider_input_status="$(curl --silent --output /dev/null --write-out '%{http_code}' 'https://product-studio-ai-commercial-preview.marianholka94.workers.dev/api/provider-input/00000000-0000-4000-8000-000000000000.mp4?token=invalid')"
           test "$provider_input_status" = "404"
           blocked_origin_status="$(curl --silent --output /dev/null --write-out '%{http_code}' -H 'Origin: https://untrusted.example' https://product-studio-ai-commercial-preview.marianholka94.workers.dev/api/health)"
           test "$blocked_origin_status" = "403"
