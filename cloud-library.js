@@ -96,7 +96,11 @@
       projectProduct.append($("option", { value: product.id }, product.name));
       const card = $("div", { class: "cloud-item" });
       addText(card, "strong", product.name);
-      addText(card, "small", product.description || "Bez popisu");
+      const description = $("small", {}, product.description || "Bez popisu");
+      description.style.display = "block";
+      description.style.marginTop = "5px";
+      description.style.color = "#aebaca";
+      card.append(description);
       const upload = $("input", { type: "file", accept: "image/jpeg,image/png,image/webp" });
       const uploadButton = $("button", {}, "Nahrať fotografiu");
       const thumbs = $("div");
