@@ -6,6 +6,8 @@ const cloud = readFileSync("cloud-library.js", "utf8");
 const nav = readFileSync("app-navigation.js", "utf8");
 const html = readFileSync("index.html", "utf8");
 
+assert.ok(nav.includes("Nie sú viazané na cloudový účet"), "The local project screen must explain that device-local projects are independent of the signed-in cloud account.");
+
 for (const route of [
   "/api/auth/register", "/api/auth/login", "/api/auth/me", "/api/auth/logout",
   "/api/products", "/api/projects", "/api/assets/"
