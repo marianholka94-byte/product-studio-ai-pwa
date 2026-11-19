@@ -52,3 +52,13 @@ jobs:
           echo "$response" | grep -q '"rateLimitsTable":true'
           unauthenticated_status="$(curl --silent --output /dev/null --write-out '%{http_code}' https://product-studio-ai-commercial-preview.marianholka94.workers.dev/api/products)"
           test "$unauthenticated_status" = "401"
+          projects_status="$(curl --silent --output /dev/null --write-out '%{http_code}' https://product-studio-ai-commercial-preview.marianholka94.workers.dev/api/projects)"
+          test "$projects_status" = "401"
+          identity_status="$(curl --silent --output /dev/null --write-out '%{http_code}' https://product-studio-ai-commercial-preview.marianholka94.workers.dev/api/auth/me)"
+          test "$identity_status" = "401"
+          asset_status="$(curl --silent --output /dev/null --write-out '%{http_code}' https://product-studio-ai-commercial-preview.marianholka94.workers.dev/api/assets/test-asset)"
+          test "$asset_status" = "401"
+          blocked_origin_status="$(curl --silent --output /dev/null --write-out '%{http_code}' -H 'Origin: https://untrusted.example' https://product-studio-ai-commercial-preview.marianholka94.workers.dev/api/health)"
+          test "$blocked_origin_status" = "403"
+          allowed_preflight_status="$(curl --silent --output /dev/null --write-out '%{http_code}' -X OPTIONS -H 'Origin: https://feature-commercial-worker-pr.product-studio-ai-pwa.pages.dev' -H 'Access-Control-Request-Method: GET' https://product-studio-ai-commercial-preview.marianholka94.workers.dev/api/products)"
+          test "$allowed_preflight_status" = "204"
