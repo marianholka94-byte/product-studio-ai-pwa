@@ -227,6 +227,47 @@
       addText(card, "small", (project.status || "draft") + (project.productId ? " · Prepojený produkt" : ""));
       addText(card, "p", project.prompt || "");
       const actions = $("div");
+      const openInStudio = $("button", { class: "secondary" }, "Otvoriť v štúdiu");
+      openInStudio.addEventListener("click", async () => {
+        if (!window.PSAIProjectBridge?.restore) return setStatus("Editor štúdia ešte nie je pripravený. Obnov stránku a skús to znova.", true);
+        const linkedProduct = products.find(item => item.id === project.productId);
+        if (!linkedProduct) return setStatus("Prepojený cloudový produkt sa nenašiel. Projekt zostal nezmenený.", true);
+        if (!confirm("Otvoriť cloudový projekt „" + project.name + "“ v štúdiu? Aktuálne neuložené zmeny v editore sa prepíšu. Cloudový originál zostane nezmenený.")) return;
+        openInStudio.disabled = true;
+        try {
+          const result = await api("/api/products/" + encodeURIComponent(linkedProduct.id) + "/images");
+          const imageRecords = result.images || [];
+          if (!imageRecords.length) throw new Error("Prepojený produkt nemá žiadne aktívne fotografie.");
+          const files = [];
+          for (let index = 0; index < imageRecords.length; index++) {
+            const imageRecord = imageRecords[index];
+            const response = await fetch(API + imageRecord.url, { headers: { Authorization: "Bearer " + token }, cache: "no-store" });
+            if (response.status === 401) {
+              token = ""; sessionStorage.removeItem(TOKEN_KEY); renderAuth();
+              throw new Error("Cloudové prihlásenie vypršalo. Prihlás sa znova a skús import opakovať.");
+            }
+            if (!response.ok) throw new Error("Fotografiu " + (index + 1) + " sa nepodarilo načítať.");
+            const blob = await response.blob();
+            const type = imageRecord.contentType || blob.type || "image/jpeg";
+            if (!["image/jpeg", "image/png", "image/webp"].includes(type)) throw new Error("Cloudový projekt obsahuje nepodporovaný formát fotografie.");
+            files.push({ name: "cloud-" + linkedProduct.id + "-" + (index + 1) + (type === "image/png" ? ".png" : type === "image/webp" ? ".webp" : ".jpg"), type, blob });
+          }
+          const settings = project.settings || {};
+          await window.PSAIProjectBridge.restore({
+            product: linkedProduct.name, style: settings.style || "", scenePreset: settings.scenePreset || "",
+            format: settings.format || "9:16", exportPreset: project.exportPreset || "custom",
+            motion: settings.motion || "", duration: settings.duration || "5",
+            resolution: settings.resolution || "720p", model: settings.model || "seedance2_mini",
+            lighting: settings.lighting || "", extra: settings.extra || "", prompt: project.prompt || "", images: files
+          });
+          document.querySelector('#appBottomNav [data-screen="screenStudio"]')?.click();
+          setStatus("Cloudový projekt „" + project.name + "“ a " + files.length + " fotografií boli načítané do štúdia. Prompt a nastavenia boli obnovené; cloudový originál zostal nezmenený.");
+        } catch (error) {
+          setStatus(error.message || "Cloudový projekt sa nepodarilo načítať do štúdia.", true);
+        } finally {
+          openInStudio.disabled = false;
+        }
+      });
       const editButton = $("button", { class: "secondary" }, "Upraviť");
       const archiveButton = $("button", { class: "secondary" }, "Archivovať");
       editButton.addEventListener("click", () => {
@@ -247,7 +288,7 @@
           await refresh();
         } catch (e) { setStatus(e.message, true); }
       });
-      actions.append(editButton, archiveButton);
+      actions.append(openInStudio, editButton, archiveButton);
       card.append(actions);
       projectList.append(card);
     }
