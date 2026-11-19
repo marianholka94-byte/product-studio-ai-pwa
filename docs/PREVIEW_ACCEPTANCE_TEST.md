@@ -42,7 +42,17 @@ This is a manual acceptance plan for the isolated preview only. It must not be r
 9. Confirm the retry returns/reuses the original project ID and the account still has exactly one matching project. The operation key must remain unchanged across the retry; do not manually create a second local project for this test.
 10. Reuse the same operation key with a changed project payload only in a controlled API test. The Worker must return HTTP 409 and must not mutate the original project.
 
-## D. Session behavior
+## D. Per-account local cloud-save state
+
+1. Create a local Studio project and save it to cloud account A.
+2. Sign out of cloud account A and sign in to cloud account B without deleting the local project.
+3. Confirm the same local project offers **Uložiť do cloudu** for account B rather than showing account A's saved state.
+4. Save the local project to account B.
+5. Switch back to account A and confirm its state still shows **Uložené v cloude**.
+6. Confirm each account contains its own cloud product, images, and project, while the local project remains intact.
+7. If testing a local project saved by an older app version, confirm the old cloud state is adopted only by the account that can read the referenced cloud product and project.
+
+## E. Session behavior
 
 1. Sign in and confirm the cloud library loads.
 2. Use the logout action.
@@ -50,7 +60,7 @@ This is a manual acceptance plan for the isolated preview only. It must not be r
 4. Attempt an authenticated API request using the revoked session; it must return 401.
 5. Confirm an expired session is rejected and the user can sign in again.
 
-## E. Android WebView (later phase)
+## F. Android WebView (later phase)
 
 Only after the stable app hostname and WebView allowlist have been deliberately configured on a dedicated Android integration branch:
 
