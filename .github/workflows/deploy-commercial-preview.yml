@@ -9,6 +9,11 @@ on:
 permissions:
   contents: read
 
+# Serialize preview deployment and D1 migration operations across workflows.
+concurrency:
+  group: commercial-preview-deploy
+  cancel-in-progress: false
+
 jobs:
   deploy-preview:
     runs-on: ubuntu-latest
