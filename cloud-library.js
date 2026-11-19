@@ -108,6 +108,14 @@
       card.hidden = !!needle && !card.dataset.searchText.includes(needle);
       if (!card.hidden) visible += 1;
     }
+    let count = root.querySelector(":scope > .cloud-search-count");
+    if (!count) {
+      count = $("p", { class: "cloud-search-count", "aria-live": "polite" });
+      count.style.cssText = "color:#8995a6;font-size:12px;line-height:1.4;margin:0 0 8px";
+      root.prepend(count);
+    }
+    count.hidden = !needle;
+    count.textContent = needle ? "Nájdené: " + visible + " z " + cards.length : "";
     let emptyState = root.querySelector(":scope > .cloud-search-empty");
     if (!emptyState) {
       emptyState = $("p", { class: "cloud-search-empty", role: "status" });
