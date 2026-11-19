@@ -376,12 +376,24 @@
       let sync = record.cloudSync || null;
       if (sync && sync.fingerprint !== fingerprint) throw new Error("Tento lokálny projekt sa od posledného pokusu zmenil. Pôvodné čiastočné nahrávanie zostáva zachované; najprv ho dokonči alebo vytvor nový lokálny projekt.");
       if (sync?.projectId) return { ...sync, alreadySaved: true };
+      if (!sync) {
+        sync = { fingerprint, productOperationId: crypto.randomUUID(), productId: null, uploadedImages: 0, projectId: null };
+        await onProgress({ ...sync });
+      }
       if (!sync?.productId) {
+        if (!sync.productOperationId) {
+          sync.productOperationId = crypto.randomUUID();
+          await onProgress({ ...sync });
+        }
         const created = await api("/api/products", {
           method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: (record.product || record.name || "Produkt").slice(0, 120), description: "Produkt vytvorený pri ukladaní reklamného projektu." })
+          body: JSON.stringify({
+            name: (record.product || record.name || "Produkt").slice(0, 120),
+            description: "Produkt vytvorený pri ukladaní reklamného projektu.",
+            idempotencyKey: sync.productOperationId
+          })
         });
-        sync = { fingerprint, productId: created.product.id, uploadedImages: 0, projectId: null };
+        sync.productId = created.product.id;
         await onProgress({ ...sync });
       }
       const manifest = await api("/api/products/" + encodeURIComponent(sync.productId) + "/images");
