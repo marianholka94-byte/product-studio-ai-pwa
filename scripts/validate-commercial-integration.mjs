@@ -146,9 +146,9 @@ assert.ok(cloud.includes("const remoteProduct = await accountApi(\"/api/products
 assert.ok(nav.includes("latest.cloudSyncByAccount={...(latest.cloudSyncByAccount||{}),[sync.accountId]:sync}"), "Cloud save checkpoints must be persisted under their owning account.");
 assert.ok(nav.includes("[result.accountId]:result"), "Completed cloud saves must remain associated with the account that owns them.");
 assert.ok(nav.includes("psai-cloud-account-change"), "Switching cloud accounts must refresh local project cloud-status labels.");
-assert.ok(html.includes("cloud-library.js?v=project-conflict-recovery-20261119") && html.includes("app-navigation.js?v=project-conflict-recovery-20261119"), "PWA HTML must request the account-scoped cloud-sync asset versions.");
-assert.ok(serviceWorker.includes("product-studio-ai-v31-project-conflict-recovery-20261119"), "PWA service worker cache must be versioned for the account-scoped cloud-sync release.");
-assert.ok(serviceWorker.includes("/cloud-library.js?v=project-conflict-recovery-20261119") && serviceWorker.includes("/app-navigation.js?v=project-conflict-recovery-20261119"), "Offline precache must include the exact project-conflict-recovery asset URLs.");
+assert.ok(html.includes("cloud-library.js?v=project-conflict-copy-recovery-20261119") && html.includes("app-navigation.js?v=project-conflict-copy-recovery-20261119"), "PWA HTML must request the account-scoped cloud-sync asset versions.");
+assert.ok(serviceWorker.includes("product-studio-ai-v32-project-conflict-copy-recovery-20261119"), "PWA service worker cache must be versioned for the account-scoped cloud-sync release.");
+assert.ok(serviceWorker.includes("/cloud-library.js?v=project-conflict-copy-recovery-20261119") && serviceWorker.includes("/app-navigation.js?v=project-conflict-copy-recovery-20261119"), "Offline precache must include the exact project-conflict-recovery asset URLs.");
 assert.ok(worker.includes("const expectedUpdatedAt = body.expectedUpdatedAt"), "Cloud project edits must accept the version the user originally opened.");
 assert.ok(worker.includes("AND updated_at = ?"), "Cloud project updates must use an atomic version condition to prevent stale overwrites.");
 assert.ok(worker.includes("currentProject: publicProject(current)"), "A stale cloud edit must return the latest project so the user can review and reapply their changes.");
@@ -156,4 +156,6 @@ assert.ok(cloud.includes("payload.expectedUpdatedAt = editingProjectRecord?.upda
 assert.ok(cloud.includes("if (data?.currentProject) error.currentProject = data.currentProject"), "Cloud API client must preserve conflict details for the editor.");
 assert.ok(cloud.includes("Tvoje aktuálne textové zmeny sú zachované"), "Cloud project editor must preserve typed changes after a version conflict.");
 assert.ok(cloud.includes("Načítať najnovšiu verziu") && cloud.includes("Ponechať moje zmeny a uložiť znova"), "Cloud project conflicts must offer explicit reload-latest and keep-my-edits recovery actions.");
+assert.ok(cloud.includes("Uložiť moje zmeny ako nový projekt") && cloud.includes("idempotencyKey: copyOperationId"), "Cloud project conflicts must support an idempotent save-as-copy path.");
+assert.ok(cloud.includes("pendingCopyPayload") && cloud.includes("result.project.id"), "Save-as-copy retries must reuse one request payload and switch the editor to the created copy.");
 assert.ok(cloud.includes("projectConflict.hidden = false") && cloud.includes("projectConflict.hidden = true"), "Cloud project conflict recovery panel must be shown and cleared deliberately.");
