@@ -35,6 +35,7 @@
   let editingProjectId = null;
   let editingProjectRecord = null;
   let accountEpoch = 0;
+  let refreshSequence = 0;
   let authAttempt = 0;
   const previewObjectUrls = new Set();
   const setStatus = (message, error = false) => {
@@ -97,6 +98,7 @@
   workspace.append(accountLine, logout, $("hr"), productName.wrap, productDescription.wrap, addProduct, productConflict, productList, $("hr"), projectName.wrap, $("label", {}, "Prepojiť s produktom"), projectProduct, projectPrompt.wrap, addProject, projectConflict, projectList);
   function resetAccountWorkspace() {
     accountEpoch += 1;
+    refreshSequence += 1;
     for (const url of previewObjectUrls) URL.revokeObjectURL(url);
     previewObjectUrls.clear();
     editingProductId = null;
@@ -122,10 +124,12 @@
   }
   async function operationFor(scope, payload) {
     if (!user?.id) throw new Error("Cloudový účet nie je prihlásený.");
+    const accountId = user.id;
     const bytes = new TextEncoder().encode(JSON.stringify(payload));
     const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", bytes));
+    if (user?.id !== accountId) throw new Error("Cloudový účet sa počas prípravy ukladania zmenil. Skús to znova.");
     const fingerprint = Array.from(digest, byte => byte.toString(16).padStart(2, "0")).join("");
-    const storageKey = "psai_pending_" + scope + "_" + user.id;
+    const storageKey = "psai_pending_" + scope + "_" + accountId;
     let saved = null;
     try { saved = JSON.parse(sessionStorage.getItem(storageKey) || "null"); } catch {}
     if (saved?.fingerprint === fingerprint && /^[a-zA-Z0-9_-]{16,80}$/.test(saved.key || "")) return saved.key;
@@ -162,11 +166,15 @@
   async function refresh() {
     const refreshEpoch = accountEpoch;
     const refreshUserId = user?.id;
+    const refreshId = ++refreshSequence;
+    const isCurrentRefresh = () => refreshEpoch === accountEpoch && refreshUserId === user?.id && refreshId === refreshSequence;
     if (!token || !refreshUserId) return;
     const [p, pr] = await Promise.all([api("/api/products"), api("/api/projects")]);
-    if (refreshEpoch !== accountEpoch || refreshUserId !== user?.id) return;
+    if (!isCurrentRefresh()) return;
     products = p.products || [];
     productList.replaceChildren();
+    for (const url of previewObjectUrls) URL.revokeObjectURL(url);
+    previewObjectUrls.clear();
     projectProduct.replaceChildren($("option", { value: "" }, "Bez prepojeného produktu"));
     const archivedProducts = products.filter(x => !!x.archivedAt);
     const activeProducts = products.filter(x => !x.archivedAt);
@@ -264,17 +272,17 @@
       card.append(upload, uploadButton, thumbs, actions);
       productList.append(card);
       try {
-        if (refreshEpoch !== accountEpoch || refreshUserId !== user?.id) return;
+        if (!isCurrentRefresh()) return
         const images = await api("/api/products/" + encodeURIComponent(product.id) + "/images");
-        if (refreshEpoch !== accountEpoch || refreshUserId !== user?.id) return;
+        if (!isCurrentRefresh()) return
         for (const image of images.images || []) {
-          if (refreshEpoch !== accountEpoch || refreshUserId !== user?.id) return;
+          if (!isCurrentRefresh()) return
           const response = await fetch(API + image.url, { headers: { Authorization: "Bearer " + token }, cache: "no-store" });
-          if (refreshEpoch !== accountEpoch || refreshUserId !== user?.id) return;
+          if (!isCurrentRefresh()) return
           if (response.ok) {
             const img = $("img", { class: "cloud-thumb" });
             const objectUrl = URL.createObjectURL(await response.blob());
-            if (refreshEpoch !== accountEpoch || refreshUserId !== user?.id) { URL.revokeObjectURL(objectUrl); return; }
+            if (!isCurrentRefresh()) { URL.revokeObjectURL(objectUrl); return; }
             previewObjectUrls.add(objectUrl);
             img.src = objectUrl;
             img.alt = "Fotografia produktu";
@@ -306,7 +314,7 @@
       }
       productList.append(archive);
     }
-    if (refreshEpoch !== accountEpoch || refreshUserId !== user?.id) return;
+    if (!isCurrentRefresh()) return
     projectList.replaceChildren();
     for (const project of (pr.projects || []).filter(x => !x.archivedAt)) {
       const card = $("div", { class: "cloud-item" });
@@ -565,6 +573,8 @@
     },
     async saveLocalProject(record, onProgress = () => {}) {
       if (!token || !user?.id) throw new Error("Najskôr sa prihlás do cloudovej knižnice.");
+      const accountId = user.id;
+      const startEpoch = accountEpoch;
       if (!record || !record.id || !Array.isArray(record.images) || !record.images.length) throw new Error("Projekt musí obsahovať aspoň jednu fotografiu.");
       if (record.images.length > 5) throw new Error("Cloudový produkt môže obsahovať najviac 5 fotografií.");
       const images = record.images.map((item, index) => {
@@ -588,13 +598,13 @@
       const fingerprint = JSON.stringify({
         name: record.name || record.product || "Nový produkt", product: record.product || "",
         prompt: record.prompt || "", settings, exportPreset: record.exportPreset || null,
-        images: images.map((x, index) => ({ name: x.name, type: x.type, size: x.blob.size, sha256: imageDigests[index] }))
+        images: images.map((x, index) => ({ name: x.name, type: x.type, size: x.size, sha256: imageDigests[index] }))
       });
-      const accountId = user.id;
+      if (accountEpoch !== startEpoch || user?.id !== accountId || !token) throw new Error("Cloudový účet sa počas prípravy ukladania zmenil. Ukladanie bolo zastavené.");
       const accountApi = (path, options = {}) => {
-        if (!token || user?.id !== accountId) return Promise.reject(new Error("Cloudový účet sa počas ukladania zmenil. Prihlás sa späť do pôvodného účtu a pokračuj v ukladaní."));
+        if (!token || accountEpoch !== startEpoch || user?.id !== accountId) return Promise.reject(new Error("Cloudový účet sa počas ukladania zmenil. Prihlás sa späť do pôvodného účtu a pokračuj v ukladaní."));
         return api(path, options).then(data => {
-          if (!token || user?.id !== accountId) throw new Error("Cloudový účet sa počas ukladania zmenil. Prihlás sa späť do pôvodného účtu a pokračuj v ukladaní.");
+          if (!token || accountEpoch !== startEpoch || user?.id !== accountId) throw new Error("Cloudový účet sa počas ukladania zmenil. Prihlás sa späť do pôvodného účtu a pokračuj v ukladaní.");
           return data;
         });
       };
