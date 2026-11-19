@@ -353,7 +353,7 @@
         })
       });
       sync.projectId = createdProject.project.id;
-      onProgress({ ...sync });
+      await onProgress({ ...sync });
       setStatus("Projekt „" + createdProject.project.name + "“ a " + images.length + " fotografií boli uložené do cloudu.");
       await refresh();
       return { ...sync, alreadySaved: false };
