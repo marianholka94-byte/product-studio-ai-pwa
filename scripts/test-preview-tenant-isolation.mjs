@@ -40,12 +40,79 @@ async function expectStatus(label, response, expected) {
 
 let tokenA = "";
 let tokenB = "";
+let idempotentProductId = "";
+let idempotentProjectId = "";
 try {
   const accountA = await login(credentials[0]);
   tokenA = accountA.token;
   const accountB = await login(credentials[1]);
   tokenB = accountB.token;
   assert.notEqual(accountA.userId, accountB.userId, "The two test logins must resolve to different customer accounts.");
+
+  // A lost create response must be safely replayable with the same account-scoped
+  // idempotency key. A changed payload with that key must fail closed.
+  const productOperationId = "acceptance-product-" + crypto.randomUUID();
+  const productPayload = {
+    name: "Acceptance retry product " + crypto.randomUUID().slice(0, 8),
+    description: "Temporary automated idempotency acceptance record.",
+    idempotencyKey: productOperationId
+  };
+  const firstProductResponse = await request("/api/products", { token: tokenA, method: "POST", body: productPayload });
+  await expectStatus("First idempotent product create", firstProductResponse, 201);
+  const firstProduct = await firstProductResponse.json();
+  idempotentProductId = firstProduct.product?.id || "";
+  assert.ok(idempotentProductId, "First product create must return its durable product ID.");
+
+  const replayProductResponse = await request("/api/products", { token: tokenA, method: "POST", body: productPayload });
+  await expectStatus("Replay idempotent product create", replayProductResponse, 200);
+  const replayProduct = await replayProductResponse.json();
+  assert.equal(replayProduct.product?.id, idempotentProductId, "Retrying a committed product create must return the original product ID.");
+  assert.equal(replayProduct.replayed, true, "Product replay must be explicitly identified.");
+
+  const changedProductResponse = await request("/api/products", {
+    token: tokenA, method: "POST",
+    body: { ...productPayload, name: productPayload.name + " changed" }
+  });
+  await expectStatus("Changed product payload with reused idempotency key", changedProductResponse, 409);
+
+  const projectOperationId = "acceptance-project-" + crypto.randomUUID();
+  const projectPayload = {
+    name: "Acceptance retry project " + crypto.randomUUID().slice(0, 8),
+    productId: null,
+    prompt: "Temporary automated idempotency acceptance record.",
+    settings: {},
+    exportPreset: null,
+    idempotencyKey: projectOperationId
+  };
+  const firstProjectResponse = await request("/api/projects", { token: tokenA, method: "POST", body: projectPayload });
+  await expectStatus("First idempotent project create", firstProjectResponse, 201);
+  const firstProject = await firstProjectResponse.json();
+  idempotentProjectId = firstProject.project?.id || "";
+  assert.ok(idempotentProjectId, "First project create must return its durable project ID.");
+
+  const replayProjectResponse = await request("/api/projects", { token: tokenA, method: "POST", body: projectPayload });
+  await expectStatus("Replay idempotent project create", replayProjectResponse, 200);
+  const replayProject = await replayProjectResponse.json();
+  assert.equal(replayProject.project?.id, idempotentProjectId, "Retrying a committed project create must return the original project ID.");
+  assert.equal(replayProject.replayed, true, "Project replay must be explicitly identified.");
+
+  const changedProjectResponse = await request("/api/projects", {
+    token: tokenA, method: "POST",
+    body: { ...projectPayload, prompt: projectPayload.prompt + " changed" }
+  });
+  await expectStatus("Changed project payload with reused idempotency key", changedProjectResponse, 409);
+
+  const [afterProductReplayResponse, afterProjectReplayResponse] = await Promise.all([
+    request("/api/products", { token: tokenA }),
+    request("/api/projects", { token: tokenA })
+  ]);
+  await expectStatus("Product collection after idempotent replay", afterProductReplayResponse, 200);
+  await expectStatus("Project collection after idempotent replay", afterProjectReplayResponse, 200);
+  const [afterProductReplay, afterProjectReplay] = await Promise.all([
+    afterProductReplayResponse.json(), afterProjectReplayResponse.json()
+  ]);
+  assert.equal(afterProductReplay.products.filter(item => item.id === idempotentProductId).length, 1, "Product retry must not create duplicate records.");
+  assert.equal(afterProjectReplay.projects.filter(item => item.id === idempotentProjectId).length, 1, "Project retry must not create duplicate records.");
   const [historyAResponse, historyBResponse] = await Promise.all([
     request("/api/generations?limit=20", { token: tokenA }),
     request("/api/generations?limit=20", { token: tokenB })
@@ -144,6 +211,12 @@ try {
 
   console.log("PASS: two-account tenant isolation, generation history isolation, private image authorization, and server-side logout revocation.");
 } finally {
+  // Archive temporary idempotency acceptance records even when a later
+  // assertion fails. Never print session tokens or test account details.
+  const cleanupTasks = [];
+  if (idempotentProjectId && tokenA) cleanupTasks.push(request("/api/projects/" + encodeURIComponent(idempotentProjectId), { token: tokenA, method: "DELETE" }).catch(() => null));
+  if (idempotentProductId && tokenA) cleanupTasks.push(request("/api/products/" + encodeURIComponent(idempotentProductId), { token: tokenA, method: "DELETE" }).catch(() => null));
+  await Promise.all(cleanupTasks);
   // Revoke any session left active if an earlier assertion fails. Never print tokens.
   await Promise.all([tokenA, tokenB].filter(Boolean).map(token =>
     request("/api/auth/logout", { token, method: "POST" }).catch(() => null)
