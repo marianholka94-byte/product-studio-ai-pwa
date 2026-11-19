@@ -722,7 +722,6 @@ export default {
       if (generationDownloadMatch && request.method === "GET") {
         const user = await currentUser(request, env);
         if (!user) return json({ error: "Prihlásenie vypršalo. Prihlás sa znova." }, 401, origin);
-        if (!byteplusConfigured(env)) return json({ error: "Seedance API zatiaľ nie je nakonfigurované." }, 503, origin);
         const generation = await env.DB.prepare("SELECT id, provider_task_id, status FROM generations WHERE id = ? AND user_id = ? LIMIT 1")
           .bind(generationDownloadMatch[1], user.id).first();
         if (!generation) return json({ error: "Video sa nenašlo." }, 404, origin);
@@ -740,6 +739,7 @@ export default {
             headers: { ...corsHeaders(origin), "Content-Type": existingOutput.content_type || "video/mp4", "Content-Length": String(storedObject.size), "Content-Disposition": 'attachment; filename="product-studio-ai.mp4"', "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff" }
           });
         }
+        if (!byteplusConfigured(env)) return json({ error: "Video ešte nie je uložené v cloudovej knižnici a poskytovateľ nie je nakonfigurovaný." }, 503, origin);
         if (!generation.provider_task_id) return json({ error: "Video ešte nie je pripravené." }, 409, origin);
         const taskResponse = await fetch(BYTEPLUS_TASKS_URL + "/" + encodeURIComponent(generation.provider_task_id), { headers: byteplusHeaders(env) });
         const task = await taskResponse.json().catch(() => ({}));
