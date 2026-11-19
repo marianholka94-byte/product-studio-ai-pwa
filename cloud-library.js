@@ -102,6 +102,23 @@
     projectList.replaceChildren();
     projectProduct.replaceChildren($("option", { value: "" }, "Bez prepojeného produktu"));
   }
+  async function operationFor(scope, payload) {
+    if (!user?.id) throw new Error("Cloudový účet nie je prihlásený.");
+    const bytes = new TextEncoder().encode(JSON.stringify(payload));
+    const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", bytes));
+    const fingerprint = Array.from(digest, byte => byte.toString(16).padStart(2, "0")).join("");
+    const storageKey = "psai_pending_" + scope + "_" + user.id;
+    let saved = null;
+    try { saved = JSON.parse(sessionStorage.getItem(storageKey) || "null"); } catch {}
+    if (saved?.fingerprint === fingerprint && /^[a-zA-Z0-9_-]{16,80}$/.test(saved.key || "")) return saved.key;
+    const key = crypto.randomUUID();
+    sessionStorage.setItem(storageKey, JSON.stringify({ key, fingerprint }));
+    return key;
+  }
+  function clearOperation(scope, accountId = user?.id) {
+    if (!accountId) return;
+    sessionStorage.removeItem("psai_pending_" + scope + "_" + accountId);
+  }
   async function api(path, options = {}) {
     const headers = { ...(options.headers || {}) };
     if (token) headers.Authorization = "Bearer " + token;
@@ -356,28 +373,41 @@
     token = ""; user = null; sessionStorage.removeItem(TOKEN_KEY); resetAccountWorkspace(); renderAuth(); notifyCloudAccountChange();
   });
   addProduct.addEventListener("click", async () => {
+    if (addProduct.disabled) return;
+    const accountId = user?.id;
+    const isEditing = !!editingProductId;
+    addProduct.disabled = true;
     try {
-      const isEditing = !!editingProductId;
       const path = isEditing ? "/api/products/" + encodeURIComponent(editingProductId) : "/api/products";
-      await api(path, { method: isEditing ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: productName.el.value.trim(), description: productDescription.el.value }) });
+      const payload = { name: productName.el.value.trim(), description: productDescription.el.value };
+      if (!isEditing) payload.idempotencyKey = await operationFor("product-create", { name: payload.name, description: payload.description });
+      await api(path, { method: isEditing ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      if (!isEditing) clearOperation("product-create", accountId);
       editingProductId = null;
       productName.el.value = ""; productDescription.el.value = "";
       addProduct.textContent = "＋ Vytvoriť produkt";
       setStatus(isEditing ? "Produkt bol upravený." : "Produkt bol uložený v cloudovej knižnici.");
       await refresh();
     } catch (e) { setStatus(e.message, true); }
+    finally { addProduct.disabled = false; }
   });
   addProject.addEventListener("click", async () => {
+    if (addProject.disabled) return;
+    const accountId = user?.id;
+    const isEditing = !!editingProjectId;
+    addProject.disabled = true;
     try {
-      const isEditing = !!editingProjectId;
       const path = isEditing ? "/api/projects/" + encodeURIComponent(editingProjectId) : "/api/projects";
       const payload = { name: projectName.el.value.trim(), prompt: projectPrompt.el.value, productId: projectProduct.value || null };
       if (isEditing) {
         payload.settings = editingProjectRecord?.settings || {};
         payload.exportPreset = editingProjectRecord?.exportPreset ?? null;
         payload.expectedUpdatedAt = editingProjectRecord?.updatedAt;
+      } else {
+        payload.idempotencyKey = await operationFor("project-create", payload);
       }
       await api(path, { method: isEditing ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      if (!isEditing) clearOperation("project-create", accountId);
       editingProjectId = null;
       editingProjectRecord = null;
       conflictLatestProject = null;
@@ -398,7 +428,7 @@
       } else {
         setStatus(e.message, true);
       }
-    }
+    } finally { addProject.disabled = false; }
   });
   reloadLatestProject.addEventListener("click", () => {
     if (!conflictLatestProject || !editingProjectId) return;
