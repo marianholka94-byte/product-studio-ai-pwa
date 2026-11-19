@@ -598,7 +598,7 @@
       const fingerprint = JSON.stringify({
         name: record.name || record.product || "Nový produkt", product: record.product || "",
         prompt: record.prompt || "", settings, exportPreset: record.exportPreset || null,
-        images: images.map((x, index) => ({ name: x.name, type: x.type, size: x.size, sha256: imageDigests[index] }))
+        images: images.map((x, index) => ({ name: x.name, type: x.type, size: x.blob.size, sha256: imageDigests[index] }))
       });
       if (accountEpoch !== startEpoch || user?.id !== accountId || !token) throw new Error("Cloudový účet sa počas prípravy ukladania zmenil. Ukladanie bolo zastavené.");
       const accountApi = (path, options = {}) => {
