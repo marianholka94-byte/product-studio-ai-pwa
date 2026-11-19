@@ -291,7 +291,7 @@ export default {
           storage: { d1: db?.ok === 1, r2: Array.isArray(objects?.objects) },
           authSchema,
           creditSchema,
-          adminGrantConfigured: Boolean(String(env.PREVIEW_ADMIN_EMAIL || "").trim()),
+          adminGrantConfigured: Boolean(String(env.APP_OWNER_EMAIL || "").trim()),
           generation: { configured: Boolean(env.RUNWAY_API_KEY), dailyLimit: PREVIEW_DAILY_GENERATION_LIMIT }
         }, 200, origin);
       }
@@ -383,7 +383,7 @@ export default {
           available: Number(account?.available_units || 0),
           reserved: Number(account?.reserved_units || 0),
           version: Number(account?.version || 0),
-          isAdmin: Boolean(env.PREVIEW_ADMIN_EMAIL && user.email.toLowerCase() === String(env.PREVIEW_ADMIN_EMAIL).trim().toLowerCase()),
+          isAdmin: Boolean(env.APP_OWNER_EMAIL && user.email.toLowerCase() === String(env.APP_OWNER_EMAIL).trim().toLowerCase()),
           history: (ledger.results || []).map(row => ({
             id: row.id, type: row.entry_type, units: Number(row.units),
             reference: row.reference_type, note: row.note || "", createdAt: row.created_at
@@ -394,7 +394,7 @@ export default {
       if (url.pathname === "/api/credits/admin-grant" && request.method === "POST") {
         const user = await currentUser(request, env);
         if (!user) return json({ error: "Prihlásenie vypršalo. Prihlás sa znova." }, 401, origin);
-        const adminEmail = String(env.PREVIEW_ADMIN_EMAIL || "").trim().toLowerCase();
+        const adminEmail = String(env.APP_OWNER_EMAIL || "").trim().toLowerCase();
         if (!adminEmail || user.email.toLowerCase() !== adminEmail) {
           return json({ error: "Manuálne dobíjanie je povolené iba správcovi aplikácie." }, 403, origin);
         }
