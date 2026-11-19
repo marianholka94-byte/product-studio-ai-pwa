@@ -22,7 +22,7 @@ function corsHeaders(origin) {
   return {
     "Access-Control-Allow-Origin": allowed,
     "Access-Control-Allow-Methods": "GET,POST,PATCH,DELETE,OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type,Authorization",
+    "Access-Control-Allow-Headers": "Content-Type,Authorization,X-Upload-Id,X-Video-Duration",
     "Access-Control-Max-Age": "86400",
     "Cache-Control": "no-store",
     "Vary": "Origin"
@@ -310,7 +310,7 @@ export default {
     if (!env.DB || !env.MEDIA) return json({ ok: false, error: "Preview storage bindings are missing." }, 503, origin);
 
     try {
-      const providerInputMatch = /^\\/api\\/provider-input\\/([0-9a-f-]{36})$/i.exec(url.pathname);
+      const providerInputMatch = /^\/api\/provider-input\/([0-9a-f-]{36})$/i.exec(url.pathname);
       if (providerInputMatch && request.method === "GET") {
         const token = url.searchParams.get("token") || "";
         if (!/^[A-Za-z0-9_-]{40,60}$/.test(token)) return new Response("Not found", { status: 404, headers: { "Cache-Control": "no-store" } });
