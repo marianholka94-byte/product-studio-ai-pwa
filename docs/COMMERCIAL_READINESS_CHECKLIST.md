@@ -25,6 +25,7 @@ This document tracks readiness work on the isolated commercial preview. It is no
 - [x] Unauthenticated API requests are checked by the deployment smoke test.
 - [x] Untrusted browser origins are rejected by the deployment smoke test.
 - [ ] Independent review of production authentication design and password policy.
+- [ ] Replace the generation Worker shared-password session boundary with verified per-customer commercial account identity before paid generation is enabled.
 - [ ] Review account recovery, email verification, abuse controls, privacy notice, and data deletion workflow.
 - [ ] Define operational logging, alerting, backup, and incident response.
 - [ ] Review retention and cleanup for archived records and orphaned R2 objects.
@@ -33,6 +34,7 @@ This document tracks readiness work on the isolated commercial preview. It is no
 
 - [ ] Define free and paid plan limits, credit pricing, and generation cost assumptions.
 - [ ] Implement server-authoritative credit reservation, settlement, and refund flows.
+- [ ] Add generation-job idempotency and provider timeout reconciliation before enabling customer charges.
 - [ ] Select payment provider and implement verified webhook processing.
 - [ ] Add customer-facing billing, invoices, cancellation, and subscription management.
 - [ ] Complete legal, VAT, consumer-rights, and privacy review for launch markets.
