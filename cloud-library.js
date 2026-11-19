@@ -115,6 +115,51 @@
         } catch (e) { setStatus(e.message, true); }
       });
       const actions = $("div");
+      const useInStudio = $("button", { class: "secondary" }, "Použiť v štúdiu");
+      useInStudio.addEventListener("click", async () => {
+        if (!window.PSAIProjectBridge?.restore) {
+          setStatus("Editor štúdia ešte nie je pripravený. Obnov stránku a skús to znova.", true);
+          return;
+        }
+        if (!confirm("Načítať produkt „" + product.name + "“ do štúdia? Aktuálne neuložené zmeny v editore sa prepíšu.")) return;
+        useInStudio.disabled = true;
+        try {
+          const result = await api("/api/products/" + encodeURIComponent(product.id) + "/images");
+          const imageRecords = result.images || [];
+          if (!imageRecords.length) throw new Error("Tento cloudový produkt nemá žiadne aktívne fotografie.");
+          const files = [];
+          for (let index = 0; index < imageRecords.length; index++) {
+            const imageRecord = imageRecords[index];
+            const response = await fetch(API + imageRecord.url, {
+              headers: { Authorization: "Bearer " + token },
+              cache: "no-store"
+            });
+            if (response.status === 401) {
+              token = "";
+              sessionStorage.removeItem(TOKEN_KEY);
+              renderAuth();
+              throw new Error("Cloudové prihlásenie vypršalo. Prihlás sa znova a skús import opakovať.");
+            }
+            if (!response.ok) throw new Error("Fotografiu " + (index + 1) + " sa nepodarilo bezpečne načítať.");
+            const blob = await response.blob();
+            const type = imageRecord.contentType || blob.type || "image/jpeg";
+            if (!["image/jpeg", "image/png", "image/webp"].includes(type)) throw new Error("Cloudová knižnica vrátila nepodporovaný formát fotografie.");
+            files.push({
+              name: "cloud-" + product.id + "-" + (index + 1) + (type === "image/png" ? ".png" : type === "image/webp" ? ".webp" : ".jpg"),
+              type,
+              blob
+            });
+          }
+          await window.PSAIProjectBridge.restore({ product: product.name, images: files });
+          window.PSAIProjectBridge.setPrompt("");
+          document.querySelector('#appBottomNav [data-screen="screenStudio"]')?.click();
+          setStatus("Produkt „" + product.name + "“ a " + files.length + " fotografií boli načítané do štúdia. Cloudový originál zostal nezmenený.");
+        } catch (error) {
+          setStatus(error.message || "Produkt sa nepodarilo načítať do štúdia.", true);
+        } finally {
+          useInStudio.disabled = false;
+        }
+      });
       const editButton = $("button", { class: "secondary" }, "Upraviť");
       const archiveButton = $("button", { class: "secondary" }, "Archivovať");
       editButton.addEventListener("click", () => {
@@ -134,7 +179,7 @@
           await refresh();
         } catch (e) { setStatus(e.message, true); }
       });
-      actions.append(editButton, archiveButton);
+      actions.append(useInStudio, editButton, archiveButton);
       card.append(upload, uploadButton, thumbs, actions);
       productList.append(card);
       try {
