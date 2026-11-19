@@ -202,6 +202,23 @@ async function downloadHistoryGeneration(item,button){
  }catch(error){setStatus(error.message,'err');}
  finally{button.disabled=false;}
 }
+async function resumeHistoryGeneration(id,button){
+ const account=window.PSAICloudLibrary?.getCurrentUser();
+ if(!account){setStatus('Prihlásenie vypršalo. Prihlás sa znova.','err');return;}
+ button.disabled=true;button.textContent='SLEDUJEM GENEROVANIE…';
+ try{
+  await pollTask(id,'videoWrap','status');
+  if(window.PSAICloudLibrary?.getCurrentUser()?.id!==account.id)return;
+  await Promise.all([refreshGenerationHistory(),refreshCommercialConnection()]);
+ }catch(error){
+  if(window.PSAICloudLibrary?.getCurrentUser()?.id===account.id){
+   setStatus(error.message,'err');
+   await refreshGenerationHistory();
+  }
+ }finally{
+  button.disabled=false;button.textContent='POKRAČOVAŤ V SLEDOVANÍ';
+ }
+}
 async function refreshHistoryGenerationStatus(id,button){
  const account=window.PSAICloudLibrary?.getCurrentUser();
  if(!account)return;
@@ -239,9 +256,9 @@ async function refreshGenerationHistory(){
     download.addEventListener('click',()=>downloadHistoryGeneration(item,download));
     actions.append(download);
    }else if(['queued','processing'].includes(item.status)){
-    const check=document.createElement('button');check.type='button';check.className='secondary';check.textContent='AKTUALIZOVAŤ STAV';
-    check.addEventListener('click',()=>refreshHistoryGenerationStatus(item.id,check));
-    actions.append(check);
+    const resume=document.createElement('button');resume.type='button';resume.className='secondary';resume.textContent='POKRAČOVAŤ V SLEDOVANÍ';
+    resume.addEventListener('click',()=>resumeHistoryGeneration(item.id,resume));
+    actions.append(resume);
    }
    if(actions.childElementCount)card.append(actions);
    if(item.status==='failed'&&item.errorMessage){const error=document.createElement('p');error.className='note';error.textContent=item.errorMessage;card.append(error);}
