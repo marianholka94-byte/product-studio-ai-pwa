@@ -239,6 +239,35 @@ function matchesImageSignature(bytes, contentType) {
 }
 
 
+
+async function reserveGenerationCredits(env, userId, generationId, units, now) {
+  const reservationId = crypto.randomUUID();
+  const idempotencyKey = "generation:" + generationId + ":reserve";
+  const fingerprint = await sha256(JSON.stringify({ userId, generationId, units, action: "reserve" }));
+  await env.DB.prepare("INSERT INTO credit_accounts (user_id, available_units, reserved_units, version, created_at, updated_at) VALUES (?, 0, 0, 0, ?, ?) ON CONFLICT(user_id) DO NOTHING").bind(userId, now, now).run();
+  await env.DB.batch([
+    env.DB.prepare("UPDATE credit_accounts SET available_units = available_units - ?, reserved_units = reserved_units + ?, version = version + 1, updated_at = ? WHERE user_id = ? AND available_units >= ?").bind(units, units, now, userId, units),
+    env.DB.prepare("INSERT INTO generation_credit_reservations (id, user_id, generation_id, reserved_units, captured_units, state, reserve_idempotency_key, reserve_fingerprint, created_at, updated_at) SELECT ?, ?, ?, ?, 0, 'reserved', ?, ?, ?, ? WHERE changes() = 1").bind(reservationId, userId, generationId, units, idempotencyKey, fingerprint, now, now),
+    env.DB.prepare("INSERT INTO credit_ledger (id, user_id, entry_type, units, reference_type, reference_id, idempotency_key, payload_fingerprint, note, created_at) SELECT ?, ?, 'reserve', ?, 'generation', ?, ?, ?, 'Rezervácia kreditov pre generovanie', ? WHERE EXISTS (SELECT 1 FROM generation_credit_reservations WHERE user_id = ? AND generation_id = ? AND state = 'reserved')").bind(crypto.randomUUID(), userId, units, generationId, idempotencyKey, fingerprint, now, userId, generationId)
+  ]);
+  return env.DB.prepare("SELECT id, reserved_units, state FROM generation_credit_reservations WHERE user_id = ? AND generation_id = ? LIMIT 1").bind(userId, generationId).first();
+}
+async function settleGenerationCredits(env, userId, generationId, outcome, now) {
+  if (!["capture", "release"].includes(outcome)) throw new Error("Invalid credit settlement outcome.");
+  const reservation = await env.DB.prepare("SELECT id, reserved_units, state FROM generation_credit_reservations WHERE user_id = ? AND generation_id = ? LIMIT 1").bind(userId, generationId).first();
+  if (!reservation || reservation.state !== "reserved") return false;
+  const units = Number(reservation.reserved_units);
+  const settlementKey = "generation:" + generationId + ":" + outcome;
+  const fingerprint = await sha256(JSON.stringify({ userId, generationId, units, outcome }));
+  await env.DB.batch([
+    env.DB.prepare("UPDATE credit_accounts SET reserved_units = reserved_units - ?, available_units = available_units + ?, version = version + 1, updated_at = ? WHERE user_id = ? AND reserved_units >= ? AND EXISTS (SELECT 1 FROM generation_credit_reservations WHERE user_id = ? AND generation_id = ? AND state = 'reserved')").bind(units, outcome === "release" ? units : 0, now, userId, units, userId, generationId),
+    env.DB.prepare("UPDATE generation_credit_reservations SET state = ?, captured_units = ?, settlement_idempotency_key = ?, settled_at = ?, updated_at = ? WHERE user_id = ? AND generation_id = ? AND state = 'reserved' AND changes() = 1").bind(outcome === "capture" ? "captured" : "released", outcome === "capture" ? units : 0, settlementKey, now, now, userId, generationId),
+    env.DB.prepare("INSERT INTO credit_ledger (id, user_id, entry_type, units, reference_type, reference_id, idempotency_key, payload_fingerprint, note, created_at) SELECT ?, ?, ?, ?, 'generation', ?, ?, ?, ?, ? WHERE changes() = 1").bind(crypto.randomUUID(), userId, outcome, units, generationId, settlementKey, fingerprint, outcome === "capture" ? "Kredity za úspešné generovanie" : "Vrátenie kreditov po neúspešnom generovaní", now)
+  ]);
+  const settled = await env.DB.prepare("SELECT state FROM generation_credit_reservations WHERE user_id = ? AND generation_id = ? LIMIT 1").bind(userId, generationId).first();
+  return settled?.state === (outcome === "capture" ? "captured" : "released");
+}
+
 export default {
   async fetch(request, env) {
     const origin = request.headers.get("Origin");
@@ -274,7 +303,7 @@ export default {
           ledger: creditTableNames.includes("credit_ledger"),
           reservations: creditTableNames.includes("generation_credit_reservations"),
           appendOnly: creditTriggerNames.includes("trg_credit_ledger_no_update") && creditTriggerNames.includes("trg_credit_ledger_no_delete"),
-          enabled: false
+          enabled: true
         };
         const authSchema = {
           usersTable: userColumnNames.length > 0,
