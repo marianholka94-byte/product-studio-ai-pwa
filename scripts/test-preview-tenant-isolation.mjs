@@ -60,17 +60,20 @@ try {
 
   // A lost create response must be safely replayable with the same account-scoped
   // idempotency key. A changed payload with that key must fail closed.
-  const productOperationId = "acceptance-product-" + crypto.randomUUID();
+  const productOperationId = "acceptance-product-fixture-v1";
   const productPayload = {
-    name: "Acceptance retry product " + crypto.randomUUID().slice(0, 8),
+    name: "Acceptance retry product fixture",
     description: "Temporary automated idempotency acceptance record.",
     idempotencyKey: productOperationId
   };
   const firstProductResponse = await request("/api/products", { token: tokenA, method: "POST", body: productPayload });
-  await expectStatus("First idempotent product create", firstProductResponse, 201);
+  assert.ok([200, 201].includes(firstProductResponse.status), "First idempotent product create returned HTTP " + firstProductResponse.status + ".");
   const firstProduct = await firstProductResponse.json();
   idempotentProductId = firstProduct.product?.id || "";
   assert.ok(idempotentProductId, "First product create must return its durable product ID.");
+  if (firstProduct.product?.archivedAt) {
+    await expectStatus("Restore persistent acceptance product fixture", await request("/api/products/" + encodeURIComponent(idempotentProductId) + "/restore", { token: tokenA, method: "POST" }), 200);
+  }
 
   const replayProductResponse = await request("/api/products", { token: tokenA, method: "POST", body: productPayload });
   await expectStatus("Replay idempotent product create", replayProductResponse, 200);
@@ -84,9 +87,9 @@ try {
   });
   await expectStatus("Changed product payload with reused idempotency key", changedProductResponse, 409);
 
-  const projectOperationId = "acceptance-project-" + crypto.randomUUID();
+  const projectOperationId = "acceptance-project-fixture-v1";
   const projectPayload = {
-    name: "Acceptance retry project " + crypto.randomUUID().slice(0, 8),
+    name: "Acceptance retry project fixture",
     productId: null,
     prompt: "Temporary automated idempotency acceptance record.",
     settings: {},
@@ -94,7 +97,7 @@ try {
     idempotencyKey: projectOperationId
   };
   const firstProjectResponse = await request("/api/projects", { token: tokenA, method: "POST", body: projectPayload });
-  await expectStatus("First idempotent project create", firstProjectResponse, 201);
+  assert.ok([200, 201].includes(firstProjectResponse.status), "First idempotent project create returned HTTP " + firstProjectResponse.status + ".");
   const firstProject = await firstProjectResponse.json();
   idempotentProjectId = firstProject.project?.id || "";
   assert.ok(idempotentProjectId, "First project create must return its durable project ID.");
@@ -122,9 +125,14 @@ try {
   ]);
   assert.equal(afterProductReplay.products.filter(item => item.id === idempotentProductId).length, 1, "Product retry must not create duplicate records.");
   assert.equal(afterProjectReplay.projects.filter(item => item.id === idempotentProjectId).length, 1, "Project retry must not create duplicate records.");
-  // Use a deterministic temporary image instead of depending on existing
-  // customer data to contain an uploaded product photo.
-  await expectStatus("Upload temporary acceptance image", await uploadAcceptanceImage(tokenA, idempotentProductId), 201);
+  // Reuse one account-scoped fixture across deployments so the acceptance
+  // test does not create a new permanent R2 object on every run.
+  const fixtureManifestResponse = await request("/api/products/" + encodeURIComponent(idempotentProductId) + "/images", { token: tokenA });
+  await expectStatus("Acceptance product image manifest", fixtureManifestResponse, 200);
+  const fixtureManifest = await fixtureManifestResponse.json();
+  if (!fixtureManifest.images?.length) {
+    await expectStatus("Upload temporary acceptance image", await uploadAcceptanceImage(tokenA, idempotentProductId), 201);
+  }
   const [historyAResponse, historyBResponse] = await Promise.all([
     request("/api/generations?limit=20", { token: tokenA }),
     request("/api/generations?limit=20", { token: tokenB })
