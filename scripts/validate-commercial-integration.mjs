@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 const worker = readFileSync("worker-preview.js", "utf8");
 const cloud = readFileSync("cloud-library.js", "utf8");
+const nav = readFileSync("app-navigation.js", "utf8");
 const html = readFileSync("index.html", "utf8");
 
 for (const route of [
@@ -54,3 +55,17 @@ assert.ok(cloud.includes('"Obnoviť produkt"'), "Cloud library must expose an ex
 assert.ok(cloud.includes('api("/api/products/" + encodeURIComponent(product.id) + "/restore"'), "Restore action must call the owner-scoped API endpoint");
 
 assert.ok(worker.includes("(?:images|restore)"), "Product route matcher must accept the explicit restore sub-route");
+
+assert.ok(cloud.includes("window.PSAICloudLibrary"), "Cloud library must expose the explicit local project save bridge");
+assert.ok(cloud.includes("async saveLocalProject(record, onProgress"), "Cloud save bridge must accept a local project and durable progress callback");
+assert.ok(cloud.includes('api("/api/products", {'), "Cloud save must create an account-scoped product before uploading media");
+assert.ok(cloud.includes('api("/api/products/" + encodeURIComponent(sync.productId) + "/images"'), "Cloud save must upload images through the authenticated product media API");
+assert.ok(cloud.includes("await onProgress({ ...sync })"), "Cloud save must persist every upload checkpoint before continuing");
+assert.ok(cloud.includes('api("/api/projects", {'), "Cloud save must create a cloud project only after product media upload");
+assert.ok(cloud.includes("settings,\n          exportPreset"), "Cloud project save must preserve mapped Studio settings and export preset");
+assert.ok(cloud.includes("if (sync && sync.fingerprint !== fingerprint)"), "Cloud save must stop if the local project changes during a partial upload");
+assert.ok(cloud.includes("uploaded > images.length"), "Cloud save must stop rather than silently duplicating excess media");
+assert.ok(nav.includes("Uložiť do cloudu"), "Local project cards must offer an explicit cloud save action");
+assert.ok(nav.includes("latest.cloudSync=sync"), "Local project must persist cloud save progress for retry");
+assert.ok(nav.includes("resolution:state.resolution||'720p',model:state.model||'seedance2_mini'"), "Local project save must retain model and resolution settings");
+
