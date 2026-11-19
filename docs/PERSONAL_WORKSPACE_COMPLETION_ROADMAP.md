@@ -30,6 +30,9 @@ Status: active working plan for the owner's private day-to-day PRODUCT STUDIO AI
 - [x] Cloud products can be imported into Studio without changing the cloud original.
 - [x] Cloud library is contained inside the Projects screen instead of appearing outside the app's bottom-navigation views.
 - [x] Settings no longer expose the retired legacy shared-password backend; they direct account management to the current cloud-library session.
+- [x] Account overview wording now describes a private cloud workspace and clearly labels the three-per-day preview safety limit; deferred credit billing is not presented as active.
+- [x] Cloud library copy describes the owner's private working space rather than a commercial customer test environment.
+- [x] Android file picker now respects the file input's accepted MIME types and multiple-selection mode instead of always offering every image/video type.
 - [x] Local projects can be explicitly saved to cloud with per-account sync checkpoints and retry-safe creation.
 - [x] Cloud project metadata supports edits, archive/restore, and conflict recovery choices.
 - [x] User-confirmed: the same local project can be saved to two separate accounts, each with its own cloud copy.
