@@ -708,7 +708,7 @@ export default {
           .bind(mapped, mapped === "failed" ? String(task.failure || task.error || "Generovanie zlyhalo.").slice(0,500) : null, ["succeeded","failed","cancelled"].includes(mapped) ? 1 : 0, now, now, generation.id, user.id).run();
         if (mapped === "succeeded") await settleGenerationCredits(env, user.id, generation.id, "capture", now);
         else if (mapped === "failed" || mapped === "cancelled") await settleGenerationCredits(env, user.id, generation.id, "release", now);
-        return json({ ...task, id: generation.id }, 200, origin);
+        return json({ ...task, providerStatus: task.status, status: mapped, id: generation.id }, 200, origin);
       }
 
       const generationDownloadMatch = /^\/api\/download\/([0-9a-f-]{36})$/i.exec(url.pathname);
