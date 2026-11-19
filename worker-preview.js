@@ -522,6 +522,13 @@ export default {
           }
           throw error;
         }
+        const reservation = await reserveGenerationCredits(env, user.id, generationId, estimatedCredits, now);
+        if (!reservation || reservation.state !== "reserved") {
+          await env.DB.prepare("UPDATE generations SET status = 'failed', error_code = 'insufficient_credits', error_message = 'Nedostatok kreditov na toto generovanie.', updated_at = ?, completed_at = ? WHERE id = ? AND user_id = ?")
+            .bind(now, now, generationId, user.id).run();
+          const balance = await env.DB.prepare("SELECT available_units FROM credit_accounts WHERE user_id = ?").bind(user.id).first();
+          return json({ error: "Nemáš dostatok kreditov na toto generovanie.", requiredCredits: estimatedCredits, availableCredits: Number(balance?.available_units || 0) }, 402, origin);
+        }
         const upstream = await fetch("https://api.dev.runwayml.com/v1/image_to_video", {
           method: "POST",
           headers: runwayHeaders(env),
@@ -541,6 +548,7 @@ export default {
           const failedAt = Math.floor(Date.now() / 1000);
           await env.DB.prepare("UPDATE generations SET status = 'failed', error_code = ?, error_message = ?, updated_at = ?, completed_at = ? WHERE id = ? AND user_id = ?")
             .bind("provider_rejected", String(message).slice(0, 500), failedAt, failedAt, generationId, user.id).run();
+          await settleGenerationCredits(env, user.id, generationId, "release", failedAt);
           return json({ error: String(message), providerStatus: upstream.status || 502, generationId }, 502, origin);
         }
         const providerTaskId = String(result.id);
@@ -603,6 +611,8 @@ export default {
         const now = Math.floor(Date.now() / 1000);
         await env.DB.prepare("UPDATE generations SET status = ?, error_message = ?, completed_at = CASE WHEN ? = 1 THEN COALESCE(completed_at, ?) ELSE completed_at END, updated_at = ? WHERE id = ? AND user_id = ? AND status NOT IN ('succeeded','failed','cancelled')")
           .bind(mapped, mapped === "failed" ? String(task.failure || task.error || "Generovanie zlyhalo.").slice(0,500) : null, ["succeeded","failed","cancelled"].includes(mapped) ? 1 : 0, now, now, generation.id, user.id).run();
+        if (mapped === "succeeded") await settleGenerationCredits(env, user.id, generation.id, "capture", now);
+        else if (mapped === "failed" || mapped === "cancelled") await settleGenerationCredits(env, user.id, generation.id, "release", now);
         return json({ ...task, id: generation.id }, 200, origin);
       }
 
@@ -628,6 +638,7 @@ export default {
         const completedAt = Math.floor(Date.now() / 1000);
         await env.DB.prepare("UPDATE generations SET status = 'succeeded', completed_at = COALESCE(completed_at, ?), updated_at = ? WHERE id = ? AND user_id = ?")
           .bind(completedAt, completedAt, generation.id, user.id).run();
+        await settleGenerationCredits(env, user.id, generation.id, "capture", completedAt);
         return new Response(videoResponse.body, {
           status: 200,
           headers: { ...corsHeaders(origin), "Content-Type": videoResponse.headers.get("Content-Type") || "video/mp4", "Content-Disposition": 'attachment; filename="product-studio-ai.mp4"', "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" }
