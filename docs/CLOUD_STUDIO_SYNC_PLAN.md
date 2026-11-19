@@ -60,13 +60,16 @@ Status: Phases A and B are implemented in the isolated commercial preview. This 
 - [x] Open as a read-only local Studio working copy; the cloud source remains unchanged.
 - [x] Allow explicit metadata edits through the cloud library UI while preserving settings and export preset.
 - Validate and normalize settings before calling `PSAIProjectBridge.restore`.
-- [ ] Add conflict detection and explicit update-versus-save-as-copy decisions before enabling full cloud project editing from Studio.
+- [x] Add optimistic concurrency checks for cloud project edits: the editor sends the `updatedAt` version it originally opened, and the Worker applies the update only if that version is still current.
+- [x] Return the current project on HTTP 409 and preserve the user's typed text so the edit can be reviewed and reapplied against the latest version.
+- [ ] Add a dedicated save-as-copy/reload choice for conflicts before enabling full cloud project editing from Studio.
 - Track `cloudId`, `cloudUpdatedAt`, and a local sync version so stale edits can be detected.
 
-### Phase D — conflict handling and recovery <not yet implemented>
+### Phase D — conflict handling and recovery <partially implemented>
 
-- Compare cloud `updatedAt` with the last synced version before updates.
-- If cloud data changed elsewhere, stop and offer reload or save-as-copy; never silently last-write-wins.
+- [x] Compare cloud `updatedAt` before project updates and enforce the comparison atomically in the database update predicate.
+- [x] If cloud data changed elsewhere, reject the stale update with HTTP 409 and return the current version; never silently last-write-wins.
+- [ ] Add an explicit reload-latest or save-as-copy action to the conflict UI.
 - Keep a retry-safe operation identifier for uploads; avoid duplicate assets on retries.
 - Add a manual disconnect/revoke flow and document what remains in local IndexedDB versus cloud storage.
 
@@ -78,7 +81,8 @@ Status: Phases A and B are implemented in the isolated commercial preview. This 
 - [x] Keep a separate cloud save state for each customer account; verify a local project saved to account A is still eligible for a separate save to account B.
 - [ ] Run the two-account API acceptance script against two real preview accounts.
 - Interrupt upload halfway and verify the UI reports partial completion without losing the local project.
-- Open the same cloud project in two browser sessions; ensure stale updates are detected rather than overwritten.
+- [x] Add a live acceptance test that sends a stale project version and verifies HTTP 409 with no change to the saved project.
+- [ ] Open the same cloud project in two browser sessions and manually verify that stale updates are detected rather than overwritten.
 - [x] Automated SQL/static checks cover tenant ownership constraints and authenticated resource lookups.
 - [ ] Run the live cross-account test to verify account B cannot read, update, archive, or download account A's project or media.
 - [x] Automated checks cover logout revocation, expired-session rejection, and separation from the generator's independent session.
@@ -87,4 +91,4 @@ Status: Phases A and B are implemented in the isolated commercial preview. This 
 
 ## Next implementation target
 
-Complete live two-account acceptance and interrupted-save/lost-response verification. After that, implement Phase D conflict detection and explicit save-as-copy/update decisions. Do not enable paid generation or production cutover as part of this preview work.
+Complete live two-account acceptance and interrupted-save/lost-response verification, then add an explicit conflict-resolution choice (reload latest or save as a copy). Do not enable paid generation or production cutover as part of this preview work.
