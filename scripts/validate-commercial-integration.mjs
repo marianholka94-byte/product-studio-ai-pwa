@@ -64,6 +64,7 @@ assert.ok(cloud.includes("await onProgress({ ...sync })"), "Cloud save must pers
 assert.ok(cloud.includes('api("/api/projects", {'), "Cloud save must create a cloud project only after product media upload");
 assert.ok(cloud.includes("settings,\n          exportPreset"), "Cloud project save must preserve mapped Studio settings and export preset");
 assert.ok(cloud.includes("if (sync && sync.fingerprint !== fingerprint)"), "Cloud save must stop if the local project changes during a partial upload");
+assert.ok(cloud.includes('crypto.subtle.digest("SHA-256"'), "Cloud save retry fingerprint must include actual image content hashes");
 assert.ok(cloud.includes("uploaded > images.length"), "Cloud save must stop rather than silently duplicating excess media");
 assert.ok(nav.includes("Uložiť do cloudu"), "Local project cards must offer an explicit cloud save action");
 assert.ok(nav.includes("latest.cloudSync=sync"), "Local project must persist cloud save progress for retry");
