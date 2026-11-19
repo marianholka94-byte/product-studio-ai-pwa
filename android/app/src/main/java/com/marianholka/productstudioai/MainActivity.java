@@ -16,10 +16,12 @@ import android.webkit.WebViewClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceError;
 import android.widget.TextView;
+import android.widget.FrameLayout;
 
 public class MainActivity extends Activity {
     private static final int FILE_CHOOSER_REQUEST = 4107;
     private WebView webView;
+    private TextView networkErrorView;
     private ValueCallback<Uri[]> fileChooserCallback;
 
     @Override public void onCreate(Bundle savedInstanceState) {
@@ -79,6 +81,10 @@ public class MainActivity extends Activity {
             });
             webView.setWebViewClient(new WebViewClient() {
                 @Override
+                public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
+                    if (networkErrorView != null) networkErrorView.setVisibility(View.GONE);
+                }
+                @Override
                 public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                     Uri uri = request.getUrl();
                     String scheme = uri.getScheme();
@@ -96,12 +102,25 @@ public class MainActivity extends Activity {
                 @Override
                 public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
                     super.onReceivedError(view, request, error);
-                    if (request.isForMainFrame()) {
-                        view.loadData("<html><meta name='viewport' content='width=device-width, initial-scale=1'><body style='font-family:sans-serif;padding:24px;background:#0b0e13;color:#f3f5f8'><h2>Nepodarilo sa načítať PRODUCT STUDIO AI</h2><p>Skontroluj internetové pripojenie a skús to znova.</p><button onclick='location.reload()'>Skúsiť znova</button></body></html>", "text/html", "UTF-8");
+                    if (request.isForMainFrame() && networkErrorView != null) {
+                        networkErrorView.setVisibility(View.VISIBLE);
                     }
                 }
             });
-            setContentView(webView);
+            FrameLayout root = new FrameLayout(this);
+            root.setBackgroundColor(Color.rgb(11, 14, 19));
+            root.addView(webView, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
+            networkErrorView = new TextView(this);
+            networkErrorView.setText("Nepodarilo sa načítať PRODUCT STUDIO AI\\n\\nSkontroluj internetové pripojenie a ťukni sem pre opakovanie.");
+            networkErrorView.setTextColor(Color.WHITE);
+            networkErrorView.setTextSize(17);
+            networkErrorView.setGravity(Gravity.CENTER);
+            networkErrorView.setPadding(32, 32, 32, 32);
+            networkErrorView.setBackgroundColor(Color.rgb(11, 14, 19));
+            networkErrorView.setVisibility(View.GONE);
+            networkErrorView.setOnClickListener(v -> webView.reload());
+            root.addView(networkErrorView, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
+            setContentView(root);
             if (savedInstanceState == null || webView.restoreState(savedInstanceState) == null) {
                 webView.loadUrl(BuildConfig.WEB_APP_URL);
             }
