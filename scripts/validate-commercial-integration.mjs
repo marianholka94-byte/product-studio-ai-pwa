@@ -63,6 +63,12 @@ assert.ok(cloud.includes('api("/api/products/" + encodeURIComponent(sync.product
 assert.ok(cloud.includes("await onProgress({ ...sync })"), "Cloud save must persist every upload checkpoint before continuing");
 
 assert.ok(cloud.includes("if (!sync.idempotencyKey)"), "Cloud save must create a stable idempotency key before project creation.");
+
+assert.ok(cloud.includes("productOperationId: crypto.randomUUID()"), "Cloud save must create a stable product idempotency key before creating the product.");
+assert.ok(cloud.includes("idempotencyKey: sync.productOperationId"), "Cloud product creation must send the persisted idempotency key.");
+assert.ok(worker.includes("WHERE user_id = ? AND client_operation_id = ?"), "Cloud product and project retries must look up operation keys within the authenticated account.");
+assert.ok(worker.includes("Kľúč operácie už bol použitý pre iný produkt."), "Reusing a product idempotency key with a different payload must be rejected.");
+
 assert.ok(cloud.includes("idempotencyKey: sync.idempotencyKey"), "Cloud project creation must send the persisted idempotency key.");
 assert.ok(worker.includes("client_operation_id"), "Cloud project creation must persist its idempotency key server-side.");
 assert.ok(worker.includes("WHERE user_id = ? AND client_operation_id = ?"), "Cloud project retries must look up the operation key within the authenticated account.");
