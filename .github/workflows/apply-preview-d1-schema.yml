@@ -2,6 +2,12 @@ name: Apply preview D1 schema
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - feature/commercial-foundation-schema
+    paths:
+      - ".github/workflows/apply-preview-d1-schema.yml"
+      - "migrations/0001_commercial_foundation.sql"
 
 permissions:
   contents: read
