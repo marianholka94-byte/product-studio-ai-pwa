@@ -49,6 +49,7 @@ Status: active working plan for the owner's private day-to-day PRODUCT STUDIO AI
 - [x] PWA Service Worker uses network-first navigation and avoids caching authenticated API responses.
 - [x] Native WebView intentionally skips browser Service Worker registration; the WebView loads the remote web app from the preview host.
 - [x] Android preview WebView saves and restores page state across Activity recreation and follows Activity pause/resume lifecycle callbacks.
+- [x] Main-frame network failures show an in-app retry overlay without replacing the current WebView document or navigation history.
 - [ ] Validate that the preview app always receives the latest deployed web bundle after a refresh/relaunch.
 - [ ] Complete Android file picker, external-link handling, back navigation, connectivity recovery, and session lifecycle tests.
 
