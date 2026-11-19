@@ -49,7 +49,7 @@ assert.ok(html.includes("let generationIntegrationReady=false"));
 assert.ok(html.includes("health.generation?.modelIntegrationReady"));
 assert.ok(html.includes("Cena podľa skutočnej spotreby BytePlus"));
 assert.ok(html.includes("BytePlus účtuje Seedance podľa skutočnej spotreby tokenov"));
-assert.ok(html.includes("Platené generovanie zostáva vypnuté"));
+assert.match(html, /platené generovanie zostáva vypnuté/i);
 assert.doesNotMatch(html, /Runway Dev|0\.15 USD/);
 
 console.log("BytePlus ModelArk integration checks passed: paid calls require explicit opt-in, model mapping and billing are provider-correct, and task polling/download use ModelArk.");
