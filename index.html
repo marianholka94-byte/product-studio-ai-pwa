@@ -578,7 +578,7 @@ $('generate').onclick=async()=>{
  currentVideoBlob=null;
  if(currentVideoObjectUrl){URL.revokeObjectURL(currentVideoObjectUrl);currentVideoObjectUrl=null;}
  try{
-  if(!selectedFiles.length)throw new Error('Pri reklame so zdrojovým videom pridaj aspoň jednu fotografiu produktu.');
+  if(!selectedFiles.length)throw new Error('Najskôr nahraj aspoň jednu fotografiu produktu. Pri použití zdrojového videa pridaj aj krátke MP4 alebo MOV.');
   if(selectedSourceVideo){
    await generateFromCombinedInputs();
    return;
@@ -685,8 +685,10 @@ sourceVideo.addEventListener('change',()=>{
   $('sourceVideoInfo').className='note';updateReadyStatus();
  };
  sourceVideoPreview.onerror=()=>{
-  if(selectedSourceVideo===file)clearSelectedSourceVideo('Prehliadač nedokázal načítať metadáta videa. Skús MP4 alebo MOV.');
-  $('sourceVideoInfo').className='status err';
+  if(selectedSourceVideo===file){
+   clearSelectedSourceVideo('Prehliadač nedokázal načítať metadáta videa. Skús MP4 alebo MOV.');
+   $('sourceVideoInfo').className='status err';
+  }
  };
 });
 async function uploadFormApi(path, form){
