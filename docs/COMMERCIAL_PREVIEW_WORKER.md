@@ -18,6 +18,21 @@ This is an isolated preview environment. It does not replace or modify the exist
 - `GET /api/auth/me`: returns the authenticated user's basic profile.
 - `POST /api/auth/logout`: revokes the current session.
 
+## Account-scoped cloud library API
+
+All library routes require `Authorization: Bearer <session-token>`. The Worker derives the owner from the session; it never accepts a client-supplied `user_id`.
+
+- `GET /api/products` and `GET /api/products/:id`: list or read the signed-in user's products.
+- `POST /api/products`: create a product from `{ "name": "...", "description": "..." }`.
+- `PATCH /api/products/:id`: update the name and/or description.
+- `DELETE /api/products/:id`: archive the product; it does not physically erase linked history.
+- `GET /api/projects` and `GET /api/projects/:id`: list or read the signed-in user's projects.
+- `POST /api/projects`: create a project from `{ "name": "...", "productId": null, "prompt": "...", "settings": {}, "exportPreset": null }`.
+- `PATCH /api/projects/:id`: update project metadata and settings.
+- `DELETE /api/projects/:id`: archive the project and preserve its history.
+
+Lists are capped at 100 records. Product names are capped at 120 characters, descriptions at 2,000, prompts at 8,000, and serialized settings at 12,000 characters. Binary image/video upload and cross-device sync from the current browser library are not yet implemented; these routes are the metadata foundation only.
+
 Passwords are stored as PBKDF2-SHA256 hashes (310,000 iterations); session bearer tokens are stored only as SHA-256 hashes. Login attempts are throttled per hashed IP/email pair: five failed attempts trigger a 15-minute block. Request JSON is size-limited while streaming, even when the client omits Content-Length. This is an initial preview authentication layer, not yet production-ready: email verification, abuse/rate limiting, password reset, account deletion, and a full privacy/security review remain required before public launch.
 
 ## Database migrations
