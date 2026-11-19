@@ -426,7 +426,7 @@ export default {
             const body = await readJson(request);
             const expectedUpdatedAt = body.expectedUpdatedAt;
             if (expectedUpdatedAt !== undefined && (!Number.isSafeInteger(expectedUpdatedAt) || expectedUpdatedAt < 0)) {
-              return json({ error: "Neplatná verzia reklamného projektu." }, 400, origin);
+              return json({ error: "Neplatná verzia produktu." }, 400, origin);
             }
             if (expectedUpdatedAt !== undefined && Number(existing.updated_at) !== expectedUpdatedAt) {
               return json({ error: "Produkt bol medzičasom zmenený v cloude. Tvoje zmeny zostali zachované; skontroluj aktuálnu verziu a ulož ich znova.", currentProduct: publicProduct(existing) }, 409, origin);
