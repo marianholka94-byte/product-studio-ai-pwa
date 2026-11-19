@@ -54,7 +54,17 @@ This is a manual acceptance plan for the isolated preview only. It must not be r
 6. Confirm each account contains its own cloud product, images, and project, while the local project remains intact.
 7. If testing a local project saved by an older app version, confirm the old cloud state is adopted only by the account that can read the referenced cloud product and project.
 
-## E. Session behavior
+## E. Concurrent product edits
+
+1. Open the same cloud product in two browser tabs signed into the same test account.
+2. Change and save the product name in tab A.
+3. Change the product description in tab B and save.
+4. Confirm tab B receives a conflict instead of silently overwriting tab A.
+5. Use **Načítať najnovšiu verziu produktu** and confirm the form shows tab A's saved version.
+6. Repeat, but choose **Ponechať moje zmeny a uložiť znova**. Confirm the user's intended change is applied over the latest baseline.
+7. Confirm a race between the initial read and SQL update is rejected by the atomic updated_at condition.
+
+## F. Session behavior
 
 1. Sign in and confirm the cloud library loads.
 2. Use the logout action.
@@ -62,7 +72,7 @@ This is a manual acceptance plan for the isolated preview only. It must not be r
 4. Attempt an authenticated API request using the revoked session; it must return 401.
 5. Confirm an expired session is rejected and the user can sign in again.
 
-## F. Android WebView (later phase)
+## G. Android WebView (later phase)
 
 Only after the stable app hostname and WebView allowlist have been deliberately configured on a dedicated Android integration branch:
 
