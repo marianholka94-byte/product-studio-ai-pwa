@@ -32,6 +32,6 @@ assert.doesNotMatch(generationHandler, /INSERT INTO credit_accounts|INSERT INTO 
 assert.match(worker, /url\.pathname === "\/api\/credits\/admin-grant"[\s\S]*?INSERT INTO credit_accounts[\s\S]*?INSERT INTO credit_ledger/, "Only the authenticated admin-grant route may add manual credit grants.");
 assert.match(workflow, /node scripts\/validate-credit-ledger\.mjs/, "Preview deployment must run the credit ledger validator.");
 assert.match(workflow, /creditSchema.*accounts.*ledger.*reservations/, "Deployment smoke test must verify credit schema readiness.");
-assert.match(workflow, /appendOnly.*enabled/, "Deployment smoke test must verify append-only ledger protection and disabled accounting.");
+assert.match(workflow, /appendOnly.*enabled/, "Deployment smoke test must verify append-only ledger protection and active accounting.");
 
 console.log("Credit accounting validation passed: reservations, capture, and release are enabled.");
