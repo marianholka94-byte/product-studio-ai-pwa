@@ -209,3 +209,8 @@ assert.ok(html.includes("downloadHistoryGeneration") && html.includes("/api/down
 assert.ok(html.includes("refreshHistoryGenerationStatus") && html.includes("/api/status/") && html.includes("AKTUALIZOVAŤ STAV"), "Pending history entries must offer an owner-authenticated status refresh action.");
 
 assert.ok(html.includes("resumeHistoryGeneration") && html.includes("POKRAČOVAŤ V SLEDOVANÍ"), "Pending generations in history must be resumable without submitting a second generation.");
+assert.ok(html.includes('id="accountBadge"') && html.includes('id="accountEmail"') && html.includes('id="dailyUsageValue"'), "The Studio must render a customer account overview with account and daily usage.");
+assert.ok(html.includes('id="creditState"') && html.includes("Kredity zatiaľ nie sú aktívne ani účtované."), "The account overview must clearly disclose that credits are not yet active or charged.");
+assert.ok(html.includes("renderAccountOverview(account,usage,health)") && html.includes("usage.remainingToday"), "The account overview must use server-returned usage values.");
+assert.ok(html.includes('id="historySummary"') && html.includes("Rozpracované") && html.includes("Neúspešné/zrušené"), "The generation history must summarize completed, active, and failed jobs.");
+assert.ok(readFileSync("sw.js", "utf8").includes("product-studio-ai-v44-account-overview-20261119"), "The PWA cache must refresh for the account overview UI.");
