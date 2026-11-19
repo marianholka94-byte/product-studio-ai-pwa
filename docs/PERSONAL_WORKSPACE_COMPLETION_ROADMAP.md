@@ -28,6 +28,7 @@ Status: active working plan for the owner's private day-to-day PRODUCT STUDIO AI
 - [x] Cloud products and projects are account-scoped by the Worker.
 - [x] Cloud product images are uploaded to private R2 storage and served through authenticated endpoints.
 - [x] Cloud products can be imported into Studio without changing the cloud original.
+- [x] Cloud library is contained inside the Projects screen instead of appearing outside the app's bottom-navigation views.
 - [x] Local projects can be explicitly saved to cloud with per-account sync checkpoints and retry-safe creation.
 - [x] Cloud project metadata supports edits, archive/restore, and conflict recovery choices.
 - [x] User-confirmed: the same local project can be saved to two separate accounts, each with its own cloud copy.
