@@ -710,6 +710,13 @@ export default {
             const existing = await ownedProject(env, user.id, projectId);
             if (!existing) return json({ error: "Projekt sa nenašiel." }, 404, origin);
             const body = await readJson(request);
+            const expectedUpdatedAt = body.expectedUpdatedAt;
+            if (expectedUpdatedAt !== undefined && (!Number.isSafeInteger(expectedUpdatedAt) || expectedUpdatedAt < 0)) {
+              return json({ error: "Neplatná verzia projektu." }, 400, origin);
+            }
+            if (expectedUpdatedAt !== undefined && Number(existing.updated_at) !== expectedUpdatedAt) {
+              return json({ error: "Projekt bol medzičasom zmenený v cloude. Tvoje zmeny zostali zachované; skontroluj aktuálnu verziu a ulož ich znova.", currentProject: publicProject(existing) }, 409, origin);
+            }
             const name = body.name === undefined ? existing.name : validText(body.name, 120);
             const prompt = body.prompt === undefined ? existing.prompt : validText(body.prompt, 8000);
             const exportPreset = body.exportPreset === undefined ? existing.export_preset : (body.exportPreset == null ? null : validText(body.exportPreset, 80));
