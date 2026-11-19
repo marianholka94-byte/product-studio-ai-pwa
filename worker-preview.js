@@ -4,7 +4,7 @@
 const ALLOWED_ORIGINS = new Set([
   "https://feature-social-export-preset.product-studio-ai-pwa.pages.dev",
   "https://feature-commercial-worker-pr.product-studio-ai-pwa.pages.dev",
-  "https://feat-seedance-reference-video-input-20261120.product-studio-ai-pwa.pages.dev",
+  "https://feat-seedance-reference-vide.product-studio-ai-pwa.pages.dev",
   "https://07bfc5c3.product-studio-ai-pwa.pages.dev",
   "https://product-studio-ai-pwa.pages.dev",
   "https://localhost",
