@@ -508,14 +508,15 @@
           const result=await window.PSAICloudLibrary.saveLocalProject(latest,async sync=>{
             latest.cloudSyncByAccount={...(latest.cloudSyncByAccount||{}),[sync.accountId]:sync};latest.updatedAt=Date.now();await putProject(latest);
           });
-          latest.cloudSync=result;latest.updatedAt=Date.now();await putProject(latest);
+          latest.cloudSyncByAccount={...(latest.cloudSyncByAccount||{}),[result.accountId]:result};latest.updatedAt=Date.now();await putProject(latest);
           saveCloud.textContent='Uložené v cloude';saveCloud.disabled=true;
           setProjectMessage('Projekt „'+latest.name+'“ bol uložený v cloude. Lokálna kópia zostala zachovaná.');
           await renderProjects();
         }catch(error){
           const latest=await getProject(record.id).catch(()=>null);
           saveCloud.disabled=false;
-          saveCloud.textContent=latest?.cloudSync?.productId?'Pokračovať v ukladaní':'Uložiť do cloudu';
+          const currentSync=latest?window.PSAICloudLibrary?.getSyncState(latest):null;
+          saveCloud.textContent=currentSync?.productId?'Pokračovať v ukladaní':'Uložiť do cloudu';
           setProjectMessage(error.message||'Projekt sa nepodarilo uložiť do cloudu.',true);
         }
       });
