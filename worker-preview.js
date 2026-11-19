@@ -45,6 +45,9 @@ function randomToken(bytes = 32) {
 async function sha256(value) {
   return b64url(new Uint8Array(await crypto.subtle.digest("SHA-256", encoder.encode(value))));
 }
+async function sha256Bytes(value) {
+  return b64url(new Uint8Array(await crypto.subtle.digest("SHA-256", value)));
+}
 async function passwordHash(password, salt = randomToken(16)) {
   const material = await crypto.subtle.importKey("raw", encoder.encode(password), "PBKDF2", false, ["deriveBits"]);
   const bits = await crypto.subtle.deriveBits(
@@ -327,7 +330,7 @@ export default {
             if (!matchesImageSignature(bytes, contentType)) return json({ error: "Obsah súboru nezodpovedá deklarovanému formátu fotografie." }, 415, origin);
             const assetId = crypto.randomUUID();
             const r2Key = `users/${user.id}/products/${productId}/${assetId}`;
-            const checksum = await sha256(b64url(bytes));
+            const checksum = await sha256Bytes(bytes);
             await env.MEDIA.put(r2Key, bytes, { httpMetadata: { contentType } });
             const isPrimary = Number(current?.count || 0) === 0 ? 1 : 0;
             try {
