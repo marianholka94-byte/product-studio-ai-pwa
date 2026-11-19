@@ -17,7 +17,8 @@ mustContain(worker, /url\.pathname === "\/api\/generate"[\s\S]*?const user = awa
 mustContain(worker, /FROM generations WHERE id = \? AND user_id = \? LIMIT 1/, "Generation status and download must look up tasks by both generation ID and owner.");
 mustContain(worker, /client_request_id[\s\S]*?request_fingerprint/, "Generation requests must persist an idempotency key and a payload fingerprint.");
 mustContain(worker, /PREVIEW_DAILY_GENERATION_LIMIT = 3[\s\S]*?generation_daily_limit/, "The preview generation allowance must be protected by a database-level daily limit.");
-mustContain(worker, /if \(!env\.RUNWAY_API_KEY\)/, "Generation must fail closed unless the isolated preview provider secret is configured.");
+mustContain(worker, /function byteplusReady\(env\)[\s\S]*?BYTEPLUS_MODELARK_ENABLED[\s\S]*?=== "true"/, "Generation must require both the BytePlus API key and explicit paid-generation opt-in.");
+mustContain(worker, /if \(!byteplusReady\(env\)\)/, "Generation submission, polling, and download must remain blocked unless BytePlus is explicitly enabled.");
 // All cloud-library routes must resolve identity from a valid server-side session
 // before reading or mutating any tenant-owned records.
 mustContain(worker, /if \(url\.pathname\.startsWith\("\/api\/products"\)[\s\S]*?const user = await currentUser\(request, env\);[\s\S]*?if \(!user\) return json\([\s\S]*?401/, "Library routes must require an authenticated session before accessing tenant data.");
