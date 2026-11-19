@@ -76,8 +76,11 @@
   const projectConflictText = $("p", {}, "");
   const reloadLatestProject = $("button", { class: "secondary" }, "Načítať najnovšiu verziu");
   const retryProjectSave = $("button", {}, "Ponechať moje zmeny a uložiť znova");
-  projectConflict.append(projectConflictText, reloadLatestProject, retryProjectSave);
+  const saveProjectAsCopy = $("button", { class: "secondary" }, "Uložiť moje zmeny ako nový projekt");
+  projectConflict.append(projectConflictText, reloadLatestProject, retryProjectSave, saveProjectAsCopy);
   let conflictLatestProject = null;
+  let copyOperationId = null;
+  let pendingCopyPayload = null;
   const projectList = $("div");
   workspace.append(accountLine, logout, $("hr"), productName.wrap, productDescription.wrap, addProduct, productList, $("hr"), projectName.wrap, $("label", {}, "Prepojiť s produktom"), projectProduct, projectPrompt.wrap, addProject, projectConflict, projectList);
   async function api(path, options = {}) {
@@ -366,6 +369,8 @@
     } catch (e) {
       if (e.currentProject && editingProjectId) {
         conflictLatestProject = e.currentProject;
+        copyOperationId = null;
+        pendingCopyPayload = null;
         editingProjectRecord = e.currentProject;
         projectConflictText.textContent = "Tento projekt bol medzičasom upravený v inom okne alebo zariadení. Tvoje aktuálne textové zmeny sú zachované. Môžeš načítať najnovšiu verziu (prepíše rozpracovaný formulár), alebo ponechať svoje zmeny a uložiť ich znova nad aktuálnou verziou.";
         projectConflict.hidden = false;
@@ -389,6 +394,41 @@
   retryProjectSave.addEventListener("click", () => {
     if (!editingProjectId || !conflictLatestProject) return;
     addProject.click();
+  });
+  saveProjectAsCopy.addEventListener("click", async () => {
+    if (!editingProjectId || !conflictLatestProject || !user?.id) return;
+    if (!pendingCopyPayload) {
+      copyOperationId = crypto.randomUUID();
+      pendingCopyPayload = {
+        name: (projectName.el.value.trim() || "Reklamný projekt") + " (kópia)",
+        prompt: projectPrompt.el.value,
+        productId: projectProduct.value || null,
+        settings: editingProjectRecord?.settings || {},
+        exportPreset: editingProjectRecord?.exportPreset ?? null,
+        idempotencyKey: copyOperationId
+      };
+    }
+    saveProjectAsCopy.disabled = true;
+    try {
+      const result = await api("/api/projects", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(pendingCopyPayload)
+      });
+      editingProjectId = result.project.id;
+      editingProjectRecord = result.project;
+      projectName.el.value = result.project.name;
+      conflictLatestProject = null;
+      copyOperationId = null;
+      pendingCopyPayload = null;
+      projectConflict.hidden = true;
+      addProject.textContent = "Uložiť zmeny projektu";
+      setStatus("Tvoje zmeny boli uložené ako samostatný projekt. Pôvodná cloudová verzia zostala zachovaná.");
+      await refresh();
+    } catch (error) {
+      setStatus(error.message + " Opakovaním tejto akcie sa použije rovnaký bezpečný kľúč a nevytvorí sa duplicitný projekt.", true);
+    } finally {
+      saveProjectAsCopy.disabled = false;
+    }
   });
   window.PSAICloudLibrary = {
     getSyncState(record) {
