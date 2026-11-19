@@ -43,5 +43,8 @@ jobs:
           echo "$response" | grep -q '"ok":true'
           echo "$response" | grep -q '"d1":true'
           echo "$response" | grep -q '"r2":true'
+          echo "$response" | grep -q '"passwordHash":true'
+          echo "$response" | grep -q '"sessionTokenHash":true'
+          echo "$response" | grep -q '"rateLimitsTable":true'
           unauthenticated_status="$(curl --silent --output /dev/null --write-out '%{http_code}' https://product-studio-ai-commercial-preview.marianholka94.workers.dev/api/products)"
           test "$unauthenticated_status" = "401"
