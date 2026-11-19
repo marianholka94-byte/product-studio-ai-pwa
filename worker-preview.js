@@ -448,6 +448,33 @@ export default {
         return json({ dailyLimit: PREVIEW_DAILY_GENERATION_LIMIT, usedToday: used, remainingToday: Math.max(0, PREVIEW_DAILY_GENERATION_LIMIT - used), resetsAt: dayStart + 86400 }, 200, origin);
       }
 
+      if (url.pathname === "/api/generations" && request.method === "GET") {
+        const user = await currentUser(request, env);
+        if (!user) return json({ error: "Prihlásenie vypršalo. Prihlás sa znova." }, 401, origin);
+        const requestedLimit = Number(url.searchParams.get("limit") || 20);
+        const limit = Number.isSafeInteger(requestedLimit) ? Math.min(50, Math.max(1, requestedLimit)) : 20;
+        const result = await env.DB.prepare(
+          "SELECT id, project_id, provider, model, resolution, aspect_ratio, duration_seconds, status, estimated_credits, error_code, error_message, created_at, updated_at, completed_at FROM generations WHERE user_id = ? ORDER BY created_at DESC, id DESC LIMIT ?"
+        ).bind(user.id, limit).all();
+        const generations = (result.results || []).map(row => ({
+          id: row.id,
+          projectId: row.project_id,
+          provider: row.provider,
+          model: row.model,
+          resolution: row.resolution,
+          aspectRatio: row.aspect_ratio,
+          durationSeconds: row.duration_seconds,
+          status: row.status,
+          estimatedCredits: row.estimated_credits,
+          errorCode: row.error_code,
+          errorMessage: row.error_message ? String(row.error_message).slice(0, 300) : null,
+          createdAt: row.created_at,
+          updatedAt: row.updated_at,
+          completedAt: row.completed_at
+        }));
+        return json({ generations, limit }, 200, origin);
+      }
+
       const generationStatusMatch = /^\/api\/status\/([0-9a-f-]{36})$/i.exec(url.pathname);
       if (generationStatusMatch && request.method === "GET") {
         const user = await currentUser(request, env);
