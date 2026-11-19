@@ -185,6 +185,9 @@ async function clearLoginFailures(env, key) {
 const MINI_RATIOS = new Set(["864:496","640:640","496:864","1280:720","960:960","720:1280"]);
 const FULL_RATIOS = new Set([...MINI_RATIOS,"1920:1080","1440:1440","1080:1920","3840:2160","3840:3840","2160:3840"]);
 const PREVIEW_DAILY_GENERATION_LIMIT = 3;
+// No Seedance-to-Runway adapter has been verified yet. Keep this allowlist empty
+// until a provider/model mapping is implemented and covered by live-safe tests.
+const RUNWAY_MODEL_ALLOWLIST = new Set();
 function runwayHeaders(env) {
   return { Authorization: "Bearer " + env.RUNWAY_API_KEY, "X-Runway-Version": "2024-11-06", "Content-Type": "application/json" };
 }
@@ -321,7 +324,14 @@ export default {
           authSchema,
           creditSchema,
           adminGrantConfigured: Boolean(String(env.APP_OWNER_EMAIL || "").trim()),
-          generation: { configured: Boolean(env.RUNWAY_API_KEY), dailyLimit: PREVIEW_DAILY_GENERATION_LIMIT }
+          generation: {
+            provider: "runway",
+            configured: Boolean(env.RUNWAY_API_KEY),
+            modelIntegrationReady: RUNWAY_MODEL_ALLOWLIST.size > 0,
+            supportedModels: [...RUNWAY_MODEL_ALLOWLIST],
+            reason: RUNWAY_MODEL_ALLOWLIST.size > 0 ? null : "Seedance model IDs exposed by the Studio do not yet have a verified Runway adapter.",
+            dailyLimit: PREVIEW_DAILY_GENERATION_LIMIT
+          }
         }, 200, origin);
       }
 
@@ -493,6 +503,15 @@ export default {
         if (typeof body.prompt !== "string" || !body.prompt.trim() || body.prompt.length > 1000) return json({ error: "Text zadania musí mať 1 až 1 000 znakov." }, 400, origin);
         const duration = Number(body.duration);
         const model = String(body.model || "seedance2_mini");
+        // Fail closed before reserving credits or contacting a paid provider.
+        if (!RUNWAY_MODEL_ALLOWLIST.has(model)) {
+          return json({
+            error: "Tento model zatiaľ nie je prepojený s poskytovateľom Runway. Generovanie je dočasne zablokované, aby sa predišlo neúspešnej platenej požiadavke.",
+            provider: "runway",
+            model,
+            code: "PROVIDER_MODEL_NOT_SUPPORTED"
+          }, 503, origin);
+        }
         const resolution = String(body.resolution || (model === "seedance2" ? "1080p" : "720p"));
         const ratio = String(body.ratio || "");
         const allowedRatios = model === "seedance2" ? FULL_RATIOS : model === "seedance2_mini" ? MINI_RATIOS : null;
