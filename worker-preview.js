@@ -411,7 +411,7 @@ export default {
           ).bind(user.id).first();
           creditStage = "ledger_read";
           const ledger = await env.DB.prepare(
-            "SELECT id, entry_type, units, reference_type, note, created_at FROM credit_ledger WHERE user_id = ? ORDER BY created_at DESC, id DESC LIMIT 20"
+            "SELECT id, entry_type, units, created_at FROM credit_ledger WHERE user_id = ? ORDER BY created_at DESC LIMIT 20"
           ).bind(user.id).all();
           return json({
             available: Number(account?.available_units || 0),
@@ -420,7 +420,7 @@ export default {
             isAdmin: Boolean(env.APP_OWNER_EMAIL && user.email.toLowerCase() === String(env.APP_OWNER_EMAIL).trim().toLowerCase()),
             history: (ledger.results || []).map(row => ({
               id: row.id, type: row.entry_type, units: Number(row.units),
-              reference: row.reference_type, note: row.note || "", createdAt: row.created_at
+              reference: null, note: "", createdAt: row.created_at
             }))
           }, 200, origin);
         } catch (error) {
