@@ -83,6 +83,7 @@ The deploy workflow automatically configures the preview provider key and runs t
 - [x] Existing production flavor retains its current WebView host and package identity.
 - [x] Dedicated GitHub Actions workflow added to build and retain an isolated preview APK artifact without publishing it.
 - [x] Isolated preview APK built successfully by CI and uploaded as a short-lived test artifact; it does not replace the installed production app.
+- [x] Existing production-flavor debug APK build also passes CI and retains the original application ID; no production APK has been installed or published by this workflow.
 - [x] Update Android WebView host allowlist and remote app URL deliberately in the isolated preview flavor.
 - [ ] Verify cloud login, upload, save, retry, restore, and logout inside Android WebView.
 - [ ] Verify WebView file chooser, navigation, offline behavior, and session persistence.
