@@ -149,3 +149,9 @@ assert.ok(nav.includes("psai-cloud-account-change"), "Switching cloud accounts m
 assert.ok(html.includes("cloud-library.js?v=account-scoped-cloud-sync-20261119") && html.includes("app-navigation.js?v=account-scoped-cloud-sync-20261119"), "PWA HTML must request the account-scoped cloud-sync asset versions.");
 assert.ok(serviceWorker.includes("product-studio-ai-v30-account-scoped-cloud-sync-20261119"), "PWA service worker cache must be versioned for the account-scoped cloud-sync release.");
 assert.ok(serviceWorker.includes("/cloud-library.js?v=account-scoped-cloud-sync-20261119") && serviceWorker.includes("/app-navigation.js?v=account-scoped-cloud-sync-20261119"), "Offline precache must include the exact account-scoped cloud-sync asset URLs.");
+assert.ok(worker.includes("const expectedUpdatedAt = body.expectedUpdatedAt"), "Cloud project edits must accept the version the user originally opened.");
+assert.ok(worker.includes("AND updated_at = ?"), "Cloud project updates must use an atomic version condition to prevent stale overwrites.");
+assert.ok(worker.includes("currentProject: publicProject(current)"), "A stale cloud edit must return the latest project so the user can review and reapply their changes.");
+assert.ok(cloud.includes("payload.expectedUpdatedAt = editingProjectRecord?.updatedAt"), "Cloud project editor must send the version it originally loaded.");
+assert.ok(cloud.includes("if (data?.currentProject) error.currentProject = data.currentProject"), "Cloud API client must preserve conflict details for the editor.");
+assert.ok(cloud.includes("Tvoje textové zmeny zostali zachované"), "Cloud project editor must preserve typed changes after a version conflict.");
