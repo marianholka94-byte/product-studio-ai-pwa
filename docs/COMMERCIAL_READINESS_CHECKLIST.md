@@ -39,7 +39,7 @@ This document tracks readiness work on the isolated commercial preview. It is no
 - [x] Local project cloud-sync checkpoints are now stored per customer account; legacy unscoped checkpoints are adopted only after the signed-in account proves ownership of the remote product/project.
 - [x] PWA asset cache version and offline precache updated for account-scoped cloud-sync code; no Android package rebuild is required for this web-only preview change.
 - [x] Automated direct cross-account API/asset-ID checks added, including attempts to attach another account's product to a new project; live execution remains dependent on the two test-account secrets.
-- [ ] Manual session-expiry and logout test.
+- [ ] Manual session-expiry and logout test (not yet confirmed in the Android preview app).
 - [x] User-confirmed: after signing out and signing back in, a cloud project opens back into Studio with its saved content and photos.
 
 ## Security and operations
@@ -85,10 +85,12 @@ The deploy workflow automatically configures the preview provider key and runs t
 - [x] Isolated preview APK built successfully by CI and uploaded as a short-lived test artifact; it does not replace the installed production app.
 - [x] Existing production-flavor debug APK build also passes CI and retains the original application ID; no production APK has been installed or published by this workflow.
 - [x] Update Android WebView host allowlist and remote app URL deliberately in the isolated preview flavor.
-- [ ] Verify cloud login, upload, save, retry, restore, and logout inside Android WebView.
+- [x] User-confirmed Android preview app test: local project saving works inside Android WebView.
+- [x] User-confirmed Android preview app test: cloud project saving works inside Android WebView.
+- [ ] Verify the remaining Android cloud flows separately: media upload, interrupted-save retry/resume, restore, and logout.
 - [ ] Verify WebView file chooser, navigation, offline behavior, and session persistence.
 - [x] Documented update boundary: remote web code updates do not require an APK rebuild; native wrapper, package, permissions, or SDK changes do.
-- [ ] Confirm which changes can ship as web updates and which require a new Android package on the installed device.
+- [x] User-facing update boundary confirmed: app/UI and other remote web changes can ship through Pages without reinstalling the Android app; changes to the native WebView wrapper, package identity, permissions, or SDK require a new APK.
 - [ ] Do not release a new Android build until preview acceptance and production cutover are explicitly approved.
 
 - [ ] Implement and test video-to-video generation from a user-supplied source clip; the Preview UI currently marks this input as unavailable.
@@ -96,3 +98,7 @@ The deploy workflow automatically configures the preview provider key and runs t
 ## Current boundary
 
 All work in this checklist is limited to `feature/commercial-worker-preview` and its isolated preview Worker. The production branch, production Worker, and published Android application must remain unchanged until explicitly approved.
+
+## Development priority: personal working release
+
+The near-term goal is a reliable, complete personal workspace for the owner, not a public multi-customer launch. Prioritize the existing Studio workflow, project/product management, prompt generation, local persistence, cloud backup/sync for the owner's own work, media handling, and dependable Android/PWA use. Keep the isolated account and storage foundations, but defer public registration, onboarding for unrelated customers, plans/credits, billing, subscriptions, invoices, and launch compliance until the owner is ready to onboard external users. Do not remove existing capabilities or weaken account/data isolation as part of this deferral. Public launch and production cutover remain explicit approval gates.
