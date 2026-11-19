@@ -79,7 +79,10 @@
     const data = (response.headers.get("content-type") || "").includes("application/json") ? await response.json() : null;
     if (!response.ok) {
       if (response.status === 401) { token = ""; user = null; sessionStorage.removeItem(TOKEN_KEY); renderAuth(); notifyCloudAccountChange(); }
-      throw new Error(data?.error || "Požiadavka zlyhala (" + response.status + ").");
+      const error = new Error(data?.error || "Požiadavka zlyhala (" + response.status + ").");
+      if (data?.currentProject) error.currentProject = data.currentProject;
+      error.status = response.status;
+      throw error;
     }
     return data;
   }
@@ -339,6 +342,7 @@
       if (isEditing) {
         payload.settings = editingProjectRecord?.settings || {};
         payload.exportPreset = editingProjectRecord?.exportPreset ?? null;
+        payload.expectedUpdatedAt = editingProjectRecord?.updatedAt;
       }
       await api(path, { method: isEditing ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
       editingProjectId = null;
@@ -347,7 +351,14 @@
       addProject.textContent = "＋ Vytvoriť projekt";
       setStatus(isEditing ? "Reklamný projekt bol upravený." : "Reklamný projekt bol uložený.");
       await refresh();
-    } catch (e) { setStatus(e.message, true); }
+    } catch (e) {
+      if (e.currentProject && editingProjectId) {
+        editingProjectRecord = e.currentProject;
+        setStatus("Projekt sa medzičasom zmenil v cloude. Tvoje textové zmeny zostali zachované. Skontroluj ich a stlač „Uložiť zmeny projektu“ znova, aby sa aplikovali na najnovšiu verziu.", true);
+      } else {
+        setStatus(e.message, true);
+      }
+    }
   });
   window.PSAICloudLibrary = {
     getSyncState(record) {
