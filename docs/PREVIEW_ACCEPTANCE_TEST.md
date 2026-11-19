@@ -6,6 +6,9 @@ This is a manual acceptance plan for the isolated preview only. It must not be r
 
 - Use the commercial preview Pages URL and its matching preview Worker.
 - Use two independent test accounts with separate email addresses.
+- The repeatable two-account API test is available as `scripts/test-preview-tenant-isolation.mjs`; it checks account-scoped lists, direct product/project/asset IDs, private image manifests, and logout revocation without changing saved data.
+- Run it from a trusted computer with Node.js 22 and the two test-account credentials supplied only as environment variables (never paste passwords or session tokens into chat or commit them):
+  `PREVIEW_ACCOUNT_A_EMAIL=... PREVIEW_ACCOUNT_A_PASSWORD=... PREVIEW_ACCOUNT_B_EMAIL=... PREVIEW_ACCOUNT_B_PASSWORD=... node scripts/test-preview-tenant-isolation.mjs`
 - Do not share account credentials or invite codes in screenshots or chat.
 - Keep the existing production application and published Android app unchanged.
 
