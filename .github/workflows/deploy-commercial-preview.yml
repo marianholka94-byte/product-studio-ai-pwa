@@ -50,8 +50,12 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       - name: Configure dedicated preview generation provider key when available
-        if: ${{ secrets.RUNWAY_API_KEY_PREVIEW != '' }}
-        run: printf '%s' "$RUNWAY_API_KEY_PREVIEW" | npx --yes wrangler@4 secret put RUNWAY_API_KEY --config wrangler.preview.toml
+        run: |
+          if [ -n "$RUNWAY_API_KEY_PREVIEW" ]; then
+            printf '%s' "$RUNWAY_API_KEY_PREVIEW" | npx --yes wrangler@4 secret put RUNWAY_API_KEY --config wrangler.preview.toml
+          else
+            echo "SKIP: Add the RUNWAY_API_KEY_PREVIEW repository secret to enable isolated AI generation."
+          fi
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
