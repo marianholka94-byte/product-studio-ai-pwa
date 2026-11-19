@@ -43,7 +43,10 @@ assert.ok(worker.includes("s.revoked_at IS NULL AND s.expires_at > ? AND u.statu
 assert.ok(worker.includes("ALLOWED_ORIGINS.has(origin)"), "Worker must reject origins outside the allowlist");
 assert.ok(cloud.includes("sessionStorage.removeItem(TOKEN_KEY)"), "Logout and expired sessions must clear the cloud token");
 assert.ok(cloud.includes('await api("/api/auth/logout", { method: "POST" })'), "Cloud logout must revoke the server-side session before clearing the local token.");
-assert.ok(cloud.includes('if (response.status === 401) { token = ""; user = null; sessionStorage.removeItem(TOKEN_KEY); resetAccountWorkspace(); renderAuth(); notifyCloudAccountChange(); }'), "Expired or revoked API sessions must clear the token, account identity, and stale editor state.");
+assert.ok(cloud.includes('if (response.status === 401 && token === requestToken) { token = ""; user = null; sessionStorage.removeItem(TOKEN_KEY); resetAccountWorkspace(); renderAuth(); notifyCloudAccountChange(); }'), "An expired request must not clear a newer account session.");
+assert.ok(cloud.includes("let accountEpoch = 0;") && cloud.includes("refreshEpoch !== accountEpoch"), "Cloud refreshes must not render data from a previous signed-in account.");
+assert.ok(cloud.includes("requestEpoch !== accountEpoch || accountId !== user?.id"), "In-flight manual saves must not mutate another account workspace.");
+assert.ok(cloud.includes("const previewObjectUrls = new Set();") && cloud.includes("URL.revokeObjectURL(url)"), "Cloud image previews must release object URLs when the account workspace resets.");
 assert.ok(cloud.includes('api("/api/auth/me").then(data =>'), "A restored tab session must be revalidated with the server before showing private cloud data.");
 assert.ok(cloud.includes('catch(() => { token = ""; user = null; sessionStorage.removeItem(TOKEN_KEY); resetAccountWorkspace(); renderAuth(); notifyCloudAccountChange(); })'), "An invalid restored session must fail closed and clear stale account-specific editor state.");
 
@@ -146,9 +149,9 @@ assert.ok(cloud.includes("const remoteProduct = await accountApi(\"/api/products
 assert.ok(nav.includes("latest.cloudSyncByAccount={...(latest.cloudSyncByAccount||{}),[sync.accountId]:sync}"), "Cloud save checkpoints must be persisted under their owning account.");
 assert.ok(nav.includes("[result.accountId]:result"), "Completed cloud saves must remain associated with the account that owns them.");
 assert.ok(nav.includes("psai-cloud-account-change"), "Switching cloud accounts must refresh local project cloud-status labels.");
-assert.ok(html.includes("cloud-library.js?v=product-conflict-recovery-20261119") && html.includes("app-navigation.js?v=product-conflict-recovery-20261119"), "PWA HTML must request the account-scoped cloud-sync asset versions.");
-assert.ok(serviceWorker.includes("product-studio-ai-v35-product-conflict-recovery-20261119"), "PWA service worker cache must be versioned for the account-scoped cloud-sync release.");
-assert.ok(serviceWorker.includes("/cloud-library.js?v=product-conflict-recovery-20261119") && serviceWorker.includes("/app-navigation.js?v=product-conflict-recovery-20261119"), "Offline precache must include the exact project-conflict-recovery asset URLs.");
+assert.ok(html.includes("cloud-library.js?v=account-race-guard-20261119") && html.includes("app-navigation.js?v=account-race-guard-20261119"), "PWA HTML must request the account-scoped cloud-sync asset versions.");
+assert.ok(serviceWorker.includes("product-studio-ai-v35-account-race-guard-20261119"), "PWA service worker cache must be versioned for the account-scoped cloud-sync release.");
+assert.ok(serviceWorker.includes("/cloud-library.js?v=account-race-guard-20261119") && serviceWorker.includes("/app-navigation.js?v=account-race-guard-20261119"), "Offline precache must include the exact project-conflict-recovery asset URLs.");
 assert.ok(worker.includes("const expectedUpdatedAt = body.expectedUpdatedAt"), "Cloud project edits must accept the version the user originally opened.");
 assert.ok(worker.includes("AND updated_at = ?"), "Cloud project updates must use an atomic version condition to prevent stale overwrites.");
 assert.ok(worker.includes("currentProject: publicProject(current)"), "A stale cloud edit must return the latest project so the user can review and reapply their changes.");
