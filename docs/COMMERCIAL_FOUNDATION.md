@@ -25,6 +25,36 @@ The migration includes composite ownership foreign keys so a row belonging to on
 The migration is not applied yet. It requires a D1 database and a Worker binding, neither of which is currently provisioned by the connected tools. Do not deploy Worker code that references `env.DB` until the D1 binding exists.
 
 ## Required Cloudflare resources and one-time setup
+
+The following commands are the one-time provisioning path (run from the repository root after authenticating Wrangler with the correct Cloudflare account):
+
+```bash
+npx wrangler login
+npx wrangler d1 create product-studio-ai-db
+npx wrangler r2 bucket create product-studio-ai-media
+```
+
+Save the D1 database ID returned by Wrangler. Add the bindings to the Worker configuration only after the resources exist:
+
+```toml
+[[d1_databases]]
+binding = "DB"
+database_name = "product-studio-ai-db"
+database_id = "<D1_DATABASE_ID>"
+
+[[r2_buckets]]
+binding = "MEDIA"
+bucket_name = "product-studio-ai-media"
+```
+
+Then apply the migration to the remote D1 database:
+
+```bash
+npx wrangler d1 migrations apply DB --remote
+```
+
+Do not put API keys, passwords or identity-provider secrets in this configuration or in Git. Store them as Worker secrets. Do not run the migration against a production database until the preview database and backup/restore path are confirmed.
+
 1. Create a D1 database for the project and note its database ID.
 2. Create a private R2 bucket for customer media.
 3. Add the D1 binding (for example `DB`) and R2 binding (for example `MEDIA`) to the Worker.
