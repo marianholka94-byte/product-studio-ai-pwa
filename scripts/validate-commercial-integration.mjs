@@ -200,3 +200,7 @@ assert.ok(worker.includes('url.pathname === "/api/generations"') && worker.inclu
 assert.ok(worker.includes("const requestedLimit = Number(url.searchParams.get(\"limit\") || 20)") && worker.includes("Math.min(50, Math.max(1, requestedLimit))"), "Generation history pagination size must be bounded.");
 assert.ok(html.includes("/api/generations?limit=20") && html.includes("refreshGenerationHistory"), "The Studio UI must load persistent generation history from the authenticated account.");
 assert.ok(html.includes("generation-history-item") && html.includes("História generovaní"), "The Studio UI must render saved generation history.");
+
+const liveTenantTest = readFileSync("scripts/test-preview-tenant-isolation.mjs", "utf8");
+assert.ok(liveTenantTest.includes("/api/generations?limit=20") && liveTenantTest.includes("generation history leaked"), "Live tenant acceptance must verify that generation history is isolated by account.");
+assert.ok(html.includes('id="sourceVideo"') && html.includes('id="sourceVideo" type="file" accept="video/mp4,video/quicktime,video/webm" disabled'), "Unsupported source-video input must be clearly disabled in Preview.");
