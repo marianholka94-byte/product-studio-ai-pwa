@@ -365,8 +365,10 @@
         model: record.model || "seedance2_mini", lighting: record.lighting || "", extra: record.extra || ""
       };
       const imageDigests = await Promise.all(images.map(async image => {
-        const digest = await crypto.subtle.digest("SHA-256", await image.blob.arrayBuffer());
-        return [...new Uint8Array(digest)].map(value => value.toString(16).padStart(2, "0")).join("");
+        const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", await image.blob.arrayBuffer()));
+        let binary = "";
+        for (const byte of digest) binary += String.fromCharCode(byte);
+        return btoa(binary).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
       }));
       const fingerprint = JSON.stringify({
         name: record.name || record.product || "Nový produkt", product: record.product || "",
@@ -399,6 +401,12 @@
       const manifest = await api("/api/products/" + encodeURIComponent(sync.productId) + "/images");
       const uploaded = (manifest.images || []).length;
       if (uploaded > images.length) throw new Error("Cloudový produkt obsahuje viac fotografií, než má tento projekt. Nahrávanie bolo zastavené kvôli ochrane pred duplicitami.");
+      const remoteDigests = (manifest.images || []).map(image => image.checksumSha256 || "");
+      for (let index = 0; index < uploaded; index++) {
+        if (!remoteDigests[index] || remoteDigests[index] !== imageDigests[index]) {
+          throw new Error("Fotografie uložené v cloude sa nezhodujú s týmto lokálnym projektom. Obnovenie bolo zastavené, aby sa nezmiešali rôzne súbory.");
+        }
+      }
       sync.uploadedImages = uploaded;
       await onProgress({ ...sync });
       for (let index = uploaded; index < images.length; index++) {
