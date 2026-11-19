@@ -42,6 +42,13 @@ Passwords are stored as PBKDF2-SHA256 hashes (310,000 iterations); session beare
 
 The preview migration workflow applies pending files in `migrations/` to the preview D1 database only. It requires GitHub repository secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`. Preview registration is closed by default and requires the Worker secret `PREVIEW_SIGNUP_CODE`; clients must send it as `inviteCode` during registration. Configure a long random value in the preview Worker only. Never commit API tokens, invite codes or passwords.
 
+## Test page
+
+Once the Cloudflare Pages branch preview finishes building, open:
+`https://feature-commercial-worker-pr.product-studio-ai-pwa.pages.dev/commercial-preview.html`
+
+The page uses the isolated preview Worker and keeps its session token in tab-scoped session storage. Account registration will remain disabled until the owner explicitly sets the `PREVIEW_SIGNUP_CODE` Worker secret.
+
 ## Deployment and safety
 
 The preview Worker deploy workflow is separate from the production Worker. The existing production Worker and Android app are intentionally untouched.
