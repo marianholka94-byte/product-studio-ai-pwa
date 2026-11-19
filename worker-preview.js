@@ -396,28 +396,37 @@ export default {
 
       // Account-scoped credit wallet and owner-only manual top-ups.
       if (url.pathname === "/api/credits" && request.method === "GET") {
-        const user = await currentUser(request, env);
-        if (!user) return json({ error: "Prihlásenie vypršalo. Prihlás sa znova." }, 401, origin);
-        const now = Math.floor(Date.now() / 1000);
-        await env.DB.prepare(
-          "INSERT INTO credit_accounts (user_id, available_units, reserved_units, version, created_at, updated_at) VALUES (?, 0, 0, 0, ?, ?) ON CONFLICT(user_id) DO NOTHING"
-        ).bind(user.id, now, now).run();
-        const account = await env.DB.prepare(
-          "SELECT available_units, reserved_units, version FROM credit_accounts WHERE user_id = ? LIMIT 1"
-        ).bind(user.id).first();
-        const ledger = await env.DB.prepare(
-          "SELECT id, entry_type, units, reference_type, note, created_at FROM credit_ledger WHERE user_id = ? ORDER BY created_at DESC, id DESC LIMIT 20"
-        ).bind(user.id).all();
-        return json({
-          available: Number(account?.available_units || 0),
-          reserved: Number(account?.reserved_units || 0),
-          version: Number(account?.version || 0),
-          isAdmin: Boolean(env.APP_OWNER_EMAIL && user.email.toLowerCase() === String(env.APP_OWNER_EMAIL).trim().toLowerCase()),
-          history: (ledger.results || []).map(row => ({
-            id: row.id, type: row.entry_type, units: Number(row.units),
-            reference: row.reference_type, note: row.note || "", createdAt: row.created_at
-          }))
-        }, 200, origin);
+        let creditStage = "authenticate";
+        try {
+          const user = await currentUser(request, env);
+          if (!user) return json({ error: "Prihlásenie vypršalo. Prihlás sa znova." }, 401, origin);
+          const now = Math.floor(Date.now() / 1000);
+          creditStage = "account_initialization";
+          await env.DB.prepare(
+            "INSERT INTO credit_accounts (user_id, available_units, reserved_units, version, created_at, updated_at) VALUES (?, 0, 0, 0, ?, ?) ON CONFLICT(user_id) DO NOTHING"
+          ).bind(user.id, now, now).run();
+          creditStage = "account_read";
+          const account = await env.DB.prepare(
+            "SELECT available_units, reserved_units, version FROM credit_accounts WHERE user_id = ? LIMIT 1"
+          ).bind(user.id).first();
+          creditStage = "ledger_read";
+          const ledger = await env.DB.prepare(
+            "SELECT id, entry_type, units, reference_type, note, created_at FROM credit_ledger WHERE user_id = ? ORDER BY created_at DESC, id DESC LIMIT 20"
+          ).bind(user.id).all();
+          return json({
+            available: Number(account?.available_units || 0),
+            reserved: Number(account?.reserved_units || 0),
+            version: Number(account?.version || 0),
+            isAdmin: Boolean(env.APP_OWNER_EMAIL && user.email.toLowerCase() === String(env.APP_OWNER_EMAIL).trim().toLowerCase()),
+            history: (ledger.results || []).map(row => ({
+              id: row.id, type: row.entry_type, units: Number(row.units),
+              reference: row.reference_type, note: row.note || "", createdAt: row.created_at
+            }))
+          }, 200, origin);
+        } catch (error) {
+          console.error("Credit wallet read failed", { stage: creditStage, name: String(error?.name || "Error"), message: String(error?.message || "Unknown error") });
+          return json({ error: "Kreditový účet sa nepodarilo načítať.", stage: creditStage }, 500, origin);
+        }
       }
 
       if (url.pathname === "/api/credits/admin-grant" && request.method === "POST") {
