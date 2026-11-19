@@ -1,0 +1,13 @@
+name = "product-studio-ai-commercial-preview"
+main = "worker-preview.js"
+compatibility_date = "2026-11-19"
+workers_dev = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "product-studio-ai-db-preview"
+database_id = "ba1dc564-6f76-4587-a113-e53091baed56"
+
+[[r2_buckets]]
+binding = "MEDIA"
+bucket_name = "product-studio-ai-media-preview"
