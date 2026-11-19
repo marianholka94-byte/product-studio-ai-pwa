@@ -30,6 +30,8 @@ jobs:
         run: node --check cloud-library.js
       - name: Validate commercial cloud integration contract
         run: node scripts/validate-commercial-integration.mjs
+      - name: Validate tenant isolation and private media access
+        run: node scripts/validate-commercial-security.mjs
       - name: Validate preview Worker bundle without deploying
         run: npx --yes wrangler@4 deploy --dry-run --config wrangler.preview.toml
         env:
