@@ -4,6 +4,7 @@
 const ALLOWED_ORIGINS = new Set([
   "https://feature-social-export-preset.product-studio-ai-pwa.pages.dev",
   "https://feature-commercial-worker-pr.product-studio-ai-pwa.pages.dev",
+  "https://feat-seedance-reference-vide.product-studio-ai-pwa.pages.dev",
   "https://07bfc5c3.product-studio-ai-pwa.pages.dev",
   "https://product-studio-ai-pwa.pages.dev",
   "https://localhost",
@@ -22,7 +23,7 @@ function corsHeaders(origin) {
   return {
     "Access-Control-Allow-Origin": allowed,
     "Access-Control-Allow-Methods": "GET,POST,PATCH,DELETE,OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type,Authorization",
+    "Access-Control-Allow-Headers": "Content-Type,Authorization,X-Upload-Id,X-Video-Duration",
     "Access-Control-Max-Age": "86400",
     "Cache-Control": "no-store",
     "Vary": "Origin"
@@ -192,6 +193,7 @@ const BYTEPLUS_MODEL_IDS = Object.freeze({
   seedance2: "dreamina-seedance-2-0-260128"
 });
 const BYTEPLUS_TASKS_URL = "https://ark.ap-southeast.bytepluses.com/api/v3/contents/generations/tasks";
+const PREVIEW_WORKER_ORIGIN = "https://product-studio-ai-commercial-preview.marianholka94.workers.dev";
 function byteplusConfigured(env) {
   return Boolean(String(env.BYTEPLUS_MODELARK_API_KEY || "").trim());
 }
@@ -286,7 +288,21 @@ async function settleGenerationCredits(env, userId, generationId, outcome, now) 
   return settled?.state === (outcome === "capture" ? "captured" : "released");
 }
 
+async function cleanupExpiredGenerationInputs(env, now) {
+  const expired = await env.DB.prepare(
+    "SELECT id, r2_key FROM generation_input_videos WHERE expires_at <= ? ORDER BY expires_at ASC LIMIT 100"
+  ).bind(now).all();
+  for (const row of expired.results || []) {
+    await env.MEDIA.delete(row.r2_key);
+    await env.DB.prepare("DELETE FROM generation_input_videos WHERE id = ? AND expires_at <= ?").bind(row.id, now).run();
+  }
+}
+
 export default {
+  async scheduled(controller, env) {
+    if (!env.DB || !env.MEDIA) return;
+    await cleanupExpiredGenerationInputs(env, Math.floor(Date.now() / 1000));
+  },
   async fetch(request, env) {
     const origin = request.headers.get("Origin");
     if (origin && !ALLOWED_ORIGINS.has(origin)) return json({ error: "Tento pôvod požiadavky nie je povolený." }, 403, origin);
@@ -296,6 +312,99 @@ export default {
     if (!env.DB || !env.MEDIA) return json({ ok: false, error: "Preview storage bindings are missing." }, 503, origin);
 
     try {
+      const providerInputMatch = /^\/api\/provider-input\/([0-9a-f-]{36})$/i.exec(url.pathname);
+      if (providerInputMatch && ["GET", "HEAD"].includes(request.method)) {
+        const token = url.searchParams.get("token") || "";
+        if (!/^[A-Za-z0-9_-]{40,60}$/.test(token)) return new Response("Not found", { status: 404, headers: { "Cache-Control": "no-store" } });
+        const tokenHash = await sha256(token);
+        const now = Math.floor(Date.now() / 1000);
+        const input = await env.DB.prepare(
+          "SELECT r2_key, content_type, byte_size FROM generation_input_videos WHERE id = ? AND access_token_hash = ? AND access_expires_at > ? AND expires_at > ? LIMIT 1"
+        ).bind(providerInputMatch[1], tokenHash, now, now).first();
+        if (!input) return new Response("Not found", { status: 404, headers: { "Cache-Control": "no-store" } });
+        const object = await env.MEDIA.get(input.r2_key);
+        if (!object || Number(object.size) !== Number(input.byte_size)) return new Response("Not found", { status: 404, headers: { "Cache-Control": "no-store" } });
+        return new Response(request.method === "HEAD" ? null : object.body, {
+          status: 200,
+          headers: {
+            "Content-Type": input.content_type,
+            "Content-Length": String(object.size),
+            "Content-Disposition": 'inline; filename="reference-video"',
+            "Cache-Control": "private, no-store, max-age=0",
+            "X-Content-Type-Options": "nosniff",
+          }
+        });
+      }
+
+      if (request.method === "POST" && url.pathname === "/api/generation-input-video") {
+        const user = await currentUser(request, env);
+        if (!user) return json({ error: "Na nahratie zdrojového videa sa najskôr prihlás." }, 401, origin);
+        if (!byteplusReady(env)) return json({ error: "Seedance API zatiaľ nie je aktivované. Nahrávanie pre platené generovanie zostáva vypnuté." }, 503, origin);
+        const contentType = String(request.headers.get("Content-Type") || "").split(";")[0].trim().toLowerCase();
+        if (!["video/mp4", "video/quicktime"].includes(contentType)) return json({ error: "Použi video vo formáte MP4 alebo MOV." }, 415, origin);
+        const uploadId = String(request.headers.get("X-Upload-Id") || "");
+        if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(uploadId)) return json({ error: "Nahrávanie nemá platný identifikátor. Obnov výber videa a skús to znova." }, 400, origin);
+        const duration = Number(request.headers.get("X-Video-Duration"));
+        if (!Number.isFinite(duration) || duration < 2 || duration > 15) return json({ error: "Zdrojové video musí mať 2 až 15 sekúnd." }, 400, origin);
+        const maxInputBytes = 50 * 1024 * 1024;
+        const declaredLength = Number(request.headers.get("Content-Length") || 0);
+        if (declaredLength > maxInputBytes) return json({ error: "Zdrojové video môže mať najviac 50 MB." }, 413, origin);
+        const prior = await env.DB.prepare(
+          "SELECT id, content_type, byte_size, duration_seconds FROM generation_input_videos WHERE user_id = ? AND client_upload_id = ? AND expires_at > ? LIMIT 1"
+        ).bind(user.id, uploadId, Math.floor(Date.now() / 1000)).first();
+        if (prior) {
+          if (prior.content_type !== contentType || Number(prior.duration_seconds) !== duration) return json({ error: "Identifikátor nahrávania už bol použitý pre iné video." }, 409, origin);
+          return json({ videoId: prior.id, byteSize: Number(prior.byte_size), replayed: true }, 200, origin);
+        }
+        const nowForUpload = Math.floor(Date.now() / 1000);
+        const uploadDayStart = Math.floor(nowForUpload / 86400) * 86400;
+        const uploadUsage = await env.DB.prepare("SELECT COUNT(*) AS count FROM generation_input_videos WHERE user_id = ? AND created_at >= ?")
+          .bind(user.id, uploadDayStart).first();
+        if (Number(uploadUsage?.count || 0) >= PREVIEW_DAILY_GENERATION_LIMIT) return json({ error: "Dosiahol si denný limit " + PREVIEW_DAILY_GENERATION_LIMIT + " zdrojových videí. Skús to znova zajtra." }, 429, origin);
+        if (!request.body) return json({ error: "Súbor je prázdny." }, 400, origin);
+        const id = crypto.randomUUID();
+        const r2Key = `users/${user.id}/generation-inputs/${id}/source`;
+        let streamedBytes = 0;
+        let prefix = new Uint8Array(0);
+        const limitedStream = request.body.pipeThrough(new TransformStream({
+          transform(chunk, controller) {
+            streamedBytes += chunk.byteLength;
+            if (streamedBytes > maxInputBytes) throw new Error("Zdrojové video môže mať najviac 50 MB.");
+            if (prefix.length < 12) {
+              const take = Math.min(12 - prefix.length, chunk.byteLength);
+              const next = new Uint8Array(prefix.length + take);
+              next.set(prefix);
+              next.set(chunk.subarray(0, take), prefix.length);
+              prefix = next;
+            }
+            controller.enqueue(chunk);
+          },
+          flush() {
+            if (streamedBytes < 12 || String.fromCharCode(...prefix.subarray(4, 8)) !== "ftyp") {
+              throw new Error("Súbor nemá platnú MP4/MOV signatúru.");
+            }
+          }
+        }));
+        try {
+          await env.MEDIA.put(r2Key, limitedStream, {
+            httpMetadata: { contentType },
+            customMetadata: { ownerId: user.id, inputVideoId: id }
+          });
+          if (streamedBytes < 1) throw new Error("Súbor je prázdny.");
+          const now = Math.floor(Date.now() / 1000);
+          await env.DB.prepare(
+            "INSERT INTO generation_input_videos (id, user_id, client_upload_id, r2_key, content_type, byte_size, duration_seconds, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+          ).bind(id, user.id, uploadId, r2Key, contentType, streamedBytes, duration, now, now + 7 * 24 * 60 * 60).run();
+          return json({ videoId: id, byteSize: streamedBytes, replayed: false }, 201, origin);
+        } catch (error) {
+          await env.MEDIA.delete(r2Key).catch(() => {});
+          const message = String(error?.message || "");
+          if (message.includes("50 MB")) return json({ error: message }, 413, origin);
+          if (message.includes("signatúru")) return json({ error: message }, 415, origin);
+          return json({ error: "Zdrojové video sa nepodarilo bezpečne uložiť." }, 502, origin);
+        }
+      }
+
       if (request.method === "GET" && url.pathname === "/api/health") {
         const db = await env.DB.prepare("SELECT 1 AS ok").first();
         const objects = await env.MEDIA.list({ limit: 1 });
@@ -306,6 +415,9 @@ export default {
         ).first();
         const generationOutputsTable = await env.DB.prepare(
           "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'generation_outputs'"
+        ).first();
+        const generationInputVideosTable = await env.DB.prepare(
+          "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'generation_input_videos'"
         ).first();
         const userColumnNames = (userColumns.results || []).map(column => column.name);
         const sessionColumnNames = (sessionColumns.results || []).map(column => column.name);
@@ -334,7 +446,8 @@ export default {
           rateLimitsTable: !!rateLimitTable,
           generationRequestId: generationColumnNames.includes("client_request_id"),
           generationFingerprint: generationColumnNames.includes("request_fingerprint"),
-          generationOutputsTable: !!generationOutputsTable
+          generationOutputsTable: !!generationOutputsTable,
+          generationInputVideosTable: !!generationInputVideosTable
         };
         return json({
           ok: db?.ok === 1 && Array.isArray(objects?.objects),
@@ -516,7 +629,9 @@ export default {
           return json({ error: "Požiadavka nemá platný identifikátor. Obnov stránku a skús to znova." }, 400, origin);
         }
         const images = Array.isArray(body.images) ? body.images : (typeof body.image === "string" ? [body.image] : []);
+        const inputVideoId = body.videoId == null ? "" : String(body.videoId);
         if (images.length < 1 || images.length > 5) return json({ error: "Nahraj 1 až 5 fotografií produktu." }, 400, origin);
+        if (inputVideoId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(inputVideoId)) return json({ error: "Zdrojové video nemá platný identifikátor." }, 400, origin);
         for (const image of images) {
           if (typeof image !== "string" || !/^data:image\/(jpeg|jpg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(image)) {
             return json({ error: "Jedna z fotografií nemá podporovaný formát. Použi JPG, PNG alebo WebP." }, 400, origin);
@@ -551,7 +666,7 @@ export default {
         // BytePlus bills the owner's provider account by actual token usage. Do not
         // present the old Runway-derived estimate or debit the app's separate wallet.
         const estimatedCredits = 0;
-        const fingerprint = await sha256(JSON.stringify({ images, prompt: body.prompt.trim(), model, resolution, ratio, duration }));
+        const fingerprint = await sha256(JSON.stringify({ images, videoId: inputVideoId || null, prompt: body.prompt.trim(), model, resolution, ratio, duration }));
         const prior = await env.DB.prepare(
           "SELECT id, request_fingerprint, provider_task_id, status, estimated_credits FROM generations WHERE user_id = ? AND client_request_id = ? LIMIT 1"
         ).bind(user.id, requestId).first();
@@ -566,6 +681,16 @@ export default {
           .bind(user.id, dayStart).first();
         if (Number(usage?.count || 0) >= PREVIEW_DAILY_GENERATION_LIMIT) {
           return json({ error: "Dosiahol si denný limit " + PREVIEW_DAILY_GENERATION_LIMIT + " skúšobných generovaní. Skús to znova zajtra.", dailyLimit: PREVIEW_DAILY_GENERATION_LIMIT, usedToday: Number(usage?.count || 0) }, 429, origin);
+        }
+        let inputVideo = null;
+        let providerInputToken = "";
+        if (inputVideoId) {
+          inputVideo = await env.DB.prepare(
+            "SELECT id, r2_key, content_type, byte_size, duration_seconds FROM generation_input_videos WHERE id = ? AND user_id = ? AND generation_id IS NULL AND expires_at > ? LIMIT 1"
+          ).bind(inputVideoId, user.id, now).first();
+          if (!inputVideo) return json({ error: "Zdrojové video sa nenašlo, už bolo použité alebo vypršala jeho platnosť. Nahraj ho znova." }, 404, origin);
+          if (Number(inputVideo.duration_seconds) < 2 || Number(inputVideo.duration_seconds) > 15 || Number(inputVideo.byte_size) < 12 || Number(inputVideo.byte_size) > 50 * 1024 * 1024) return json({ error: "Zdrojové video nespĺňa bezpečnostné limity." }, 400, origin);
+          providerInputToken = randomToken(32);
         }
         const generationId = crypto.randomUUID();
         try {
@@ -582,13 +707,29 @@ export default {
           }
           throw error;
         }
+        if (inputVideo) {
+          const accessExpiresAt = now + 48 * 60 * 60;
+          const claimed = await env.DB.prepare(
+            "UPDATE generation_input_videos SET generation_id = ?, access_token_hash = ?, access_expires_at = ? WHERE id = ? AND user_id = ? AND generation_id IS NULL AND expires_at > ?"
+          ).bind(generationId, await sha256(providerInputToken), accessExpiresAt, inputVideo.id, user.id, now).run();
+          if (Number(claimed.meta?.changes || 0) !== 1) {
+            await env.DB.prepare("UPDATE generations SET status = 'failed', error_code = 'input_video_claim_failed', error_message = 'Zdrojové video sa nepodarilo bezpečne priradiť.', completed_at = ?, updated_at = ? WHERE id = ? AND user_id = ?")
+              .bind(now, now, generationId, user.id).run();
+            return json({ error: "Zdrojové video už bolo použité v inej požiadavke. Nahraj ho znova." }, 409, origin);
+          }
+        }
         const content = [
           { type: "text", text: body.prompt.trim() },
           ...images.map(image => ({
             type: "image_url",
             image_url: { url: image },
             role: "reference_image"
-          }))
+          })),
+          ...(inputVideo ? [{
+            type: "video_url",
+            video_url: { url: PREVIEW_WORKER_ORIGIN + "/api/provider-input/" + encodeURIComponent(inputVideo.id) + "?token=" + encodeURIComponent(providerInputToken) },
+            role: "reference_video"
+          }] : [])
         ];
         // A network failure after sending a paid POST is ambiguous: BytePlus may
         // already have accepted and billed the task. Never retry this POST blindly.

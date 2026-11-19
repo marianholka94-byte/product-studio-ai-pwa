@@ -37,12 +37,12 @@ jobs:
           db = sqlite3.connect(":memory:")
           db.execute("PRAGMA foreign_keys = ON")
           db.executescript(migration)
-          for migration_path in sorted([*Path("migrations").glob("000[2-9]_*.sql"), *Path("migrations").glob("0010_*.sql")]):
+          for migration_path in sorted([*Path("migrations").glob("000[2-9]_*.sql"), *Path("migrations").glob("0010_*.sql"), *Path("migrations").glob("0011_*.sql")]):
               db.executescript(migration_path.read_text(encoding="utf-8"))
 
           expected = {
               "users", "sessions", "products", "projects", "assets",
-              "product_images", "generations", "generation_outputs", "credit_accounts", "generation_credit_reservations", "credit_ledger", "plans",
+              "product_images", "generations", "generation_outputs", "generation_input_videos", "credit_accounts", "generation_credit_reservations", "credit_ledger", "plans",
               "subscriptions", "payment_events", "audit_log", "auth_rate_limits",
           }
           actual = {
@@ -153,6 +153,22 @@ jobs:
               "INSERT INTO generation_outputs (id,generation_id,user_id,r2_key,content_type,byte_size,created_at) VALUES (?,?,?,?,?,?,?)",
               ("out_bad","g1","u2","users/u2/generations/g1/output.mp4","video/mp4",10,1))
           db.execute("INSERT INTO generation_outputs (id,generation_id,user_id,r2_key,content_type,byte_size,created_at) VALUES ('out1','g1','u1','users/u1/generations/g1/output.mp4','video/mp4',10,1)")
+          db.execute("INSERT INTO generation_input_videos (id,user_id,client_upload_id,generation_id,r2_key,content_type,byte_size,duration_seconds,access_token_hash,access_expires_at,created_at,expires_at) VALUES ('input1','u1','upload-one','g1','users/u1/generation-inputs/input1/source','video/mp4',1200,5,'sha256-token-hash',21601,1,604801)")
+          must_reject("cross-user generation input video link",
+              "INSERT INTO generation_input_videos (id,user_id,client_upload_id,generation_id,r2_key,content_type,byte_size,duration_seconds,created_at,expires_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
+              ("input_bad_owner","u2","upload-two","g1","users/u2/generation-inputs/input_bad/source","video/mp4",1200,5,1,604801))
+          must_reject("unsupported source video MIME type",
+              "INSERT INTO generation_input_videos (id,user_id,client_upload_id,r2_key,content_type,byte_size,duration_seconds,created_at,expires_at) VALUES (?,?,?,?,?,?,?,?,?)",
+              ("input_bad_type","u1","upload-bad-type","users/u1/input_bad_type","video/webm",1200,5,1,604801))
+          must_reject("source video larger than 50 MB",
+              "INSERT INTO generation_input_videos (id,user_id,client_upload_id,r2_key,content_type,byte_size,duration_seconds,created_at,expires_at) VALUES (?,?,?,?,?,?,?,?,?)",
+              ("input_bad_size","u1","upload-bad-size","users/u1/input_bad_size","video/mp4",52428801,5,1,604801))
+          must_reject("source video duration above 15 seconds",
+              "INSERT INTO generation_input_videos (id,user_id,client_upload_id,r2_key,content_type,byte_size,duration_seconds,created_at,expires_at) VALUES (?,?,?,?,?,?,?,?,?)",
+              ("input_bad_duration","u1","upload-bad-duration","users/u1/input_bad_duration","video/mp4",1200,16,1,604801))
+          must_reject("duplicate per-account source upload idempotency key",
+              "INSERT INTO generation_input_videos (id,user_id,client_upload_id,r2_key,content_type,byte_size,duration_seconds,created_at,expires_at) VALUES (?,?,?,?,?,?,?,?,?)",
+              ("input_dup_upload","u1","upload-one","users/u1/input_dup_upload","video/mp4",1200,5,1,604801))
           must_reject("credit ledger update",
               "UPDATE credit_ledger SET units = 1 WHERE id = ?",
               ("cl1",))

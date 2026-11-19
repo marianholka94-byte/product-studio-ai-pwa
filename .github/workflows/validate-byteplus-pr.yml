@@ -29,3 +29,11 @@ jobs:
         run: node --check scripts/validate-generation-safety.mjs
       - name: Validate BytePlus integration and billing safety
         run: node scripts/validate-generation-safety.mjs
+      - name: Validate commercial integration contract
+        run: |
+          node --check scripts/validate-commercial-integration.mjs
+          node scripts/validate-commercial-integration.mjs
+      - name: Validate commercial tenant isolation and private media
+        run: |
+          node --check scripts/validate-commercial-security.mjs
+          node scripts/validate-commercial-security.mjs
