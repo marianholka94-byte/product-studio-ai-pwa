@@ -711,7 +711,7 @@ export default {
             const settingsJson = validSettings(body.settings);
             const productId = body.productId == null ? null : validText(body.productId, 80);
             const operationId = body.idempotencyKey == null ? null : validText(body.idempotencyKey, 80);
-            if (!name || !name.length || prompt === null || exportPreset === null && body.exportPreset != null || settingsJson === null || productId === null || operationId !== null && !/^[a-zA-Z0-9_-]{16,80}$/.test(operationId)) {
+            if (!name || !name.length || prompt === null || exportPreset === null && body.exportPreset != null || settingsJson === null || (body.productId != null && productId === null) || operationId !== null && !/^[a-zA-Z0-9_-]{16,80}$/.test(operationId)) {
               return json({ error: "Skontroluj údaje reklamného projektu." }, 400, origin);
             }
             if (productId && !(await ownedProduct(env, user.id, productId))) return json({ error: "Vybraný produkt sa nenašiel." }, 404, origin);
@@ -765,7 +765,7 @@ export default {
             const exportPreset = body.exportPreset === undefined ? existing.export_preset : (body.exportPreset == null ? null : validText(body.exportPreset, 80));
             const settingsJson = body.settings === undefined ? existing.settings_json : validSettings(body.settings);
             const productId = body.productId === undefined ? existing.product_id : (body.productId == null ? null : validText(body.productId, 80));
-            if (!name || !name.length || prompt === null || exportPreset === null && body.exportPreset != null || settingsJson === null || productId === null) {
+            if (!name || !name.length || prompt === null || exportPreset === null && body.exportPreset != null || settingsJson === null || (body.productId !== undefined && body.productId !== null && productId === null)) {
               return json({ error: "Skontroluj údaje reklamného projektu." }, 400, origin);
             }
             if (productId && !(await ownedProduct(env, user.id, productId))) return json({ error: "Vybraný produkt sa nenašiel." }, 404, origin);
