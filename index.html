@@ -715,7 +715,9 @@ async function uploadFormApi(path, form){
  return created;
 }
 async function generateFromCombinedInputs(){
- const prompt=buildPrompt();
+ const basePrompt=buildPrompt();
+ const videoGuidance='Preserve the product exact shape, packaging, logo, label and colors. Retain the source action and camera movement; enhance lighting and color only.';
+ const prompt=(basePrompt.slice(0,Math.max(0,999-videoGuidance.length))+' '+videoGuidance).trim().slice(0,1000);
  if(!selectedSourceVideo)return false;
  if(!selectedSourceVideoDuration)throw new Error('Počkaj, kým sa načítajú metadáta zdrojového videa.');
  if(!selectedFiles.length)throw new Error('Pri generovaní z videa pridaj aspoň jednu fotografiu produktu ako referenciu.');
@@ -726,7 +728,7 @@ async function generateFromCombinedInputs(){
  const form=new FormData();
  form.append('video',selectedSourceVideo,selectedSourceVideo.name);
  form.append('references',JSON.stringify(references));
- form.append('prompt',prompt+' Strongly enhance the original footage into a premium cinematic product advertisement. Use the uploaded product photos as visual references to preserve the exact product identity, shape, packaging, label, logo, lettering and brand colors. Preserve the main action and camera movement from the source video while upgrading lighting, atmosphere, color grade and production value. Do not invent or distort branding.');
+ form.append('prompt',prompt);
  const ratios={
   seedance2_mini:{'720p':{'9:16':'720:1280','1:1':'960:960','16:9':'1280:720'},'480p':{'9:16':'496:864','1:1':'640:640','16:9':'864:496'}},
   seedance2:{'480p':{'9:16':'496:864','1:1':'640:640','16:9':'864:496'},'720p':{'9:16':'720:1280','1:1':'960:960','16:9':'1280:720'},'1080p':{'9:16':'1080:1920','1:1':'1440:1440','16:9':'1920:1080'},'4K':{'9:16':'2160:3840','1:1':'3840:3840','16:9':'3840:2160'}}
