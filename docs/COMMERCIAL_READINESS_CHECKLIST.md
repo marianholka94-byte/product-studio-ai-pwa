@@ -11,9 +11,9 @@ This document tracks readiness work on the isolated commercial preview. It is no
 - [x] Product image count is limited in both application code and D1.
 - [x] Local IndexedDB image records are serialized to clone-safe bytes and hydrated on read.
 - [x] Cloud save progress is checkpointed locally between media uploads.
-- [x] Cloud project creation uses a persisted per-account idempotency key, so retrying after a lost response returns the existing project instead of creating a duplicate.
-- [x] Reusing an idempotency key with a different payload is rejected.
-- [x] Schema and integration checks cover the idempotency column and unique per-account constraint.
+- [x] Cloud product and project creation use persisted per-account idempotency keys, so retrying after a lost response returns the existing records instead of creating duplicates.
+- [x] Reusing a product or project idempotency key with a different payload is rejected.
+- [x] Schema and integration checks cover both idempotency columns and unique per-account constraints.
 - [ ] Manual interruption/retry test with a deliberately interrupted project-create response.
 - [ ] Manual tenant-isolation test using two independent preview accounts.
 - [ ] Manual session-expiry and logout test.
