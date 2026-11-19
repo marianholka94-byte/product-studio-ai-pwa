@@ -67,3 +67,8 @@ console.log("Commercial tenant-isolation and private-media security checks passe
 const generationHistoryRoute = worker.match(/if \(url\.pathname === "\/api\/generations" && request\.method === "GET"\)[\s\S]*?return json\(\{ generations, limit \}, 200, origin\);[\s\S]*?\n      }/)?.[0] || "";
 assert.ok(generationHistoryRoute.includes("currentUser(request, env)") && generationHistoryRoute.includes("WHERE user_id = ?"), "Generation history must authenticate and filter every record by the current owner.");
 assert.ok(!generationHistoryRoute.includes("provider_task_id"), "Generation history must never expose provider task IDs.");
+
+const historyDownload = html.match(/async function downloadHistoryGeneration\([\s\S]*?\n}/)?.[0] || "";
+const historyStatusRefresh = html.match(/async function refreshHistoryGenerationStatus\([\s\S]*?\n}/)?.[0] || "";
+assert.ok(historyDownload.includes("PSAICloudLibrary.download") && historyDownload.includes("getCurrentUser()?.id!==account.id"), "History downloads must use the authenticated cloud bridge and reject account changes during download.");
+assert.ok(historyStatusRefresh.includes("PSAICloudLibrary.request('/api/status/'") && historyStatusRefresh.includes("getCurrentUser()?.id!==account.id"), "History status refresh must use the account-bound status API and reject account changes.");
