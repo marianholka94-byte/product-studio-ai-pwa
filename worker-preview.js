@@ -524,8 +524,8 @@ export default {
         }
         const reservation = await reserveGenerationCredits(env, user.id, generationId, estimatedCredits, now);
         if (!reservation || reservation.state !== "reserved") {
-          await env.DB.prepare("UPDATE generations SET status = 'failed', error_code = 'insufficient_credits', error_message = 'Nedostatok kreditov na toto generovanie.', updated_at = ?, completed_at = ? WHERE id = ? AND user_id = ?")
-            .bind(now, now, generationId, user.id).run();
+          await env.DB.prepare("DELETE FROM generations WHERE id = ? AND user_id = ? AND provider_task_id IS NULL AND NOT EXISTS (SELECT 1 FROM generation_credit_reservations WHERE generation_id = ?)")
+            .bind(generationId, user.id, generationId).run();
           const balance = await env.DB.prepare("SELECT available_units FROM credit_accounts WHERE user_id = ?").bind(user.id).first();
           return json({ error: "Nemáš dostatok kreditov na toto generovanie.", requiredCredits: estimatedCredits, availableCredits: Number(balance?.available_units || 0) }, 402, origin);
         }
