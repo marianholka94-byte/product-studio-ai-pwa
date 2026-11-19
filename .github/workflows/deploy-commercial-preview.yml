@@ -1,0 +1,104 @@
+name: Deploy commercial preview Worker
+
+on:
+  push:
+    branches:
+      - feature/commercial-worker-preview
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Serialize preview deployment and D1 migration operations across workflows.
+concurrency:
+  group: commercial-preview-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy-preview:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout commercial preview branch
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Apply pending preview D1 migrations before deployment
+        run: npx --yes wrangler@4 d1 migrations apply DB --remote --config wrangler.preview.toml --force
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      - name: Check preview Worker JavaScript syntax
+        run: node --check worker-preview.js
+      - name: Check cloud library JavaScript syntax
+        run: node --check cloud-library.js
+      - name: Check two-account acceptance test syntax
+        run: node --check scripts/test-preview-tenant-isolation.mjs
+      - name: Validate commercial cloud integration contract
+        run: node scripts/validate-commercial-integration.mjs
+      - name: Validate credit ledger foundation
+        run: |
+          node --check scripts/validate-credit-ledger.mjs
+          node scripts/validate-credit-ledger.mjs
+      - name: Validate tenant isolation and private media access
+        run: node scripts/validate-commercial-security.mjs
+      - name: Validate preview Worker bundle without deploying
+        run: npx --yes wrangler@4 deploy --dry-run --config wrangler.preview.toml
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      - name: Deploy isolated preview Worker
+        run: npx --yes wrangler@4 deploy --config wrangler.preview.toml
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      - name: Configure dedicated preview generation provider key when available
+        run: |
+          if [ -n "$RUNWAY_API_KEY_PREVIEW" ]; then
+            printf '%s' "$RUNWAY_API_KEY_PREVIEW" | npx --yes wrangler@4 secret put RUNWAY_API_KEY --config wrangler.preview.toml
+          else
+            echo "SKIP: Add the RUNWAY_API_KEY_PREVIEW repository secret to enable isolated AI generation."
+          fi
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          RUNWAY_API_KEY_PREVIEW: ${{ secrets.RUNWAY_API_KEY_PREVIEW }}
+      - name: Run live two-account tenant-isolation acceptance test when credentials are configured
+        env:
+          PREVIEW_ACCOUNT_A_EMAIL: ${{ secrets.PREVIEW_ACCOUNT_A_EMAIL }}
+          PREVIEW_ACCOUNT_A_PASSWORD: ${{ secrets.PREVIEW_ACCOUNT_A_PASSWORD }}
+          PREVIEW_ACCOUNT_B_EMAIL: ${{ secrets.PREVIEW_ACCOUNT_B_EMAIL }}
+          PREVIEW_ACCOUNT_B_PASSWORD: ${{ secrets.PREVIEW_ACCOUNT_B_PASSWORD }}
+        run: |
+          if [ -z "$PREVIEW_ACCOUNT_A_EMAIL" ] || [ -z "$PREVIEW_ACCOUNT_A_PASSWORD" ] || [ -z "$PREVIEW_ACCOUNT_B_EMAIL" ] || [ -z "$PREVIEW_ACCOUNT_B_PASSWORD" ]; then
+            echo "SKIP: Configure the four PREVIEW_ACCOUNT_A/B_EMAIL/PASSWORD repository secrets to enable live two-account acceptance."
+            exit 0
+          fi
+          node scripts/test-preview-tenant-isolation.mjs
+      - name: Smoke-test deployed D1 and R2 connectivity
+        run: |
+          response="$(curl --retry 8 --retry-delay 3 --retry-all-errors --fail --silent --show-error https://product-studio-ai-commercial-preview.marianholka94.workers.dev/api/health)"
+          echo "$response"
+          echo "$response" | grep -q '"ok":true'
+          echo "$response" | grep -q '"d1":true'
+          echo "$response" | grep -q '"r2":true'
+          echo "$response" | grep -q '"passwordHash":true'
+          echo "$response" | grep -q '"sessionTokenHash":true'
+          echo "$response" | grep -q '"rateLimitsTable":true'
+          echo "$response" | grep -q '"generationRequestId":true'
+          echo "$response" | grep -q '"generationFingerprint":true'
+          echo "$response" | grep -q '"creditSchema":{"accounts":true,"ledger":true,"reservations":true,"appendOnly":true,"enabled":false}'
+          echo "$response" | grep -q '"dailyLimit":3'
+          unauthenticated_status="$(curl --silent --output /dev/null --write-out '%{http_code}' https://product-studio-ai-commercial-preview.marianholka94.workers.dev/api/products)"
+          test "$unauthenticated_status" = "401"
+          projects_status="$(curl --silent --output /dev/null --write-out '%{http_code}' https://product-studio-ai-commercial-preview.marianholka94.workers.dev/api/projects)"
+          test "$projects_status" = "401"
+          identity_status="$(curl --silent --output /dev/null --write-out '%{http_code}' https://product-studio-ai-commercial-preview.marianholka94.workers.dev/api/auth/me)"
+          test "$identity_status" = "401"
+          asset_status="$(curl --silent --output /dev/null --write-out '%{http_code}' https://product-studio-ai-commercial-preview.marianholka94.workers.dev/api/assets/test-asset)"
+          test "$asset_status" = "401"
+          blocked_origin_status="$(curl --silent --output /dev/null --write-out '%{http_code}' -H 'Origin: https://untrusted.example' https://product-studio-ai-commercial-preview.marianholka94.workers.dev/api/health)"
+          test "$blocked_origin_status" = "403"
+          allowed_preflight_status="$(curl --silent --output /dev/null --write-out '%{http_code}' -X OPTIONS -H 'Origin: https://feature-commercial-worker-pr.product-studio-ai-pwa.pages.dev' -H 'Access-Control-Request-Method: GET' https://product-studio-ai-commercial-preview.marianholka94.workers.dev/api/products)"
+          test "$allowed_preflight_status" = "204"
