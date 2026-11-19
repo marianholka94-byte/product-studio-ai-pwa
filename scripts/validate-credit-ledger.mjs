@@ -17,7 +17,13 @@ assert.match(migration, /trg_credit_ledger_no_update[\s\S]*?RAISE\(ABORT, 'credi
 assert.match(migration, /trg_credit_ledger_no_delete[\s\S]*?RAISE\(ABORT, 'credit_ledger_is_append_only'\)/, "Ledger rows must reject deletes.");
 assert.match(migration, /CHECK \(captured_units <= reserved_units\)/, "Captured credits cannot exceed reserved credits.");
 assert.match(migration, /state IN \('reserved','captured','released','review'\)/, "Reservation state must be constrained.");
-assert.match(worker, /creditSchema[\s\S]*?enabled: false/, "Credit ledger must be explicitly marked as not enabled.");
+assert.match(worker, /creditSchema[\s\S]*?enabled: true/, "Credit accounting must be enabled after reservation and settlement are wired.");
+assert.match(worker, /async function reserveGenerationCredits[\s\S]*?UPDATE credit_accounts[\s\S]*?available_units >= \?[\s\S]*?INSERT INTO generation_credit_reservations[\s\S]*?INSERT INTO credit_ledger/, "Generation credits must be atomically reserved and recorded before provider submission.");
+assert.match(worker, /async function settleGenerationCredits[\s\S]*?UPDATE credit_accounts[\s\S]*?UPDATE generation_credit_reservations[\s\S]*?INSERT INTO credit_ledger/, "Generation credit settlement must update balances, reservation state, and immutable ledger together.");
+assert.match(worker, /reserveGenerationCredits\(env, user\.id, generationId, estimatedCredits, now\)/, "Generation must reserve its estimated credit cost before calling the provider.");
+assert.match(worker, /settleGenerationCredits\(env, user\.id, generationId, "release", failedAt\)/, "Provider rejection must release the reservation.");
+assert.match(worker, /settleGenerationCredits\(env, user\.id, generation\.id, "capture", now\)/, "Successful provider completion must capture reserved credits.");
+assert.match(worker, /settleGenerationCredits\(env, user\.id, generation\.id, "release", now\)/, "Failed or cancelled provider completion must release reserved credits.");
 assert.match(worker, /credit_ledger[\s\S]*?trg_credit_ledger_no_update[\s\S]*?trg_credit_ledger_no_delete/, "Health endpoint must report ledger tables and immutability triggers.");
 const generationRouteStart = worker.indexOf('if (url.pathname === "/api/generate" && request.method === "POST")');
 assert.notEqual(generationRouteStart, -1, "Commercial generation route must exist.");
@@ -28,4 +34,4 @@ assert.match(workflow, /node scripts\/validate-credit-ledger\.mjs/, "Preview dep
 assert.match(workflow, /creditSchema.*accounts.*ledger.*reservations/, "Deployment smoke test must verify credit schema readiness.");
 assert.match(workflow, /appendOnly.*enabled/, "Deployment smoke test must verify append-only ledger protection and disabled accounting.");
 
-console.log("Credit ledger foundation validation passed; accounting remains disabled.");
+console.log("Credit accounting validation passed: reservations, capture, and release are enabled.");
