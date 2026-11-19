@@ -49,7 +49,7 @@ assert.ok(generationDownloadRoute.includes("const maxVideoBytes = 250 * 1024 * 1
 assert.ok(generationDownloadRoute.includes("parsedVideoUrl.protocol !== \"https:\"") && generationDownloadRoute.includes("parsedVideoUrl.username || parsedVideoUrl.password"), "Provider video URLs must be HTTPS and must not embed credentials.");
 assert.ok(generationDownloadRoute.includes('Cache-Control": "private, no-store"') && generationDownloadRoute.includes('X-Content-Type-Options": "nosniff"'), "Private generated video downloads must disable caching and MIME sniffing.");
 assert.ok(worker.includes("delete safeTask.content.video_url"), "Temporary provider video URLs must never be exposed by the status API.");
-assert.ok(worker.includes('url.pathname === "/api/generation-input-video"') && worker.includes('url.pathname === "/api/provider-input/"') === false, "Reference video upload endpoint must be present.");
+assert.ok(worker.includes('url.pathname === "/api/generation-input-video"') && worker.includes("const providerInputMatch = /^\\/api\\/provider-input"), "Authenticated source video upload and temporary provider input routes must exist.");
 assert.ok(worker.includes('role: "reference_video"') && worker.includes('type: "video_url"'), "Combined generation must send reference video content to Seedance.");
 assert.ok(worker.includes("access_expires_at") && worker.includes("cleanupExpiredGenerationInputs"), "Temporary provider access must expire and old source videos must be cleaned up.");
 assert.ok(html.includes('accept="video/mp4,video/quicktime,.mp4,.mov"') && !html.includes('id="sourceVideo" type="file" accept="video/mp4,video/quicktime,video/webm" disabled'), "The UI must enable only supported MP4/MOV source video formats.");
@@ -234,7 +234,7 @@ assert.ok(html.includes("generation-history-item") && html.includes("História g
 
 const liveTenantTest = readFileSync("scripts/test-preview-tenant-isolation.mjs", "utf8");
 assert.ok(liveTenantTest.includes("/api/generations?limit=20") && liveTenantTest.includes("generation history leaked"), "Live tenant acceptance must verify that generation history is isolated by account.");
-assert.ok(html.includes('id="sourceVideo"') && html.includes('id="sourceVideo" type="file" accept="video/mp4,video/quicktime,video/webm" disabled'), "Unsupported source-video input must be clearly disabled in Preview.");
+assert.ok(html.includes('id="sourceVideo"') && html.includes('accept="video/mp4,video/quicktime,.mp4,.mov"') && html.includes("async function generateFromCombinedInputs()"), "Supported source-video input must be enabled and wired into the combined generation flow.");
 
 assert.ok(html.includes("downloadHistoryGeneration") && html.includes("/api/download/") && html.includes("STIAHNUŤ VIDEO"), "Completed history entries must offer a secure owner-authenticated download action.");
 assert.ok(html.includes("refreshHistoryGenerationStatus") && html.includes("/api/status/") && html.includes("AKTUALIZOVAŤ STAV"), "Pending history entries must offer an owner-authenticated status refresh action.");
