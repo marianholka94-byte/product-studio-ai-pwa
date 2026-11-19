@@ -24,7 +24,9 @@
   style.textContent = "#commercialCloudPanel input,#commercialCloudPanel textarea,#commercialCloudPanel select{width:100%;margin:5px 0 10px;padding:11px;border-radius:9px;border:1px solid #39495d;background:#0d141d;color:#fff}#commercialCloudPanel button{width:auto;margin:4px 6px 8px 0;padding:10px 14px;border-radius:9px;background:#d9bd7d;color:#17130b;font-weight:700;border:0}#commercialCloudPanel button.secondary{background:#293647;color:#eef2f7}#commercialCloudPanel .cloud-item{border:1px solid #39495d;border-radius:12px;padding:12px;margin:10px 0;background:#101720}#commercialCloudPanel .cloud-thumb{width:76px;height:76px;object-fit:cover;border-radius:8px;margin:5px 7px 0 0}#commercialCloudPanel label{display:block;color:#aebaca;font-size:13px;margin-top:8px}";
   panel.append(style, heading, intro, status, auth, workspace);
   const first = document.querySelector("main") || document.body;
-  first.insertBefore(panel, first.firstChild);
+  const appHeader = first.querySelector(":scope > header");
+  if (appHeader) appHeader.after(panel);
+  else first.insertBefore(panel, first.firstChild);
   let token = sessionStorage.getItem(TOKEN_KEY) || "";
   let products = [];
   let user = null;
