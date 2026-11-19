@@ -208,7 +208,7 @@ async function refreshCommercialConnection(){
     usageLabel.textContent='Bezpečnostný limit preview: najviac 3 generovania denne na účet.';
     return;
   }
-  status.textContent='Overujem komerčný generátor…';
+  status.textContent='Overujem pripojenie generátora…';
   try{
     const [health,usage]=await Promise.all([
       fetch(API_BASE+'/api/health',{cache:'no-store'}).then(r=>r.json()),
