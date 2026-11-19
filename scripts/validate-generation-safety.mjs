@@ -8,6 +8,12 @@ const html = readFileSync("index.html", "utf8");
 assert.match(worker, /BYTEPLUS_MODELARK_API_KEY/);
 assert.match(worker, /BYTEPLUS_MODELARK_ENABLED/);
 assert.match(worker, /function byteplusReady\(env\)[\s\S]*?=== "true"/);
+assert.match(worker, /function byteplusConfigured\(env\)/);
+const statusRoute = worker.slice(worker.indexOf('const generationStatusMatch'), worker.indexOf('const generationDownloadMatch'));
+const downloadRoute = worker.slice(worker.indexOf('const generationDownloadMatch'));
+assert.ok(statusRoute.includes('if (!byteplusConfigured(env))'), "Existing task status checks must remain available when new paid generation is disabled.");
+assert.ok(downloadRoute.includes('if (!byteplusConfigured(env))'), "Existing task downloads must remain available when new paid generation is disabled.");
+assert.ok(worker.includes('if (!byteplusReady(env)) return json({ error: "Seedance API zatiaľ nie je aktivované. Platené generovanie zostáva vypnuté."'), "New paid generation must still require explicit enablement.");
 assert.match(worker, /modelIntegrationReady: byteplusReady\(env\)/);
 assert.match(worker, /provider: "byteplus_modelark"/);
 
