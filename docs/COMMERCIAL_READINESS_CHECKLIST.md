@@ -50,6 +50,16 @@ This document tracks readiness work on the isolated commercial preview. It is no
 - [ ] Define operational logging, alerting, backup, and incident response.
 - [ ] Review retention and cleanup for archived records and orphaned R2 objects.
 
+### Preview deployment secrets
+
+Configure these under **Repository → Settings → Secrets and variables → Actions**. Never commit their values or paste them into chat.
+
+- `RUNWAY_API_KEY_PREVIEW`: dedicated Runway API key for the isolated preview Worker.
+- `PREVIEW_ACCOUNT_A_EMAIL` and `PREVIEW_ACCOUNT_A_PASSWORD`: credentials for test account A.
+- `PREVIEW_ACCOUNT_B_EMAIL` and `PREVIEW_ACCOUNT_B_PASSWORD`: credentials for test account B.
+
+The deploy workflow automatically configures the preview provider key and runs the live two-account tenant-isolation acceptance script when all five secrets are present. A normal push to `feature/commercial-worker-preview` triggers the deployment workflow; the workflow remains isolated from production.
+
 ## Commercial model
 
 - [ ] Define free and paid plan limits, credit pricing, and generation cost assumptions.
