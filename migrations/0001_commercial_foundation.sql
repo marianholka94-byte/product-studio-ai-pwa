@@ -139,14 +139,14 @@ CREATE TABLE IF NOT EXISTS credit_ledger (
   generation_id TEXT REFERENCES generations(id) ON DELETE RESTRICT,
   entry_type TEXT NOT NULL CHECK (entry_type IN ('grant','purchase','reservation','charge','refund','adjustment','expiry')),
   amount INTEGER NOT NULL CHECK (amount <> 0),
+  idempotency_key TEXT UNIQUE,
+  description TEXT NOT NULL DEFAULT '',
+  created_at INTEGER NOT NULL,
   CHECK (
     entry_type = 'adjustment'
     OR (entry_type IN ('grant','purchase','refund') AND amount > 0)
     OR (entry_type IN ('reservation','charge','expiry') AND amount < 0)
   ),
-  idempotency_key TEXT UNIQUE,
-  description TEXT NOT NULL DEFAULT '',
-  created_at INTEGER NOT NULL,
   FOREIGN KEY (generation_id, user_id) REFERENCES generations(id, user_id) ON DELETE RESTRICT
 );
 CREATE INDEX IF NOT EXISTS idx_credit_ledger_user_created ON credit_ledger(user_id, created_at DESC);
