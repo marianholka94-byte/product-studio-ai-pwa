@@ -77,3 +77,9 @@ assert.ok(historyStatusRefresh.includes("PSAICloudLibrary.request('/api/status/'
 const resumeHistory = html.match(/async function resumeHistoryGeneration\([\s\S]*?\n}/)?.[0] || "";
 assert.ok(resumeHistory.includes("pollTask(id") && !resumeHistory.includes("/api/generate"), "Resuming a generation must poll its existing task and never submit another provider generation.");
 assert.ok(resumeHistory.includes("getCurrentUser()?.id!==account.id"), "Resumed generation monitoring must stop applying results after an account switch.");
+
+const cloudLibrary = readFileSync("cloud-library.js", "utf8");
+const restoredSessionBootstrap = cloudLibrary.slice(cloudLibrary.lastIndexOf('  if (token) {'));
+assert.ok(restoredSessionBootstrap.includes("const bootstrapToken = token;") && restoredSessionBootstrap.includes("const bootstrapEpoch = accountEpoch;"), "Restored cloud sessions must capture the starting token and account epoch.");
+assert.ok(restoredSessionBootstrap.includes("if (!isCurrentBootstrap()) return;"), "A late restored-session response must not overwrite a newer account login.");
+assert.ok(restoredSessionBootstrap.includes("if (!isCurrentBootstrap()) return;\n      token ="), "A late restored-session failure must not clear a newer account session.");
