@@ -232,7 +232,7 @@ async function downloadHistoryGeneration(item,button){
  button.disabled=true;
  try{
   const blob=await window.PSAICloudLibrary.download('/api/download/'+encodeURIComponent(item.id));
-  if(window.PSAICloudLibrary?.getCurrentUser()?.id!==account.id)throw new Error('Zákaznícky účet sa počas sťahovania zmenil.');
+  if(window.PSAICloudLibrary?.getCurrentUser()?.id!==account.id)throw new Error('Cloudový účet sa počas sťahovania zmenil.');
   const objectUrl=URL.createObjectURL(blob);
   const link=document.createElement('a');link.href=objectUrl;
   link.download='product-studio-'+item.id+'.mp4';
@@ -431,7 +431,7 @@ async function generationRequestCheckpoint(payload){
  const account=window.PSAICloudLibrary?.getCurrentUser();
  if(!account)throw new Error('Najskôr sa prihlás do cloudového účtu.');
  const digest=new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(payload))));
- if(window.PSAICloudLibrary?.getCurrentUser()?.id!==account.id)throw new Error('Zákaznícky účet sa počas prípravy zmenil.');
+ if(window.PSAICloudLibrary?.getCurrentUser()?.id!==account.id)throw new Error('Cloudový účet sa počas prípravy zmenil.');
  const fingerprint=Array.from(digest,byte=>byte.toString(16).padStart(2,'0')).join('');
  const storageKey='psai_generation_pending_'+account.id;
  let saved=null;
