@@ -312,6 +312,11 @@
   // Local project library backed by IndexedDB (project metadata + original image files).
   const projectDbName='product-studio-ai-projects', projectStoreName='projects';
   let activeProjectId=null, activeProductId=null, projectDbPromise=null;
+  const localProductObjectUrls=new Set();
+  const clearLocalProductObjectUrls=()=>{
+    for(const url of localProductObjectUrls)URL.revokeObjectURL(url);
+    localProductObjectUrls.clear();
+  };
   const openProjectDb=()=>{
     if(projectDbPromise)return projectDbPromise;
     projectDbPromise=new Promise((resolve,reject)=>{
@@ -606,12 +611,13 @@
   });
 
   const renderProducts=async()=>{
+    clearLocalProductObjectUrls();
     const records=(await getAllProducts()).sort((a,b)=>b.updatedAt-a.updatedAt);const linkedProjects=await getAllProjects();const linkedProjectCounts=new Map(records.map(item=>[item.id,linkedProjects.filter(project=>project.productId===item.id).length]));productsList.innerHTML='';
     if(!records.length){productsList.innerHTML='<div class="projects-empty"><span class="empty-icon">▧</span><strong>Zatiaľ nemáš uložené produkty</strong><p>V štúdiu môžeš uložiť produkt spolu s jeho fotografiami.</p></div>';return;}
     records.forEach(record=>{
       const card=document.createElement('article');card.className='saved-product-card';
       const thumb=document.createElement('img');thumb.className='saved-product-thumb';thumb.alt='';
-      const first=record.images?.[0]?.blob;if(first)thumb.src=URL.createObjectURL(first);
+      const first=record.images?.[0]?.blob;if(first){const objectUrl=URL.createObjectURL(first);localProductObjectUrls.add(objectUrl);thumb.src=objectUrl;}
       const info=document.createElement('div');info.className='saved-product-info';
       const title=document.createElement('strong');title.textContent=record.name;
       const linkedCount=linkedProjectCounts.get(record.id)||0;const meta=document.createElement('small');meta.textContent=(record.images?.length||0)+' fotografií · '+linkedCount+' reklamných projektov · '+formatProjectDate(record.updatedAt);
