@@ -719,9 +719,23 @@ export default {
         const user = await currentUser(request, env);
         if (!user) return json({ error: "Prihlásenie vypršalo. Prihlás sa znova." }, 401, origin);
         if (!byteplusConfigured(env)) return json({ error: "Seedance API zatiaľ nie je nakonfigurované." }, 503, origin);
-        const generation = await env.DB.prepare("SELECT id, provider_task_id FROM generations WHERE id = ? AND user_id = ? LIMIT 1")
+        const generation = await env.DB.prepare("SELECT id, provider_task_id, status FROM generations WHERE id = ? AND user_id = ? LIMIT 1")
           .bind(generationDownloadMatch[1], user.id).first();
         if (!generation) return json({ error: "Video sa nenašlo." }, 404, origin);
+        const existingOutput = await env.DB.prepare("SELECT r2_key, content_type, byte_size FROM generation_outputs WHERE generation_id = ? AND user_id = ? LIMIT 1")
+          .bind(generation.id, user.id).first();
+        if (existingOutput) {
+          const storedObject = await env.MEDIA.get(existingOutput.r2_key);
+          if (!storedObject) return json({ error: "Uložené video sa v súkromnom úložisku nenašlo. Kontaktuj podporu." }, 503, origin);
+          const completedAt = Math.floor(Date.now() / 1000);
+          await env.DB.prepare("UPDATE generations SET status = 'succeeded', completed_at = COALESCE(completed_at, ?), updated_at = ? WHERE id = ? AND user_id = ?")
+            .bind(completedAt, completedAt, generation.id, user.id).run();
+          await settleGenerationCredits(env, user.id, generation.id, "capture", completedAt);
+          return new Response(storedObject.body, {
+            status: 200,
+            headers: { ...corsHeaders(origin), "Content-Type": existingOutput.content_type || "video/mp4", "Content-Length": String(storedObject.size), "Content-Disposition": 'attachment; filename="product-studio-ai.mp4"', "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff" }
+          });
+        }
         if (!generation.provider_task_id) return json({ error: "Video ešte nie je pripravené." }, 409, origin);
         const taskResponse = await fetch(BYTEPLUS_TASKS_URL + "/" + encodeURIComponent(generation.provider_task_id), { headers: byteplusHeaders(env) });
         const task = await taskResponse.json().catch(() => ({}));
@@ -733,13 +747,41 @@ export default {
         if (parsedVideoUrl.protocol !== "https:" || parsedVideoUrl.username || parsedVideoUrl.password) return json({ error: "Poskytovateľ vrátil neplatnú adresu videa." }, 502, origin);
         const videoResponse = await fetch(parsedVideoUrl.href);
         if (!videoResponse.ok || !videoResponse.body) return json({ error: "Hotové video sa nepodarilo stiahnuť." }, 502, origin);
+        const maxVideoBytes = 250 * 1024 * 1024;
+        const declaredLength = Number(videoResponse.headers.get("Content-Length") || 0);
+        if (declaredLength > maxVideoBytes) return json({ error: "Vygenerované video prekračuje bezpečný limit 250 MB." }, 413, origin);
+        let streamedBytes = 0;
+        const limitedBody = videoResponse.body.pipeThrough(new TransformStream({
+          transform(chunk, controller) {
+            streamedBytes += chunk.byteLength;
+            if (streamedBytes > maxVideoBytes) throw new Error("Vygenerované video prekračuje bezpečný limit 250 MB.");
+            controller.enqueue(chunk);
+          }
+        }));
+        const r2Key = `users/${user.id}/generations/${generation.id}/output.mp4`;
+        try {
+          await env.MEDIA.put(r2Key, limitedBody, { httpMetadata: { contentType: "video/mp4" } });
+          await env.DB.prepare("INSERT INTO generation_outputs (id, generation_id, user_id, r2_key, content_type, byte_size, created_at) VALUES (?, ?, ?, ?, 'video/mp4', ?, ?) ON CONFLICT(generation_id) DO NOTHING")
+            .bind(crypto.randomUUID(), generation.id, user.id, r2Key, streamedBytes, Math.floor(Date.now() / 1000)).run();
+        } catch (error) {
+          const saved = await env.DB.prepare("SELECT id FROM generation_outputs WHERE generation_id = ? AND user_id = ? LIMIT 1")
+            .bind(generation.id, user.id).first();
+          if (!saved) await env.MEDIA.delete(r2Key);
+          const message = String(error?.message || "R2 storage failure");
+          return json({ error: message.includes("250 MB") ? message : "Hotové video sa nepodarilo bezpečne uložiť do cloudovej knižnice." }, message.includes("250 MB") ? 413 : 502, origin);
+        }
+        const savedOutput = await env.DB.prepare("SELECT r2_key, content_type, byte_size FROM generation_outputs WHERE generation_id = ? AND user_id = ? LIMIT 1")
+          .bind(generation.id, user.id).first();
+        if (!savedOutput) return json({ error: "Video sa uložilo, ale jeho záznam sa nepodarilo potvrdiť." }, 502, origin);
+        const storedObject = await env.MEDIA.get(savedOutput.r2_key);
+        if (!storedObject) return json({ error: "Video sa uložilo, ale vrátenie súboru z úložiska zlyhalo." }, 502, origin);
         const completedAt = Math.floor(Date.now() / 1000);
         await env.DB.prepare("UPDATE generations SET status = 'succeeded', completed_at = COALESCE(completed_at, ?), updated_at = ? WHERE id = ? AND user_id = ?")
           .bind(completedAt, completedAt, generation.id, user.id).run();
         await settleGenerationCredits(env, user.id, generation.id, "capture", completedAt);
-        return new Response(videoResponse.body, {
+        return new Response(storedObject.body, {
           status: 200,
-          headers: { ...corsHeaders(origin), "Content-Type": videoResponse.headers.get("Content-Type") || "video/mp4", "Content-Disposition": 'attachment; filename="product-studio-ai.mp4"', "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" }
+          headers: { ...corsHeaders(origin), "Content-Type": savedOutput.content_type || "video/mp4", "Content-Length": String(storedObject.size), "Content-Disposition": 'attachment; filename="product-studio-ai.mp4"', "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff" }
         });
       }
 
