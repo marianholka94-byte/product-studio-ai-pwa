@@ -572,20 +572,20 @@
     if (!editingProjectId || !conflictLatestProject || !user?.id || saveProjectAsCopy.disabled) return;
     const accountId = user.id;
     const requestEpoch = accountEpoch;
-    if (!pendingCopyPayload) {
-      const payload = {
-        name: (projectName.el.value.trim() || "Reklamný projekt") + " (kópia)",
-        prompt: projectPrompt.el.value,
-        productId: projectProduct.value || null,
-        settings: editingProjectRecord?.settings || {},
-        exportPreset: editingProjectRecord?.exportPreset ?? null
-      };
-      copyOperationId = await operationFor("project-copy", payload);
-      if (requestEpoch !== accountEpoch || accountId !== user?.id) return;
-      pendingCopyPayload = { ...payload, idempotencyKey: copyOperationId };
-    }
     saveProjectAsCopy.disabled = true;
     try {
+      if (!pendingCopyPayload) {
+        const payload = {
+          name: (projectName.el.value.trim() || "Reklamný projekt") + " (kópia)",
+          prompt: projectPrompt.el.value,
+          productId: projectProduct.value || null,
+          settings: editingProjectRecord?.settings || {},
+          exportPreset: editingProjectRecord?.exportPreset ?? null
+        };
+        copyOperationId = await operationFor("project-copy", payload);
+        if (requestEpoch !== accountEpoch || accountId !== user?.id) return;
+        pendingCopyPayload = { ...payload, idempotencyKey: copyOperationId };
+      }
       const result = await api("/api/projects", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify(pendingCopyPayload)
