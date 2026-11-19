@@ -65,7 +65,7 @@ assert.ok(cloud.includes("await onProgress({ ...sync })"), "Cloud save must pers
 assert.ok(cloud.includes("if (!sync.idempotencyKey)"), "Cloud save must create a stable idempotency key before project creation.");
 assert.ok(cloud.includes("idempotencyKey: sync.idempotencyKey"), "Cloud project creation must send the persisted idempotency key.");
 assert.ok(worker.includes("client_operation_id"), "Cloud project creation must persist its idempotency key server-side.");
-assert.ok(worker.includes("idx_projects_owner_operation"), "Cloud project idempotency must be unique per account.");
+assert.ok(worker.includes("WHERE user_id = ? AND client_operation_id = ?"), "Cloud project retries must look up the operation key within the authenticated account.");
 assert.ok(worker.includes("Kľúč operácie už bol použitý pre iný projekt."), "Reusing an idempotency key with a different payload must be rejected.");
 
 assert.ok(cloud.includes('api("/api/projects", {'), "Cloud save must create a cloud project only after product media upload");
