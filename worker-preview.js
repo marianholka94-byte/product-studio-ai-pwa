@@ -192,8 +192,11 @@ const BYTEPLUS_MODEL_IDS = Object.freeze({
   seedance2: "dreamina-seedance-2-0-260128"
 });
 const BYTEPLUS_TASKS_URL = "https://ark.ap-southeast.bytepluses.com/api/v3/contents/generations/tasks";
+function byteplusConfigured(env) {
+  return Boolean(String(env.BYTEPLUS_MODELARK_API_KEY || "").trim());
+}
 function byteplusReady(env) {
-  return Boolean(String(env.BYTEPLUS_MODELARK_API_KEY || "").trim()) &&
+  return byteplusConfigured(env) &&
     String(env.BYTEPLUS_MODELARK_ENABLED || "").toLowerCase() === "true";
 }
 function byteplusHeaders(env) {
@@ -685,7 +688,7 @@ export default {
       if (generationStatusMatch && request.method === "GET") {
         const user = await currentUser(request, env);
         if (!user) return json({ error: "Prihlásenie vypršalo. Prihlás sa znova." }, 401, origin);
-        if (!byteplusReady(env)) return json({ error: "Seedance API zatiaľ nie je aktivované." }, 503, origin);
+        if (!byteplusConfigured(env)) return json({ error: "Seedance API zatiaľ nie je nakonfigurované." }, 503, origin);
         const generation = await env.DB.prepare("SELECT id, provider_task_id, status FROM generations WHERE id = ? AND user_id = ? LIMIT 1")
           .bind(generationStatusMatch[1], user.id).first();
         if (!generation) return json({ error: "Generovanie sa nenašlo." }, 404, origin);
@@ -715,7 +718,7 @@ export default {
       if (generationDownloadMatch && request.method === "GET") {
         const user = await currentUser(request, env);
         if (!user) return json({ error: "Prihlásenie vypršalo. Prihlás sa znova." }, 401, origin);
-        if (!byteplusReady(env)) return json({ error: "Seedance API zatiaľ nie je aktivované." }, 503, origin);
+        if (!byteplusConfigured(env)) return json({ error: "Seedance API zatiaľ nie je nakonfigurované." }, 503, origin);
         const generation = await env.DB.prepare("SELECT id, provider_task_id FROM generations WHERE id = ? AND user_id = ? LIMIT 1")
           .bind(generationDownloadMatch[1], user.id).first();
         if (!generation) return json({ error: "Video sa nenašlo." }, 404, origin);
