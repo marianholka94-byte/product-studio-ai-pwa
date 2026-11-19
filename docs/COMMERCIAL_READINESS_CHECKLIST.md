@@ -19,6 +19,7 @@ This document tracks readiness work on the isolated commercial preview. It is no
 - [x] Manual interrupted cloud save followed by resume; user confirmed that the project saved successfully.
 - [ ] Manual lost project-create response retry test (verify idempotent replay without duplicate records).
 - [x] Manual UI tenant-isolation check: the second account showed only its own cloud product and no products/projects from the first account.
+- [x] Repeatable two-account API acceptance script added; checks own-account reads, cross-account product/project/asset denial, and server-side logout revocation without mutating saved records.
 - [ ] Direct cross-account API/asset-ID authorization check (attempt first-account resource IDs while authenticated as the second account).
 - [ ] Manual session-expiry and logout test.
 - [x] User-confirmed: after signing out and signing back in, a cloud project opens back into Studio with its saved content and photos.
