@@ -79,6 +79,12 @@ assert.ok(cloud.includes("window.PSAIProjectBridge.restore({ product: product.na
 assert.ok(cloud.includes("Cloudový originál zostal nezmenený."), "Studio import must preserve the cloud source record");
 assert.ok(cloud.includes("if (!confirm("), "Studio import must confirm before replacing unsaved editor state");
 
+new vm.Script(nav, { filename: "app-navigation.js" });
+assert.ok(nav.includes("const cloudLibraryPanel=document.getElementById('commercialCloudPanel');") && nav.includes("if(cloudLibraryPanel)projects.append(cloudLibraryPanel);"), "The cloud library must live inside the Projects navigation screen.");
+assert.ok(nav.includes("if(target==='screenProjects'){") && !nav.includes("}renderProducts().catch"), "Local libraries must not be reloaded on unrelated bottom-navigation switches.");
+assert.ok(nav.includes("clearLocalProductObjectUrls();") && nav.includes("localProductObjectUrls.add(objectUrl)"), "Local product thumbnails must release object URLs before re-rendering.");
+assert.ok(nav.includes("request.onblocked=()=>{projectDbPromise=null;") && nav.includes("request.onerror=()=>{projectDbPromise=null;"), "IndexedDB open failures and blocked upgrades must allow a later retry.");
+
 console.log("Commercial cloud integration contract checks passed.");
 
 assert.ok(worker.includes('/restore`)'), "Archived products must have an explicit restore endpoint");
