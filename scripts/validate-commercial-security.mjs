@@ -63,3 +63,7 @@ mustNotContain(wrangler, /database_name = "product-studio-ai-db"/, "Preview must
 mustNotContain(wrangler, /bucket_name = "product-studio-ai-media"/, "Preview must not bind the production R2 bucket.");
 
 console.log("Commercial tenant-isolation and private-media security checks passed.");
+
+const generationHistoryRoute = worker.match(/if \(url\.pathname === "\/api\/generations" && request\.method === "GET"\)[\s\S]*?return json\(\{ generations, limit \}, 200, origin\);[\s\S]*?\n      }/)?.[0] || "";
+assert.ok(generationHistoryRoute.includes("currentUser(request, env)") && generationHistoryRoute.includes("WHERE user_id = ?"), "Generation history must authenticate and filter every record by the current owner.");
+assert.ok(!generationHistoryRoute.includes("provider_task_id"), "Generation history must never expose provider task IDs.");
