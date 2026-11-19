@@ -337,12 +337,12 @@ export default {
             const product = await ownedProduct(env, user.id, productId);
             if (!product) return json({ error: "Produkt sa nenašiel." }, 404, origin);
             const result = await env.DB.prepare(
-              `SELECT a.id, a.content_type, a.byte_size, a.width, a.height, pi.sort_order, pi.is_primary, a.created_at
+              `SELECT a.id, a.content_type, a.byte_size, a.width, a.height, a.checksum_sha256, pi.sort_order, pi.is_primary, a.created_at
                FROM product_images pi JOIN assets a ON a.id = pi.asset_id
                WHERE pi.product_id = ? AND pi.user_id = ? AND a.deleted_at IS NULL
                ORDER BY pi.sort_order ASC LIMIT 5`
             ).bind(productId, user.id).all();
-            return json({ images: (result.results || []).map(row => ({ id: row.id, contentType: row.content_type, byteSize: row.byte_size, width: row.width, height: row.height, sortOrder: row.sort_order, isPrimary: !!row.is_primary, createdAt: row.created_at, url: `/api/assets/${row.id}` })) }, 200, origin);
+            return json({ images: (result.results || []).map(row => ({ id: row.id, contentType: row.content_type, byteSize: row.byte_size, width: row.width, height: row.height, checksumSha256: row.checksum_sha256, sortOrder: row.sort_order, isPrimary: !!row.is_primary, createdAt: row.created_at, url: `/api/assets/${row.id}` })) }, 200, origin);
           }
           if (productId && request.method === "POST" && url.pathname === `/api/products/${productId}/images`) {
             const product = await ownedProduct(env, user.id, productId);
