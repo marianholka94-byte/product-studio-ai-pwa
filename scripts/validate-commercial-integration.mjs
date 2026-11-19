@@ -80,6 +80,10 @@ assert.ok(cloud.includes("settings,\n          exportPreset"), "Cloud project sa
 assert.ok(cloud.includes("if (sync && sync.fingerprint !== fingerprint)"), "Cloud save must stop if the local project changes during a partial upload");
 assert.ok(cloud.includes('crypto.subtle.digest("SHA-256"'), "Cloud save retry fingerprint must include actual image content hashes");
 assert.ok(cloud.includes("uploaded > images.length"), "Cloud save must stop rather than silently duplicating excess media");
+assert.ok(worker.includes("a.checksum_sha256") && worker.includes("checksumSha256: row.checksum_sha256"), "Private image manifests must expose stored SHA-256 checksums for safe resume.");
+assert.ok(cloud.includes("const remoteDigests = (manifest.images || []).map(image => image.checksumSha256 || \"\")"), "Cloud save retry must compare the remote image manifest with the original local image checksums.");
+assert.ok(cloud.includes("remoteDigests[index] !== imageDigests[index]"), "Cloud save retry must stop if a previously uploaded image differs from the local source.");
+assert.ok(cloud.includes("return btoa(binary).replace(/=/g, \"\").replace(/\\\\+/g, \"-\").replace(/\\\\//g, \"_\");"), "Client image fingerprints must use the same base64url SHA-256 encoding as the Worker.");
 assert.ok(nav.includes("Uložiť do cloudu"), "Local project cards must offer an explicit cloud save action");
 assert.ok(nav.includes("latest.cloudSync=sync"), "Local project must persist cloud save progress for retry");
 assert.ok(nav.includes("resolution:state.resolution||'720p',model:state.model||'seedance2_mini'"), "Local project save must retain model and resolution settings");
