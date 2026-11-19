@@ -244,3 +244,21 @@ assert.ok(studioImportHandler.includes("const accountId = user?.id") && studioIm
 assert.ok(studioImportHandler.includes('Authorization: "Bearer " + requestToken'), "Cloud image downloads must use the session token that initiated the import.");
 assert.ok((studioImportHandler.match(/requestEpoch !== accountEpoch/g) || []).length >= 4, "Cloud-to-Studio imports must recheck account identity after each asynchronous media step.");
 
+const archiveHandlerStart = cloud.indexOf('archiveButton.addEventListener("click"');
+const archiveHandlerEnd = cloud.indexOf("      });", archiveHandlerStart);
+const archiveHandler = archiveHandlerStart >= 0 && archiveHandlerEnd > archiveHandlerStart ? cloud.slice(archiveHandlerStart, archiveHandlerEnd) : "";
+assert.ok(archiveHandler.includes("const accountId = user?.id") && archiveHandler.includes("requestEpoch !== accountEpoch || accountId !== user?.id"), "Product archiving must stop after an account switch.");
+assert.ok(archiveHandler.includes("archiveButton.disabled = true") && archiveHandler.includes("archiveButton.disabled = false"), "Product archiving must prevent duplicate submissions.");
+
+const restoreHandlerStart = cloud.indexOf('restore.addEventListener("click"');
+const restoreHandlerEnd = cloud.indexOf("        });", restoreHandlerStart);
+const restoreHandler = restoreHandlerStart >= 0 && restoreHandlerEnd > restoreHandlerStart ? cloud.slice(restoreHandlerStart, restoreHandlerEnd) : "";
+assert.ok(restoreHandler.includes("const accountId = user?.id") && restoreHandler.includes("requestEpoch !== accountEpoch || accountId !== user?.id"), "Product restoration must stop after an account switch.");
+
+const projectImportStart = cloud.indexOf('openInStudio.addEventListener("click"');
+const projectImportEnd = cloud.indexOf("      });", projectImportStart);
+const projectImportHandler = projectImportStart >= 0 && projectImportEnd > projectImportStart ? cloud.slice(projectImportStart, projectImportEnd) : "";
+assert.ok(projectImportHandler.includes("const requestToken = token") && projectImportHandler.includes('Authorization: "Bearer " + requestToken'), "Cloud project imports must retain their initiating session token.");
+assert.ok((projectImportHandler.match(/requestEpoch !== accountEpoch/g) || []).length >= 4, "Cloud project imports must stop between asynchronous media operations after an account switch.");
+
+
