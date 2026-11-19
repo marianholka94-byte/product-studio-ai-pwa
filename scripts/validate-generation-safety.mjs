@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 const worker = readFileSync("worker-preview.js", "utf8");
 const html = readFileSync("index.html", "utf8");
 const outputMigration = readFileSync("migrations/0010_generation_outputs_r2.sql", "utf8");
+const inputMigration = readFileSync("migrations/0011_generation_input_videos_r2.sql", "utf8");
 
 // Provider readiness is deliberately opt-in: an API key alone must never trigger paid calls.
 assert.match(worker, /BYTEPLUS_MODELARK_API_KEY/);
@@ -25,11 +26,25 @@ assert.match(worker, /https:\/\/ark\.ap-southeast\.bytepluses\.com\/api\/v3\/con
 assert.match(worker, /type: "image_url"/);
 assert.match(worker, /image_url: \{ url: image \}/);
 assert.match(worker, /role: "reference_image"/);
+assert.match(worker, /type: "video_url"/, "Seedance requests must support reference video inputs.");
+assert.match(worker, /role: "reference_video"/, "Reference video input must use the ModelArk reference_video role.");
+assert.match(worker, /video_url: \{ url: url\.origin \+ "\/api\/provider-input\//, "The provider must receive a temporary Worker URL, not a public permanent R2 object URL.");
+assert.match(worker, /access_token_hash = \?/);
+assert.match(worker, /access_expires_at > \?/);
+assert.match(worker, /function cleanupExpiredGenerationInputs/);
+assert.match(inputMigration, /CREATE TABLE IF NOT EXISTS generation_input_videos/);
+assert.match(inputMigration, /UNIQUE \(user_id, client_upload_id\)/);
+assert.match(inputMigration, /FOREIGN KEY \(generation_id, user_id\)[\s\S]*?REFERENCES generations\(id, user_id\)/);
 assert.match(worker, /ratio: providerRatio/);
 assert.match(worker, /function byteplusRatio/);
 assert.match(worker, /function generationStatus\(providerStatus\)[\s\S]*?toLowerCase\(\)/);
 
 // Fail closed before writing a generation or invoking BytePlus.
+const videoUploadStart = worker.indexOf('if (request.method === "POST" && url.pathname === "/api/generation-input-video")');
+assert.ok(videoUploadStart >= 0, "Authenticated reference video upload route must exist.");
+const videoUploadRoute = worker.slice(videoUploadStart, worker.indexOf('if (request.method === "GET" && url.pathname === "/api/health")'));
+assert.ok(videoUploadRoute.includes("currentUser(request, env)") && videoUploadRoute.includes("byteplusReady(env)"), "Reference video uploads must require an authenticated account and explicit provider readiness.");
+assert.ok(videoUploadRoute.includes("50 * 1024 * 1024") && videoUploadRoute.includes("new TransformStream") && videoUploadRoute.includes('"ftyp"'), "Reference video uploads must stream to R2 with a hard size cap and MP4/MOV signature validation.");
 const generationStart = worker.indexOf('if (url.pathname === "/api/generate" && request.method === "POST")');
 assert.notEqual(generationStart, -1, "Generation route must exist.");
 const readinessGuard = worker.indexOf("if (!byteplusReady(env))", generationStart);
