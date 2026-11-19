@@ -220,3 +220,10 @@ assert.ok(html.includes('id="creditState"') && html.includes("Kredity zatiaľ ni
 assert.ok(html.includes("renderAccountOverview(account,usage,health)") && html.includes("usage.remainingToday"), "The account overview must use server-returned usage values.");
 assert.ok(html.includes('id="historySummary"') && html.includes("Rozpracované") && html.includes("Neúspešné/zrušené"), "The generation history must summarize completed, active, and failed jobs.");
 assert.ok(readFileSync("sw.js", "utf8").includes("product-studio-ai-v46-static-only-20261119"), "The PWA cache must refresh for the account overview UI.");
+
+const projectCopyHandler = cloud.match(/saveProjectAsCopy\.addEventListener\("click", async \(\) => \{[\\s\\S]*?\\n  \}\);/)?.[0] || "";
+assert.ok(projectCopyHandler.includes('operationFor("project-copy", payload)'), "Conflict save-as-copy must use a persisted, account-scoped idempotency key.");
+assert.ok(projectCopyHandler.includes('clearOperation("project-copy", accountId)'), "A successful conflict copy must clear its pending idempotency checkpoint.");
+assert.ok(projectCopyHandler.includes("const accountId = user.id") && projectCopyHandler.includes("const requestEpoch = accountEpoch"), "Conflict save-as-copy must capture the initiating account before asynchronous work.");
+assert.ok(projectCopyHandler.includes("requestEpoch !== accountEpoch || accountId !== user?.id"), "Conflict save-as-copy must stop if the signed-in account changes during the request.");
+assert.ok(projectCopyHandler.includes("saveProjectAsCopy.disabled = true") && projectCopyHandler.includes("saveProjectAsCopy.disabled = false"), "Conflict save-as-copy must prevent overlapping submissions and restore the control for the same account.");
