@@ -50,13 +50,25 @@ public class MainActivity extends Activity {
                 public boolean onShowFileChooser(WebView view, ValueCallback<Uri[]> callback, FileChooserParams params) {
                     if (fileChooserCallback != null) fileChooserCallback.onReceiveValue(null);
                     fileChooserCallback = callback;
-                    Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+                    Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
                     intent.addCategory(Intent.CATEGORY_OPENABLE);
-                    intent.setType("*/*");
-                    intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"image/*", "video/*"});
-                    intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+                    String[] requestedTypes = params.getAcceptTypes();
+                    java.util.ArrayList<String> mimeTypes = new java.util.ArrayList<>();
+                    if (requestedTypes != null) {
+                        for (String requestedType : requestedTypes) {
+                            if (requestedType == null) continue;
+                            String mimeType = requestedType.trim();
+                            if (!mimeType.isEmpty() && mimeType.contains("/") && !mimeTypes.contains(mimeType)) {
+                                mimeTypes.add(mimeType);
+                            }
+                        }
+                    }
+                    if (mimeTypes.isEmpty()) mimeTypes.add("image/*");
+                    intent.setType(mimeTypes.size() == 1 ? mimeTypes.get(0) : "*/*");
+                    if (mimeTypes.size() > 1) intent.putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes.toArray(new String[0]));
+                    intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, params.getMode() == WebChromeClient.FileChooserParams.MODE_OPEN_MULTIPLE);
                     try {
-                        startActivityForResult(Intent.createChooser(intent, "Vybrať fotografie alebo video"), FILE_CHOOSER_REQUEST);
+                        startActivityForResult(Intent.createChooser(intent, "Vybrať súbory"), FILE_CHOOSER_REQUEST);
                         return true;
                     } catch (Exception error) {
                         fileChooserCallback = null;
