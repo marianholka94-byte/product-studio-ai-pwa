@@ -391,25 +391,33 @@
         const linkedProduct = products.find(item => item.id === project.productId);
         if (!linkedProduct) return setStatus("Prepojený cloudový produkt sa nenašiel. Projekt zostal nezmenený.", true);
         if (!confirm("Otvoriť cloudový projekt „" + project.name + "“ v štúdiu? Aktuálne neuložené zmeny v editore sa prepíšu. Cloudový originál zostane nezmenený.")) return;
+        const accountId = user?.id;
+        const requestEpoch = accountEpoch;
+        const requestToken = token;
+        if (!accountId || !requestToken) return setStatus("Cloudové prihlásenie vypršalo. Prihlás sa znova.", true);
         openInStudio.disabled = true;
         try {
           const result = await api("/api/products/" + encodeURIComponent(linkedProduct.id) + "/images");
+          if (requestEpoch !== accountEpoch || accountId !== user?.id || requestToken !== token) return;
           const imageRecords = result.images || [];
           if (!imageRecords.length) throw new Error("Prepojený produkt nemá žiadne aktívne fotografie.");
           const files = [];
           for (let index = 0; index < imageRecords.length; index++) {
             const imageRecord = imageRecords[index];
-            const response = await fetch(API + imageRecord.url, { headers: { Authorization: "Bearer " + token }, cache: "no-store" });
+            const response = await fetch(API + imageRecord.url, { headers: { Authorization: "Bearer " + requestToken }, cache: "no-store" });
+            if (requestEpoch !== accountEpoch || accountId !== user?.id || requestToken !== token) return;
             if (response.status === 401) {
               token = ""; sessionStorage.removeItem(TOKEN_KEY); renderAuth();
               throw new Error("Cloudové prihlásenie vypršalo. Prihlás sa znova a skús import opakovať.");
             }
             if (!response.ok) throw new Error("Fotografiu " + (index + 1) + " sa nepodarilo načítať.");
             const blob = await response.blob();
+            if (requestEpoch !== accountEpoch || accountId !== user?.id || requestToken !== token) return;
             const type = imageRecord.contentType || blob.type || "image/jpeg";
             if (!["image/jpeg", "image/png", "image/webp"].includes(type)) throw new Error("Cloudový projekt obsahuje nepodporovaný formát fotografie.");
             files.push({ name: "cloud-" + linkedProduct.id + "-" + (index + 1) + (type === "image/png" ? ".png" : type === "image/webp" ? ".webp" : ".jpg"), type, blob });
           }
+          if (requestEpoch !== accountEpoch || accountId !== user?.id || requestToken !== token) return;
           const settings = project.settings || {};
           await window.PSAIProjectBridge.restore({
             product: linkedProduct.name, style: settings.style || "", scenePreset: settings.scenePreset || "",
@@ -418,6 +426,7 @@
             resolution: settings.resolution || "720p", model: settings.model || "seedance2_mini",
             lighting: settings.lighting || "", extra: settings.extra || "", prompt: project.prompt || "", images: files
           });
+          if (requestEpoch !== accountEpoch || accountId !== user?.id || requestToken !== token) return;
           document.querySelector('#appBottomNav [data-screen="screenStudio"]')?.click();
           setStatus("Cloudový projekt „" + project.name + "“ a " + files.length + " fotografií boli načítané do štúdia. Prompt a nastavenia boli obnovené; cloudový originál zostal nezmenený.");
         } catch (error) {
