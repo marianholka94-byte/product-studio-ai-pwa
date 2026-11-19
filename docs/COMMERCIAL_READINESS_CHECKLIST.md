@@ -13,7 +13,9 @@ This document tracks readiness work on the isolated commercial preview. It is no
 - [x] Cloud save progress is checkpointed locally between media uploads.
 - [x] Cloud product and project creation use persisted per-account idempotency keys, so retrying after a lost response returns the existing records instead of creating duplicates.
 - [x] Reusing a product or project idempotency key with a different payload is rejected.
+- [x] Resumed cloud uploads compare ordered SHA-256 checksums against the remote image manifest before continuing.
 - [x] Schema and integration checks cover both idempotency columns and unique per-account constraints.
+- [x] Integration checks cover checksum-verified recovery of partially uploaded images.
 - [ ] Manual interruption/retry test with a deliberately interrupted project-create response.
 - [ ] Manual tenant-isolation test using two independent preview accounts.
 - [ ] Manual session-expiry and logout test.
