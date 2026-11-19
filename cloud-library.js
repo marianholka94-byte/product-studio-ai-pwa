@@ -298,6 +298,67 @@
       await refresh();
     } catch (e) { setStatus(e.message, true); }
   });
+  window.PSAICloudLibrary = {
+    async saveLocalProject(record, onProgress = () => {}) {
+      if (!token) throw new Error("Najskôr sa prihlás do cloudovej knižnice.");
+      if (!record || !record.id || !Array.isArray(record.images) || !record.images.length) throw new Error("Projekt musí obsahovať aspoň jednu fotografiu.");
+      if (record.images.length > 5) throw new Error("Cloudový produkt môže obsahovať najviac 5 fotografií.");
+      const images = record.images.map((item, index) => {
+        const blob = item.blob;
+        const type = item.type || blob?.type || "";
+        if (!(blob instanceof Blob) || !["image/jpeg", "image/png", "image/webp"].includes(type)) throw new Error("Fotografia " + (index + 1) + " nemá podporovaný formát JPG, PNG alebo WebP.");
+        if (!blob.size || blob.size > 10 * 1024 * 1024) throw new Error("Každá fotografia musí mať veľkosť do 10 MB.");
+        return { blob, type, name: item.name || ("produkt-" + (index + 1)) };
+      });
+      const settings = {
+        style: record.style || "", scenePreset: record.scenePreset || "", format: record.format || "9:16",
+        motion: record.motion || "", duration: record.duration || "5", resolution: record.resolution || "720p",
+        model: record.model || "seedance2_mini", lighting: record.lighting || "", extra: record.extra || ""
+      };
+      const fingerprint = JSON.stringify({
+        name: record.name || record.product || "Nový produkt", product: record.product || "",
+        prompt: record.prompt || "", settings,
+        images: images.map(x => ({ name: x.name, type: x.type, size: x.blob.size }))
+      });
+      let sync = record.cloudSync || null;
+      if (sync && sync.fingerprint !== fingerprint) throw new Error("Tento lokálny projekt sa od posledného pokusu zmenil. Pôvodné čiastočné nahrávanie zostáva zachované; najprv ho dokonči alebo vytvor nový lokálny projekt.");
+      if (sync?.projectId) return { ...sync, alreadySaved: true };
+      if (!sync?.productId) {
+        const created = await api("/api/products", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: (record.product || record.name || "Produkt").slice(0, 120), description: "Produkt vytvorený pri ukladaní reklamného projektu." })
+        });
+        sync = { fingerprint, productId: created.product.id, uploadedImages: 0, projectId: null };
+        onProgress({ ...sync });
+      }
+      const manifest = await api("/api/products/" + encodeURIComponent(sync.productId) + "/images");
+      const uploaded = (manifest.images || []).length;
+      if (uploaded > images.length) throw new Error("Cloudový produkt obsahuje viac fotografií, než má tento projekt. Nahrávanie bolo zastavené kvôli ochrane pred duplicitami.");
+      sync.uploadedImages = uploaded;
+      onProgress({ ...sync });
+      for (let index = uploaded; index < images.length; index++) {
+        const image = images[index];
+        await api("/api/products/" + encodeURIComponent(sync.productId) + "/images", {
+          method: "POST", headers: { "Content-Type": image.type }, body: image.blob
+        });
+        sync.uploadedImages = index + 1;
+        onProgress({ ...sync });
+      }
+      const createdProject = await api("/api/projects", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: (record.name || record.product || "Reklamný projekt").slice(0, 120),
+          productId: sync.productId, prompt: record.prompt || "", settings,
+          exportPreset: record.exportPreset || null
+        })
+      });
+      sync.projectId = createdProject.project.id;
+      onProgress({ ...sync });
+      setStatus("Projekt „" + createdProject.project.name + "“ a " + images.length + " fotografií boli uložené do cloudu.");
+      await refresh();
+      return { ...sync, alreadySaved: false };
+    }
+  };
   panel.appendChild(auth);
   panel.appendChild(workspace);
   renderAuth();
