@@ -92,7 +92,7 @@ assert.ok(cloud.includes("const remoteDigests = (manifest.images || []).map(imag
 assert.ok(cloud.includes("remoteDigests[index] !== imageDigests[index]"), "Cloud save retry must stop if a previously uploaded image differs from the local source.");
 assert.ok(cloud.includes("return btoa(binary)") && cloud.includes("replace(/=/g"), "Client image fingerprints must use unpadded base64 SHA-256 encoding.");
 assert.ok(nav.includes("Uložiť do cloudu"), "Local project cards must offer an explicit cloud save action");
-assert.ok(nav.includes("latest.cloudSync=sync"), "Local project must persist cloud save progress for retry");
+assert.ok(nav.includes("latest.cloudSyncByAccount={...(latest.cloudSyncByAccount||{}),[sync.accountId]:sync}"), "Local project must persist cloud save progress under the owning account for retry");
 assert.ok(nav.includes("resolution:state.resolution||'720p',model:state.model||'seedance2_mini'"), "Local project save must retain model and resolution settings");
 
 
