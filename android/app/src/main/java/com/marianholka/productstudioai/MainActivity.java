@@ -64,7 +64,7 @@ public class MainActivity extends Activity {
                 @Override
                 public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                     String host = request.getUrl().getHost();
-                    return host != null && !host.equals("product-studio-ai-pwa.pages.dev");
+                    return host != null && !host.equals("feature-social-export-preset.product-studio-ai-pwa.pages.dev");
                 }
                 @Override
                 public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
@@ -75,7 +75,7 @@ public class MainActivity extends Activity {
                 }
             });
             setContentView(webView);
-            webView.loadUrl("https://product-studio-ai-pwa.pages.dev/?native=1&app=android-stable-20261118");
+            webView.loadUrl("https://feature-social-export-preset.product-studio-ai-pwa.pages.dev/?native=1&app=android-1.3.0");
         } catch (Throwable error) {
             TextView message = new TextView(this);
             message.setText("PRODUCT STUDIO AI sa nepodarilo spustiť.\n\n" + error.getClass().getSimpleName() + "\n\nSkontroluj aktualizáciu Android System WebView a skús aplikáciu znovu.");

@@ -25,10 +25,38 @@ video{width:100%;border-radius:12px;background:#111;margin-top:10px;max-height:5
 a{color:#174ea6;overflow-wrap:anywhere}
 @media(max-width:430px){.grid{grid-template-columns:1fr 1fr}body{padding-inline:10px}}
 .preview-gallery{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:14px 0}
+.photo-card{min-width:0;background:#171d27;border:1px solid #303b49;border-radius:13px;padding:8px;color:#f3f5f8}
+.photo-card img{display:block;width:100%;height:142px;object-fit:contain;border-radius:8px;background:#0b1017}
+.photo-card-meta{display:flex;justify-content:space-between;align-items:center;gap:6px;margin:8px 0;font-size:11px;color:#c5cedb}
+.photo-main-tag{padding:4px 7px;border-radius:99px;background:#3a3020;color:#e8ca83;font-weight:700}
+.photo-card-actions{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.photo-card-actions button{margin:0!important;min-width:0;padding:8px 5px!important;font-size:11px!important;white-space:normal;line-height:1.25}
+.photo-card-actions .photo-primary{grid-column:1/-1;background:#29251c!important;color:#e2c47e!important;border:1px solid #5b4b2b!important}
+.photo-card-actions .photo-remove{background:#302126!important;color:#ffb5b5!important;border:1px solid #663139!important}
+.photo-help{margin-top:8px;color:#aeb8c7;font-size:12px;line-height:1.45}
+
 .preview-item{min-width:0;background:#0e131a;border:1px solid #303b49;border-radius:14px;padding:8px}
 .preview-item img{display:block;width:100%;height:150px;object-fit:contain;border-radius:9px}
 .preview-item span{display:block;text-align:center;font-size:16px;margin-top:8px;color:#c5cedb}
 @media(min-width:600px){.preview-gallery{grid-template-columns:repeat(3,minmax(0,1fr))}}
+
+.generation-progress{display:none;margin-top:14px;padding:14px;border:1px solid #303b49;border-radius:13px;background:#171d27;color:#f3f5f8;max-width:100%;overflow:hidden}
+.generation-progress .progress-heading{color:#f3f5f8}
+.generation-progress .progress-detail{color:#aeb8c7}
+.generation-progress .progress-track{background:#303947}
+.generation-progress .progress-step{background:#303947;color:#c5cedb}
+.generation-progress .progress-step.done{background:#183a2a;color:#a9e2b8}
+.generation-progress .progress-step.current{background:#26385e;color:#c6d3ff}
+.generation-progress.active{display:block}
+.progress-heading{display:flex;justify-content:space-between;gap:10px;align-items:center;font-size:14px;font-weight:700}
+.progress-track{height:9px;margin:12px 0 10px;background:#e6e6e1;border-radius:99px;overflow:hidden}
+.progress-bar{height:100%;width:35%;border-radius:99px;background:linear-gradient(90deg,#5c7cfa,#8b5cf6);animation:progressMove 1.5s ease-in-out infinite alternate}
+@keyframes progressMove{from{transform:translateX(-35%)}to{transform:translateX(190%)}}
+.progress-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-top:12px}
+.progress-step{padding:8px 5px;text-align:center;border-radius:8px;background:#eee;color:#777;font-size:11px;line-height:1.3}
+.progress-step.done{background:#e8f4eb;color:#246333}.progress-step.current{background:#e9edff;color:#3349a5;font-weight:700}
+.progress-detail{margin:9px 0 0;color:#666;font-size:12px;line-height:1.4}
+@media(prefers-reduced-motion:reduce){.progress-bar{animation:none;width:100%;opacity:.7}}
 </style>
 
 </head>
@@ -62,6 +90,9 @@ a{color:#174ea6;overflow-wrap:anywhere}
 
 <section class="panel">
 <h2>3. Nastavenie reklamy</h2>
+<label for="exportPreset">Predvoľba exportu pre platformu</label>
+<select id="exportPreset"><option value="custom">Vlastné nastavenie</option><option value="instagram">Instagram Reels / Stories – 9:16 · 1080p</option><option value="tiktok">TikTok – 9:16 · 1080p</option><option value="shorts">YouTube Shorts – 9:16 · 1080p</option><option value="youtube">YouTube video – 16:9 · 1080p</option><option value="youtube4k">YouTube 4K – 16:9 · 4K</option><option value="square">Instagram príspevok – 1:1 · 1080p</option></select>
+<p id="exportPresetNote" class="note">Vyber platformu a aplikácia nastaví odporúčaný pomer strán, model a rozlíšenie. Nastavenia môžeš potom upraviť ručne.</p>
 <div class="grid">
 <div><label for="style">Vizuálny štýl</label><select id="style">
 <option>Realistická luxusná reklama</option><option>Minimalistická štúdiová reklama</option><option>Športová dynamická reklama</option><option>Prírodná lifestyle reklama</option><option>Technologická reklama</option></select></div>
@@ -69,8 +100,11 @@ a{color:#174ea6;overflow-wrap:anywhere}
 <div><label for="motion">Pohyb kamery</label><select id="motion"><option>Pomalé približovanie (push-in)</option><option>Plynulý pohyb zľava doprava</option><option>Jemný orbit okolo produktu</option><option>Detailný makro záber</option><option>Statická kamera</option></select></div>
 <div><label for="duration">Dĺžka klipu</label><select id="duration"><option value="5">5 sekúnd</option><option value="10">10 sekúnd</option><option value="15">15 sekúnd</option></select></div>
 </div>
-<label>Rozlíšenie</label>
-<input value="720p – prvá testovacia verzia" disabled>
+<label for="model">AI video model</label>
+<select id="model"><option value="seedance2_mini">Economy – Seedance 2.0 Mini</option><option value="seedance2">Quality – Seedance 2.0</option></select>
+<label for="resolution">Rozlíšenie výstupu</label>
+<select id="resolution"><option value="720p">720p – vyvážená kvalita</option><option value="480p">480p – menší súbor</option></select>
+<p id="resolutionNote" class="note">Seedance 2.0 Mini podporuje maximálne 720p. Model Quality sprístupní 1080p a 4K. FPS určuje model.</p>
 <label for="lighting">Svetlo a prostredie</label>
 <select id="lighting"><option>Tmavé štúdio, jemné zlaté okrajové svetlo</option><option>Svetlé čisté štúdio, mäkké svetlo</option><option>Dramatické bočné svetlo a tiene</option><option>Vonkajšie prirodzené svetlo</option></select>
 <label for="extra">Dodatočné požiadavky</label>
@@ -79,12 +113,18 @@ a{color:#174ea6;overflow-wrap:anywhere}
 
 <section class="panel">
 <h2>4. Generovanie videa</h2>
-<div class="row"><span class="small">Model: Seedance 2.0 Mini</span><strong id="estimate">Odhad: $0.75</strong></div>
-<p class="note">Aktuálna cena Runway Dev pre Seedance 2.0 Mini pri nastavenom 720p: 15 kreditov za sekundu (0,15 USD/s). Pri 5 s je to 75 kreditov = 0,75 USD, pri 10 s 150 kreditov = 1,50 USD a pri 15 s 225 kreditov = 2,25 USD. Minimálna cena generovania je 28 kreditov. Referenčné fotografie sa účtujú bez príplatku. 1 kredit = 0,01 USD. Ceny sa môžu zmeniť.</p>
+<div class="row"><span class="small" id="modelLabel">Model: Seedance 2.0 Mini</span><strong id="estimate">Odhad: 0,75 USD</strong></div>
+<p id="pricingNote" class="note">Odhad podľa cenníka Runway Dev. Cena sa počíta podľa modelu, rozlíšenia a dĺžky. 1 kredit = 0,01 USD. Skutočnú cenu potvrdzuje poskytovateľ pri odoslaní úlohy.</p>
 <button id="makePrompt" class="secondary">Vytvoriť / obnoviť reklamný prompt</button>
 <div id="prompt" class="output">Po výbere produktu sa tu zobrazí reklamný prompt.</div>
 <button id="generate">GENEROVAŤ VIDEO</button>
 <div id="status" class="status">Najskôr over backend a vyber fotografiu produktu.</div>
+<div id="generationProgress" class="generation-progress" role="status" aria-live="polite">
+ <div class="progress-heading"><span id="progressTitle">Pripravujem generovanie</span><span id="progressElapsed">0:00</span></div>
+ <div class="progress-track"><div class="progress-bar"></div></div>
+ <div class="progress-steps"><div class="progress-step" data-step="0">1. Odoslanie</div><div class="progress-step" data-step="1">2. AI spracovanie</div><div class="progress-step" data-step="2">3. Dokončovanie</div></div>
+ <p id="progressDetail" class="progress-detail">Po prijatí úlohy začne AI generovať video. Presné percento poskytovateľ neposkytuje.</p>
+</div>
 <div id="videoWrap"></div>
 </section>
 
@@ -105,6 +145,21 @@ if(apiUrl) apiUrl.value=API_BASE;
 if(appPassword) appPassword.value='';
 
 function setStatus(message,kind=''){const el=$('status');el.textContent=message;el.className='status '+kind}
+let progressStartedAt=0, progressClock=null;
+function formatElapsed(ms){const total=Math.floor(ms/1000);return Math.floor(total/60)+':'+String(total%60).padStart(2,'0');}
+function setGenerationProgress(stage,title,detail){
+ const panel=$('generationProgress');panel.classList.add('active');$('progressTitle').textContent=title;$('progressDetail').textContent=detail||'';
+ document.querySelectorAll('.progress-step').forEach((step,index)=>{step.classList.toggle('done',index<stage);step.classList.toggle('current',index===stage);});
+}
+function startGenerationProgress(detail){
+ progressStartedAt=Date.now();if(progressClock)clearInterval(progressClock);
+ $('generationProgress').classList.add('active');setGenerationProgress(0,'Odosielam požiadavku',detail||'Pripravujem súbory a pripájam sa ku generátoru.');
+ $('progressElapsed').textContent='0:00';progressClock=setInterval(()=>$('progressElapsed').textContent=formatElapsed(Date.now()-progressStartedAt),1000);
+}
+function stopGenerationProgress(){if(progressClock){clearInterval(progressClock);progressClock=null;}}
+function completeGenerationProgress(title,detail){stopGenerationProgress();setGenerationProgress(2,title,detail);document.querySelectorAll('.progress-step').forEach(step=>step.classList.add('done'));$('progressElapsed').textContent=formatElapsed(Date.now()-progressStartedAt);}
+
+
 function updateReadyStatus(){
   const hasBackend=!!localStorage.getItem('psai_session_token');
   const hasPhoto=selectedFiles.length>0;
@@ -126,26 +181,83 @@ function buildPrompt(){
  promptText=(base+(extra?suffix+extra.slice(0,available):'')).slice(0,1000);
  $('prompt').textContent=promptText;updateEstimate();return promptText;
 }
-function updateEstimate(){
- const sec=Number($('duration').value);
- const rate=15; // Seedance 2.0 Mini, 720p: 15 credits/second
- const minimum=28;
- const credits=Math.max(minimum,sec*rate);
- $('estimate').textContent=`Odhad: ${(credits/100).toFixed(2)} (${credits} kreditov)`;
+function updateResolutionOptions(){
+ const quality=$('model').value==='seedance2';
+ const options=quality
+  ? [['480p','480p – menší súbor'],['720p','720p – vyvážená kvalita'],['1080p','1080p – Full HD'],['4K','4K – maximálne rozlíšenie']]
+  : [['480p','480p – menší súbor'],['720p','720p – vyššia kvalita']];
+ const previous=$('resolution').value;
+ $('resolution').innerHTML=options.map(([value,label])=>`<option value="${value}">${label}</option>`).join('');
+ $('resolution').value=options.some(([value])=>value===previous)?previous:(quality?'1080p':'720p');
+ $('modelLabel').textContent=quality?'Model: Seedance 2.0':'Model: Seedance 2.0 Mini';
+ $('resolutionNote').textContent=quality
+  ? 'Seedance 2.0 podporuje 480p, 720p, 1080p a 4K. Dostupnosť závisí od API účtu.'
+  : 'Seedance 2.0 Mini podporuje maximálne 720p. Pre Full HD a 4K vyber model Quality.';
+ updateEstimate();
 }
+function updateEstimate(){
+ const sec=Number($('duration').value), model=$('model').value, resolution=$('resolution').value;
+ const rates=model==='seedance2'
+  ? {'480p':14,'720p':30,'1080p':40,'4K':150}
+  : {'480p':7,'720p':15};
+ const rate=rates[resolution];
+ if(!rate){$('estimate').textContent='Cena sa nedá vypočítať';return;}
+ const credits=Math.max(rate*4,sec*rate);
+ $('estimate').textContent=`Odhad: ${(credits/100).toFixed(2)} USD (${credits} kreditov)`;
+}
+const exportPresets={
+ instagram:{format:'9:16',model:'seedance2',resolution:'1080p',note:'Instagram Reels a Stories: vertikálny formát 9:16 vo Full HD.'},
+ tiktok:{format:'9:16',model:'seedance2',resolution:'1080p',note:'TikTok: vertikálny formát 9:16 vo Full HD.'},
+ shorts:{format:'9:16',model:'seedance2',resolution:'1080p',note:'YouTube Shorts: vertikálny formát 9:16 vo Full HD.'},
+ youtube:{format:'16:9',model:'seedance2',resolution:'1080p',note:'YouTube: širokouhlý formát 16:9 vo Full HD.'},
+ youtube4k:{format:'16:9',model:'seedance2',resolution:'4K',note:'YouTube 4K: širokouhlý formát 16:9. Pozor na výrazne vyššiu cenu.'},
+ square:{format:'1:1',model:'seedance2',resolution:'1080p',note:'Štvorcový príspevok: formát 1:1 vo Full HD.'}
+};
+function applyExportPreset(){
+ const key=$('exportPreset').value,preset=exportPresets[key];
+ if(!preset){$('exportPresetNote').textContent='Vlastné nastavenie: formát, model a rozlíšenie si zvoľ samostatne.';return;}
+ $('format').value=preset.format;$('model').value=preset.model;updateResolutionOptions();$('resolution').value=preset.resolution;
+ $('exportPresetNote').textContent=preset.note+' FPS určuje generovací model.';updateEstimate();
+}
+$('exportPreset').addEventListener('change',applyExportPreset);
+['format','model','resolution'].forEach(id=>$(id).addEventListener('change',()=>{
+ if($('exportPreset').value!=='custom')$('exportPreset').value='custom';
+ $('exportPresetNote').textContent='Vlastné nastavenie: upravil si niektorú hodnotu ručne.';
+}));
 $('makePrompt').onclick=buildPrompt;
-['duration'].forEach(id=>$(id).addEventListener('change',updateEstimate));
-photo.addEventListener('change',()=>{
- selectedFiles=Array.from(photo.files||[]).slice(0,5);
- if((photo.files||[]).length>5) setStatus('Môžeš nahrať najviac 5 fotografií. Vybral som prvých 5.','err');
+$('model').addEventListener('change',updateResolutionOptions);
+['duration','resolution'].forEach(id=>$(id).addEventListener('change',updateEstimate));
+function renderSelectedPhotos(){
  previewGallery.innerHTML='';
  selectedFiles.forEach((file,index)=>{
-  const item=document.createElement('div');item.className='preview-item';
-  const image=document.createElement('img');image.alt=`Fotografia ${index+1}`;image.src=URL.createObjectURL(file);
-  const caption=document.createElement('span');caption.textContent=`Fotografia ${index+1}`;
-  item.append(image,caption);previewGallery.append(item);
+  const card=document.createElement('article');card.className='photo-card';
+  const image=document.createElement('img');image.alt=`Náhľad fotografie ${index+1}`;image.src=URL.createObjectURL(file);
+  const meta=document.createElement('div');meta.className='photo-card-meta';
+  const name=document.createElement('span');name.textContent=`${index+1}. ${file.name}`;name.style.overflowWrap='anywhere';
+  const tag=document.createElement('span');tag.className='photo-main-tag';tag.textContent=index===0?'HLAVNÁ':'REFERENCIA';
+  meta.append(name,tag);
+  const actions=document.createElement('div');actions.className='photo-card-actions';
+  const primary=document.createElement('button');primary.type='button';primary.className='photo-primary';primary.textContent=index===0?'Hlavná fotografia':'Použiť ako hlavnú';primary.disabled=index===0;
+  primary.addEventListener('click',()=>{selectedFiles.splice(index,1);selectedFiles.unshift(file);renderSelectedPhotos();updateReadyStatus();});
+  const left=document.createElement('button');left.type='button';left.className='secondary';left.textContent='← Doľava';left.disabled=index===0;
+  left.addEventListener('click',()=>{[selectedFiles[index-1],selectedFiles[index]]=[selectedFiles[index],selectedFiles[index-1]];renderSelectedPhotos();});
+  const right=document.createElement('button');right.type='button';right.className='secondary';right.textContent='Doprava →';right.disabled=index===selectedFiles.length-1;
+  right.addEventListener('click',()=>{[selectedFiles[index+1],selectedFiles[index]]=[selectedFiles[index],selectedFiles[index+1]];renderSelectedPhotos();});
+  const remove=document.createElement('button');remove.type='button';remove.className='photo-remove';remove.textContent='Odstrániť';
+  remove.addEventListener('click',()=>{selectedFiles.splice(index,1);renderSelectedPhotos();updateReadyStatus();});
+  actions.append(primary,left,right,remove);card.append(image,meta,actions);previewGallery.append(card);
  });
- updateReadyStatus();
+ const help=document.createElement('p');help.className='photo-help';help.textContent=selectedFiles.length?'Prvá fotografia je hlavná a odošle sa ako primárny záber. Ostatné fotografie slúžia ako referencie. Poradie môžeš kedykoľvek zmeniť.':'Zatiaľ nie sú vybrané žiadne fotografie.';previewGallery.append(help);
+}
+photo.addEventListener('change',()=>{
+ const incoming=Array.from(photo.files||[]);
+ const invalid=incoming.find(file=>!['image/jpeg','image/png','image/webp'].includes(file.type));
+ const tooLarge=incoming.find(file=>file.size>20*1024*1024);
+ if(invalid){setStatus('Podporované sú iba JPG, PNG a WebP fotografie.','err');photo.value='';return;}
+ if(tooLarge){setStatus('Jedna z fotografií má viac ako 20 MB. Vyber menší súbor.','err');photo.value='';return;}
+ selectedFiles=incoming.slice(0,5);
+ if(incoming.length>5)setStatus('Môžeš nahrať najviac 5 fotografií. Vybral som prvých 5.','err');
+ renderSelectedPhotos();updateReadyStatus();
 });
 async function imageToDataUri(file){
  if(!file)throw new Error('Najskôr vyber aspoň jednu fotografiu produktu.');
@@ -204,37 +316,69 @@ $('generate').onclick=async()=>{
    return;
   }
   if(!promptText)buildPrompt();
-  setStatus('Pripravujem fotografie a odosielam požiadavku…');
+  startGenerationProgress('Pripravujem fotografie a odosielam požiadavku.');
+  setStatus('Odosielam požiadavku generátoru…');
   const images=await Promise.all(selectedFiles.map(imageToDataUri));
-  const model='seedance2_mini';
-  const ratio=$('format').value==='9:16'?'720:1280':$('format').value==='1:1'?'960:960':'1280:720';
+  const model=$('model').value;
+  const ratios={
+   seedance2_mini:{'720p':{'9:16':'720:1280','1:1':'960:960','16:9':'1280:720'},'480p':{'9:16':'496:864','1:1':'640:640','16:9':'864:496'}},
+   seedance2:{'480p':{'9:16':'496:864','1:1':'640:640','16:9':'864:496'},'720p':{'9:16':'720:1280','1:1':'960:960','16:9':'1280:720'},'1080p':{'9:16':'1080:1920','1:1':'1440:1440','16:9':'1920:1080'},'4K':{'9:16':'2160:3840','1:1':'3840:3840','16:9':'3840:2160'}}
+  };
+  const ratio=ratios[model][$('resolution').value][$('format').value];
   const created=await api('/api/generate',{image:images[0],images,prompt:promptText,model,ratio,duration:Number($('duration').value),});
   currentTask=created.id;
   $('history').textContent=`Úloha: ${created.id} · Model: ${model} · Stav: ${created.status||'odoslané'}`;
-  setStatus('Požiadavka prijatá. Video sa generuje. Nezatváraj zatiaľ túto stránku.');
+  setGenerationProgress(1,'AI generuje video','Požiadavka bola prijatá. Sledujem stav na serveri; môže to chvíľu trvať.');
+  setStatus('Požiadavka prijatá. Video sa generuje. Stránku zatiaľ nezatváraj.');
   await pollTask(created.id);
- }catch(err){setStatus(err.message,'err')}
+ }catch(err){stopGenerationProgress();$('generationProgress').classList.remove('active');setStatus(err.message,'err')}
  finally{btn.disabled=false}
 };
+async function downloadGeneratedVideo(id){
+ const button=$('downloadVideo');if(button)button.disabled=true;
+ try{
+  let token=localStorage.getItem('psai_session_token')||'';
+  if(!token)token=await loginAndGetToken();
+  let response=await fetch(API_BASE+'/api/download/'+encodeURIComponent(id),{headers:{'Authorization':'Bearer '+token}});
+  if(response.status===401){localStorage.removeItem('psai_session_token');token=await loginAndGetToken();response=await fetch(API_BASE+'/api/download/'+encodeURIComponent(id),{headers:{'Authorization':'Bearer '+token}});}
+  if(!response.ok){const data=await response.json().catch(()=>({}));throw new Error(data.error||'Video sa nepodarilo stiahnuť.');}
+  const blob=await response.blob();const objectUrl=URL.createObjectURL(blob);
+  const sizeMb=(blob.size/1024/1024).toFixed(1);const sizeInfo=$('downloadInfo');if(sizeInfo)sizeInfo.textContent='Veľkosť súboru: '+sizeMb+' MB';
+  const link=document.createElement('a');link.href=objectUrl;
+  link.download=`product-studio-${$('format').value.replace(':','x')}-${$('resolution').value}-${$('duration').value}s.mp4`;
+  document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(objectUrl),60000);
+ }catch(error){setStatus(error.message,'err');}
+ finally{if(button)button.disabled=false;}
+}
 async function pollTask(id, outputId='videoWrap', statusId='status'){
+ let lastProviderStatus='';
  for(let i=0;i<120;i++){
   await new Promise(r=>setTimeout(r,5000));
   const task=await api('/api/status/'+encodeURIComponent(id));
   const status=(task.status||'').toUpperCase();
   $('history').textContent=`Úloha: ${id} · Stav: ${status||'spracúva sa'}`;
+  if(status!==lastProviderStatus){
+   lastProviderStatus=status;
+   if(['PENDING','THROTTLED','QUEUED'].includes(status))setGenerationProgress(0,'Úloha čaká na spracovanie','Generátor prijal požiadavku a čaká na voľnú kapacitu.');
+   else if(['RUNNING','PROCESSING','IN_PROGRESS'].includes(status))setGenerationProgress(1,'AI generuje video','Model spracúva zábery. Priebeh sa obnovuje automaticky každých 5 sekúnd.');
+   else if(['FINALIZING','FINALISING'].includes(status))setGenerationProgress(2,'Dokončujem video','Generátor pripravuje finálny súbor.');
+  }
   if(status==='SUCCEEDED'){
    const outputs=task.output||task.outputs||[];
    const url=Array.isArray(outputs)?(typeof outputs[0]==='string'?outputs[0]:outputs[0]?.url||outputs[0]?.uri):outputs?.url;
    if(!url)throw new Error('Video je hotové, ale server nevrátil odkaz na výstup.');
-   $(outputId).innerHTML=`<video controls playsinline src="${url}"></video><p><a href="${url}" target="_blank" rel="noopener">Otvoriť / stiahnuť hotové MP4</a></p>`;
+   $(outputId).innerHTML=`<video controls playsinline src="${url}"></video><button type="button" id="downloadVideo">STIAHNUŤ MP4</button><p id="downloadInfo" class="note">Výstup: ${$('format').value} · ${$('resolution').value} · ${$('duration').value} s. FPS je podľa modelu Seedance. Veľkosť súboru sa zobrazí po stiahnutí.</p>`;
+   $('downloadVideo').onclick=()=>downloadGeneratedVideo(id);
+   completeGenerationProgress('Video je hotové','Generovanie úspešne skončilo. Video si môžeš prehrať alebo stiahnuť.');
    $(statusId).textContent='Hotovo! Video je pripravené. Môžeš si ho prehrať a uložiť.';
    $(statusId).className='status ok';
    return;
   }
-  if(status==='FAILED'||status==='CANCELED')throw new Error(task.failure||task.error||'Generovanie zlyhalo. Skontroluj nastavenia a zostatok kreditov.');
+  if(status==='FAILED'||status==='CANCELED'){stopGenerationProgress();$('generationProgress').classList.remove('active');throw new Error(task.failure||task.error||'Generovanie zlyhalo. Skontroluj nastavenia a zostatok kreditov.');}
   $(statusId).textContent=`Generovanie prebieha… (${status||'čaká sa'}). Kontrola každých 5 sekúnd.`;
  }
- throw new Error('Generovanie trvá príliš dlho. Úloha môže stále bežať; skús neskôr skontrolovať jej stav.');
+ stopGenerationProgress();setGenerationProgress(1,'Generovanie stále prebieha','Automatické čakanie dosiahlo limit 10 minút. Úloha môže na serveri ďalej bežať; nespúšťaj ju znova, kým neoveríš jej stav.');
+ throw new Error('Automatické čakanie dosiahlo 10 minút. Úloha môže stále bežať; nespúšťaj ju znova, kým neoveríš jej stav.');
 }
 
 // Voliteľné vstupné video – v kombinácii s fotografiami tvorí jeden reklamný projekt.
@@ -280,19 +424,26 @@ async function generateFromCombinedInputs(){
  const prompt=buildPrompt();
  if(!selectedSourceVideo)return false;
  if(!selectedFiles.length)throw new Error('Pri generovaní z videa pridaj aspoň jednu fotografiu produktu ako referenciu.');
- $('status').textContent='Pripravujem fotografie a nahrávam video do Runway…';
+ startGenerationProgress('Pripravujem fotografie a nahrávam zdrojové video.');
+ $('status').textContent='Pripravujem fotografie a nahrávam video do generátora…';
  $('status').className='status';
  const references=await Promise.all(selectedFiles.map(imageToDataUri));
  const form=new FormData();
  form.append('video',selectedSourceVideo,selectedSourceVideo.name);
  form.append('references',JSON.stringify(references));
  form.append('prompt',prompt+' Strongly enhance the original footage into a premium cinematic product advertisement. Use the uploaded product photos as visual references to preserve the exact product identity, shape, packaging, label, logo, lettering and brand colors. Preserve the main action and camera movement from the source video while upgrading lighting, atmosphere, color grade and production value. Do not invent or distort branding.');
- const ratio=$('format').value==='9:16'?'720:1280':$('format').value==='1:1'?'960:960':'1280:720';
+ const ratios={
+  seedance2_mini:{'720p':{'9:16':'720:1280','1:1':'960:960','16:9':'1280:720'},'480p':{'9:16':'496:864','1:1':'640:640','16:9':'864:496'}},
+  seedance2:{'480p':{'9:16':'496:864','1:1':'640:640','16:9':'864:496'},'720p':{'9:16':'720:1280','1:1':'960:960','16:9':'1280:720'},'1080p':{'9:16':'1080:1920','1:1':'1440:1440','16:9':'1920:1080'},'4K':{'9:16':'2160:3840','1:1':'3840:3840','16:9':'3840:2160'}}
+ };
+ const ratio=ratios[$('model').value][$('resolution').value][$('format').value];
  form.append('ratio',ratio);
+ form.append('model',$('model').value);
  form.append('duration',$('duration').value);
  const created=await uploadFormApi('/api/generate-video',form);
  currentTask=created.id;
  $('history').textContent=`Kombinovaná reklama: ${created.id} · Video + ${selectedFiles.length} fotografií · Stav: ${created.status||'odoslané'}`;
+ setGenerationProgress(1,'AI spracúva zdrojové video','Video a referenčné fotografie boli odoslané. Sledujem stav úlohy.');
  $('status').textContent='Video a referenčné fotografie boli odoslané. Prebieha AI spracovanie…';
  await pollTask(created.id);
  return true;
@@ -309,8 +460,11 @@ window.PSAIProjectBridge = {
       style: $('style').value,
       scenePreset: $('scenePreset')?.value || '',
       format: $('format').value,
+      exportPreset: $('exportPreset').value,
       motion: $('motion').value,
       duration: $('duration').value,
+      resolution: $('resolution').value,
+      model: $('model').value,
       lighting: $('lighting').value,
       extra: $('extra').value,
       prompt: promptText || $('prompt').textContent || '',
@@ -322,29 +476,27 @@ window.PSAIProjectBridge = {
     $('style').value = project.style || $('style').options[0].value;
     if($('scenePreset')) $('scenePreset').value = project.scenePreset || '';
     $('format').value = project.format || '9:16';
+    $('exportPreset').value = project.exportPreset || 'custom';
+    $('exportPresetNote').textContent = project.exportPreset && exportPresets[project.exportPreset] ? exportPresets[project.exportPreset].note : 'Vlastné nastavenie projektu.';
     $('motion').value = project.motion || $('motion').options[0].value;
     $('duration').value = project.duration || '5';
+    $('model').value = project.model || 'seedance2_mini';
+    updateResolutionOptions();
+    $('resolution').value = project.resolution || '720p';
     $('lighting').value = project.lighting || $('lighting').options[0].value;
     $('extra').value = project.extra || '';
     selectedFiles = (project.images || []).map((item,index) =>
       new File([item.blob], item.name || ('produkt-'+(index+1)+'.jpg'), {type:item.type || item.blob.type || 'image/jpeg'})
     );
-    const gallery=$('previewGallery');
-    gallery.innerHTML='';
-    selectedFiles.forEach((file,index)=>{
-      const item=document.createElement('div');item.className='preview-item';
-      const image=document.createElement('img');image.alt='Fotografia '+(index+1);image.src=URL.createObjectURL(file);
-      const caption=document.createElement('span');caption.textContent='Fotografia '+(index+1);
-      item.append(image,caption);gallery.append(item);
-    });
+    renderSelectedPhotos();
     $('prompt').textContent=project.prompt || 'Prompt ešte nebol vytvorený.';
     promptText=project.prompt || '';
-    updateEstimate();
+    updateResolutionOptions();
     updateReadyStatus();
   }
 };
 
-updateEstimate();
+updateResolutionOptions();
 updateReadyStatus();
 </script>
   <script>

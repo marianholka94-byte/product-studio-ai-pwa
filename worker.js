@@ -51,13 +51,12 @@ function runwayHeaders(env) {
   };
 }
 
-// Only the six aspect/resolution combinations exposed by this app are accepted.
-// All six values are in the model-specific Seedance 2.0 Mini SDK ratio list (12 total).
-const ALLOWED_RATIOS = new Set([
-  // 480p: landscape, square, portrait
-  "864:496", "640:640", "496:864",
-  // 720p: landscape, square, portrait
-  "1280:720", "960:960", "720:1280"
+// Ratios accepted by Seedance 2.0 Mini and full Seedance 2.0.
+const MINI_RATIOS = new Set(["864:496","640:640","496:864","1280:720","960:960","720:1280"]);
+const FULL_RATIOS = new Set([
+  ...MINI_RATIOS,
+  "1920:1080","1440:1440","1080:1920",
+  "3840:2160","3840:3840","2160:3840"
 ]);
 
 export default {
@@ -72,6 +71,7 @@ export default {
     const allowedOrigins = new Set([
       "https://product-studio-ai-frontend.marianholka94.workers.dev",
       "https://product-studio-ai-pwa.pages.dev",
+      "https://feature-social-export-preset.product-studio-ai-pwa.pages.dev",
       "https://localhost",
       "http://localhost",
       "capacitor://localhost",
@@ -189,6 +189,13 @@ export default {
           return reply({ error: "Súhrnná veľkosť referenčných fotografií prekračuje 20 MB." }, 413);
         }
 
+        const model = String(form.get("model") || "seedance2_mini");
+        const ratio = String(form.get("ratio") || "");
+        const validRatios = model === "seedance2" ? FULL_RATIOS : model === "seedance2_mini" ? MINI_RATIOS : null;
+        if (!validRatios || !validRatios.has(ratio)) {
+          return reply({ error: "Nepodporovaná kombinácia modelu a rozlíšenia." }, 400);
+        }
+
         const prompt = String(form.get("prompt") || "").trim();
         if (!prompt || prompt.length > 10000) {
           return reply({ error: "Text zadania musí mať 1 až 10 000 znakov." }, 400);
@@ -197,10 +204,7 @@ export default {
         if (!Number.isInteger(duration) || duration < 4 || duration > 15) {
           return reply({ error: "Dĺžka výsledného videa musí byť 4 až 15 sekúnd." }, 400);
         }
-        const ratio = String(form.get("ratio") || "");
-        if (!ALLOWED_RATIOS.has(ratio)) {
-          return reply({ error: "Nepodporovaný pomer strán alebo rozlíšenie pre Seedance 2.0 Mini." }, 400);
-        }
+        // Model and ratio were validated above against the selected Seedance tier.
 
         // Upload the original clip to Runway ephemeral storage. The returned runway:// URI
         // is used directly in the video-to-video generation request.
@@ -224,7 +228,7 @@ export default {
         }
 
         const payload = {
-          model: "seedance2_mini",
+          model,
           promptVideo: uploadInfo.runwayUri,
           promptText: prompt,
           references: images.map(uri => ({ uri })),
@@ -278,20 +282,22 @@ export default {
         }
         const duration = Number(body.duration);
         if (!Number.isInteger(duration) || duration < 4 || duration > 15) {
-          return reply({ error: "Seedance 2.0 Mini podporuje dĺžku 4 až 15 sekúnd." }, 400);
+          return reply({ error: "Seedance podporuje dĺžku 4 až 15 sekúnd." }, 400);
         }
-        if (!ALLOWED_RATIOS.has(body.ratio)) {
-          return reply({ error: "Nepodporovaný pomer strán alebo rozlíšenie pre Seedance 2.0 Mini." }, 400);
+        const model = String(body.model || "seedance2_mini");
+        const validRatios = model === "seedance2" ? FULL_RATIOS : model === "seedance2_mini" ? MINI_RATIOS : null;
+        if (!validRatios || !validRatios.has(body.ratio)) {
+          return reply({ error: "Nepodporovaná kombinácia modelu a rozlíšenia." }, 400);
         }
 
         const payload = {
-          model: "seedance2_mini",
+          model,
           promptImage: images.length === 1 ? images[0] : images.map(uri => ({ uri })),
           promptText: body.prompt.trim(),
           ratio: body.ratio,
           duration,
           audio: false,
-          bitrate: "standard"
+          bitrate: "high"
         };
 
         const upstream = await fetch("https://api.dev.runwayml.com/v1/image_to_video", {
