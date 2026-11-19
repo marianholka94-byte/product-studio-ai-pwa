@@ -140,6 +140,8 @@ assert.ok(saveFlow.includes("sync.idempotencyKey = crypto.randomUUID()") && save
 assert.ok(cloud.includes("getSyncState(record)"), "Local project cloud status must be resolved for the currently authenticated account.");
 assert.ok(cloud.includes("record.cloudSyncByAccount?.[user.id]"), "Cloud save metadata must be stored and retrieved independently per customer account.");
 assert.ok(cloud.includes("const accountId = user.id"), "Every cloud save operation must be bound to the authenticated account identity.");
+assert.ok(cloud.includes("const accountApi = (path, options = {}) =>") && cloud.includes("user?.id !== accountId"), "A cloud save must stop if the signed-in account changes during an upload.");
+assert.ok(cloud.includes("if (sync && sync.accountId !== accountId)"), "A saved sync checkpoint must never be resumed under a different account identity.");
 assert.ok(cloud.includes("const remoteProduct = await api(\"/api/products/\" + encodeURIComponent(record.cloudSync.productId))"), "Legacy unscoped cloud saves must be adopted only after verifying product ownership.");
 assert.ok(nav.includes("latest.cloudSyncByAccount={...(latest.cloudSyncByAccount||{}),[sync.accountId]:sync}"), "Cloud save checkpoints must be persisted under their owning account.");
 assert.ok(nav.includes("[result.accountId]:result"), "Completed cloud saves must remain associated with the account that owns them.");
