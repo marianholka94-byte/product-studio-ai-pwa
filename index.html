@@ -132,7 +132,7 @@ a{color:#174ea6;overflow-wrap:anywhere}
 <label for="sourceVideo">Voliteľné zdrojové video (MP4 alebo MOV, 2–15 sekúnd, max. 50 MB)</label>
 <input id="sourceVideo" type="file" accept="video/mp4,video/quicktime,.mp4,.mov">
 <video id="sourceVideoPreview" controls playsinline preload="metadata" style="display:none;max-height:280px"></video>
-<div id="sourceVideoInfo" class="note">Môžeš pridať krátke video produktu spolu s fotografiami. Video sa uloží do súkromného úložiska a Seedance ho použije ako referenciu.</div>
+<div id="sourceVideoInfo" class="note">Môžeš pridať krátke video produktu spolu s fotografiami. Video sa uloží do súkromného úložiska a Seedance ho použije ako referenciu. Priame referenčné videá s rozpoznateľnými ľudskými tvárami model nepodporuje.</div>
 <label for="product">Názov alebo typ produktu</label>
 <input id="product" type="text" name="product-name" autocomplete="off" autocapitalize="sentences" placeholder="Napr. čierny parfum MUSTANG">
 </section>
@@ -655,10 +655,10 @@ async function pollTask(id, outputId='videoWrap', statusId='status'){
 }
 
 // Voliteľné zdrojové video: súkromné nahratie do R2 a časovo obmedzený odkaz pre ModelArk.
-let selectedSourceVideo=null, selectedSourceVideoDuration=null, selectedSourceVideoUploadId=null, sourceVideoObjectUrl=null;
+let selectedSourceVideo=null, selectedSourceVideoDuration=null, selectedSourceVideoUploadId=null, selectedSourceVideoContentType=null, sourceVideoObjectUrl=null;
 const sourceVideo=$('sourceVideo'), sourceVideoPreview=$('sourceVideoPreview');
 function clearSelectedSourceVideo(message='Môžeš pridať krátke video produktu spolu s fotografiami.'){
- selectedSourceVideo=null;selectedSourceVideoDuration=null;selectedSourceVideoUploadId=null;sourceVideo.value='';
+ selectedSourceVideo=null;selectedSourceVideoDuration=null;selectedSourceVideoUploadId=null;selectedSourceVideoContentType=null;sourceVideo.value='';
  sourceVideoPreview.pause();sourceVideoPreview.removeAttribute('src');sourceVideoPreview.load();sourceVideoPreview.style.display='none';
  if(sourceVideoObjectUrl){URL.revokeObjectURL(sourceVideoObjectUrl);sourceVideoObjectUrl=null;}
  $('sourceVideoInfo').textContent=message;$('sourceVideoInfo').className='note';updateReadyStatus();
@@ -668,9 +668,10 @@ sourceVideo.addEventListener('change',()=>{
  sourceVideoPreview.pause();sourceVideoPreview.removeAttribute('src');sourceVideoPreview.load();
  if(sourceVideoObjectUrl){URL.revokeObjectURL(sourceVideoObjectUrl);sourceVideoObjectUrl=null;}
  selectedSourceVideo=file;selectedSourceVideoDuration=null;selectedSourceVideoUploadId=file?crypto.randomUUID():null;
+ selectedSourceVideoContentType=file&&['video/mp4','video/quicktime'].includes(file.type)?file.type:file?.name?.toLowerCase().endsWith('.mov')?'video/quicktime':file?.name?.toLowerCase().endsWith('.mp4')?'video/mp4':null;
  if(!file){clearSelectedSourceVideo();return;}
  if(file.size>50*1024*1024){clearSelectedSourceVideo('Video je väčšie než 50 MB. Vyber menší súbor.');$('sourceVideoInfo').className='status err';return;}
- if(!['video/mp4','video/quicktime'].includes(file.type)){clearSelectedSourceVideo('Použi video MP4 alebo MOV. Formát WebM nie je podporovaný.');$('sourceVideoInfo').className='status err';return;}
+ if(!selectedSourceVideoContentType){clearSelectedSourceVideo('Použi video MP4 alebo MOV. Formát WebM nie je podporovaný.');$('sourceVideoInfo').className='status err';return;}
  sourceVideoObjectUrl=URL.createObjectURL(file);sourceVideoPreview.src=sourceVideoObjectUrl;sourceVideoPreview.style.display='block';
  sourceVideoPreview.onloadedmetadata=()=>{
   if(!selectedSourceVideo||selectedSourceVideo!==file)return;
@@ -697,7 +698,7 @@ async function uploadFormApi(path, form){
  setStatus('Nahrávam zdrojové video do súkromného úložiska…');
  const uploaded=await bridge.request('/api/generation-input-video',{
   method:'POST',
-  headers:{'Content-Type':video.type,'X-Upload-Id':selectedSourceVideoUploadId,'X-Video-Duration':String(selectedSourceVideoDuration)},
+  headers:{'Content-Type':selectedSourceVideoContentType,'X-Upload-Id':selectedSourceVideoUploadId,'X-Video-Duration':String(selectedSourceVideoDuration)},
   body:video
  });
  const references=JSON.parse(String(form.get('references')||'[]'));
