@@ -65,6 +65,8 @@ The deploy workflow automatically configures the preview provider key and runs t
 
 ## Commercial model
 
+- [x] Credit ledger design documented: account-scoped integer units, append-only audit ledger, idempotent reservation/capture/release, ambiguous-provider reconciliation, and rollout gates. Design only; no deductions or payment integration are enabled.
+
 - [ ] Define free and paid plan limits, credit pricing, and generation cost assumptions.
 - [ ] Implement server-authoritative credit reservation, settlement, and refund flows.
 - [ ] Add generation-job idempotency and provider timeout reconciliation before enabling customer charges.
