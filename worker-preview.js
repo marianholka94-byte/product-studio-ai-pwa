@@ -193,6 +193,7 @@ const BYTEPLUS_MODEL_IDS = Object.freeze({
   seedance2: "dreamina-seedance-2-0-260128"
 });
 const BYTEPLUS_TASKS_URL = "https://ark.ap-southeast.bytepluses.com/api/v3/contents/generations/tasks";
+const PREVIEW_WORKER_ORIGIN = "https://product-studio-ai-commercial-preview.marianholka94.workers.dev";
 function byteplusConfigured(env) {
   return Boolean(String(env.BYTEPLUS_MODELARK_API_KEY || "").trim());
 }
@@ -726,7 +727,7 @@ export default {
           })),
           ...(inputVideo ? [{
             type: "video_url",
-            video_url: { url: url.origin + "/api/provider-input/" + encodeURIComponent(inputVideo.id) + "?token=" + encodeURIComponent(providerInputToken) },
+            video_url: { url: PREVIEW_WORKER_ORIGIN + "/api/provider-input/" + encodeURIComponent(inputVideo.id) + "?token=" + encodeURIComponent(providerInputToken) },
             role: "reference_video"
           }] : [])
         ];
