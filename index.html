@@ -397,13 +397,14 @@ async function refreshGenerationHistory(){
   const completed=items.filter(item=>item.status==='succeeded').length;
   const active=items.filter(item=>['queued','processing'].includes(item.status)).length;
   const failed=items.filter(item=>['failed','cancelled'].includes(item.status)).length;
+  const uncertain=items.filter(item=>item.status==='submission_unknown').length;
   $('historySummary').textContent=items.length
-    ? `Spolu ${items.length} · Hotové ${completed} · Rozpracované ${active} · Neúspešné/zrušené ${failed}`
+    ? `Spolu ${items.length} · Hotové ${completed} · Rozpracované ${active} · Neúspešné/zrušené ${failed} · Na overenie ${uncertain}`
     : 'Zatiaľ žiadne generovania · Po prvom videu sa tu zobrazí tvoja história.';
   panel.replaceChildren();
   if(!items.length){panel.textContent='Zatiaľ nemáš žiadne uložené generovania.';return;}
   const list=document.createElement('div');list.className='generation-history-list';
-  const labels={queued:'Čaká',processing:'Spracúva sa',succeeded:'Hotové',failed:'Neúspešné',cancelled:'Zrušené'};
+  const labels={queued:'Čaká',processing:'Spracúva sa',succeeded:'Hotové',failed:'Neúspešné',cancelled:'Zrušené',submission_unknown:'Overenie odoslania'};
   for(const item of items){
    const card=document.createElement('article');card.className='generation-history-item';
    const heading=document.createElement('strong');heading.textContent=(item.model||'AI video')+' · '+(labels[item.status]||item.status||'Neznámy stav');
@@ -422,7 +423,13 @@ async function refreshGenerationHistory(){
     actions.append(resume);
    }
    if(actions.childElementCount)card.append(actions);
-   if(item.status==='failed'&&item.errorMessage){const error=document.createElement('p');error.className='note';error.textContent=item.errorMessage;card.append(error);}
+   if(['failed','submission_unknown'].includes(item.status)&&item.errorMessage){
+    const error=document.createElement('p');error.className='note';
+    error.textContent=item.status==='submission_unknown'
+      ? 'Stav u poskytovateľa nie je potvrdený. Neposielaj požiadavku znova — mohla už byť prijatá a opakovanie by mohlo vytvoriť duplicitné platené video. '+item.errorMessage
+      : item.errorMessage;
+    card.append(error);
+   }
    list.append(card);
   }
   panel.append(list);
