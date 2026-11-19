@@ -78,6 +78,29 @@ try {
   await expectStatus("Account A can read own project", await request("/api/projects/" + encodeURIComponent(project.id), { token: tokenA }), 200);
   await expectStatus("Account A can read own private image", await request("/api/assets/" + encodeURIComponent(assetId), { token: tokenA }), 200);
 
+  const staleVersion = Number(project.updatedAt) - 1;
+  assert.ok(Number.isSafeInteger(staleVersion) && staleVersion >= 0, "Account A project must expose a valid version timestamp.");
+  const staleEditResponse = await request("/api/projects/" + encodeURIComponent(project.id), {
+    token: tokenA,
+    method: "PATCH",
+    body: {
+      name: project.name,
+      prompt: project.prompt,
+      productId: project.productId,
+      settings: project.settings,
+      exportPreset: project.exportPreset,
+      expectedUpdatedAt: staleVersion
+    }
+  });
+  await expectStatus("Stale cloud project edit", staleEditResponse, 409);
+  const staleEdit = await staleEditResponse.json();
+  assert.equal(staleEdit.currentProject?.updatedAt, project.updatedAt, "A stale edit must return the current project version without overwriting it.");
+  const unchangedProjectResponse = await request("/api/projects/" + encodeURIComponent(project.id), { token: tokenA });
+  await expectStatus("Account A project remains unchanged after stale edit", unchangedProjectResponse, 200);
+  const unchangedProject = await unchangedProjectResponse.json();
+  assert.equal(unchangedProject.project.updatedAt, project.updatedAt, "A rejected stale edit must not change the project timestamp.");
+  assert.equal(unchangedProject.project.name, project.name, "A rejected stale edit must not change the project name.");
+
   await expectStatus("Account B direct product-ID access", await request("/api/products/" + encodeURIComponent(product.id), { token: tokenB }), 404);
   await expectStatus("Account B product-image manifest access", await request("/api/products/" + encodeURIComponent(product.id) + "/images", { token: tokenB }), 404);
   await expectStatus("Account B direct project-ID access", await request("/api/projects/" + encodeURIComponent(project.id), { token: tokenB }), 404);
