@@ -43,7 +43,7 @@ assert.ok(worker.includes("generationStatusMatch") && worker.includes("generatio
 assert.ok(worker.includes("const user = await currentUser(request, env)") && worker.includes("WHERE id = ? AND user_id = ? LIMIT 1"), "Generation endpoints must resolve identity from D1 sessions and scope task lookups to the owner.");
 assert.ok(worker.includes("client_request_id") && worker.includes("request_fingerprint"), "Generation submissions must persist account-scoped idempotency keys and payload fingerprints.");
 assert.ok(worker.includes("PREVIEW_DAILY_GENERATION_LIMIT = 3") && worker.includes("generation_daily_limit"), "Preview generation must enforce a daily per-account limit, including concurrent requests.");
-assert.ok(worker.includes("if (!env.RUNWAY_API_KEY)"), "Paid provider requests must fail closed until a dedicated preview API secret is configured.");
+assert.ok(worker.includes("function byteplusReady(env)") && worker.includes("if (!byteplusReady(env))"), "Paid provider requests must fail closed until the BytePlus API secret is present and paid generation is explicitly enabled.");
 assert.ok(cloud.includes("async request(path, options = {})") && cloud.includes("getCurrentUser()"), "The generator integration must use the commercial account session without exposing its token.");
 assert.ok(cloud.includes("Hľadať v cloudovej knižnici produktov") && cloud.includes("Hľadať v cloudových reklamných projektoch"), "Cloud product and project libraries must expose accessible search fields.");
 assert.ok(cloud.includes("applyLibraryFilter") && cloud.includes("data-search-text"), "Cloud library search must filter rendered account-scoped records without extra network requests.");
