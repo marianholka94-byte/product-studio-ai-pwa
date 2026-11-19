@@ -18,7 +18,7 @@ This is an isolated preview environment. It does not replace or modify the exist
 - `GET /api/auth/me`: returns the authenticated user's basic profile.
 - `POST /api/auth/logout`: revokes the current session.
 
-Passwords are stored as PBKDF2-SHA256 hashes (310,000 iterations); session bearer tokens are stored only as SHA-256 hashes. This is an initial preview authentication layer, not yet production-ready: email verification, abuse/rate limiting, password reset, account deletion, and a full privacy/security review remain required before public launch.
+Passwords are stored as PBKDF2-SHA256 hashes (310,000 iterations); session bearer tokens are stored only as SHA-256 hashes. Login attempts are throttled per hashed IP/email pair: five failed attempts trigger a 15-minute block. Request JSON is size-limited while streaming, even when the client omits Content-Length. This is an initial preview authentication layer, not yet production-ready: email verification, abuse/rate limiting, password reset, account deletion, and a full privacy/security review remain required before public launch.
 
 ## Database migrations
 
