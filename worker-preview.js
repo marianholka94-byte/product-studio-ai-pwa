@@ -312,7 +312,7 @@ export default {
     if (!env.DB || !env.MEDIA) return json({ ok: false, error: "Preview storage bindings are missing." }, 503, origin);
 
     try {
-      const providerInputMatch = /^\/api\/provider-input\/([0-9a-f-]{36})$/i.exec(url.pathname);
+      const providerInputMatch = /^\/api\/provider-input\/([0-9a-f-]{36})\.(mp4|mov)$/i.exec(url.pathname);
       if (providerInputMatch && ["GET", "HEAD"].includes(request.method)) {
         const token = url.searchParams.get("token") || "";
         if (!/^[A-Za-z0-9_-]{40,60}$/.test(token)) return new Response("Not found", { status: 404, headers: { "Cache-Control": "no-store" } });
@@ -322,6 +322,8 @@ export default {
           "SELECT r2_key, content_type, byte_size FROM generation_input_videos WHERE id = ? AND access_token_hash = ? AND access_expires_at > ? AND expires_at > ? LIMIT 1"
         ).bind(providerInputMatch[1], tokenHash, now, now).first();
         if (!input) return new Response("Not found", { status: 404, headers: { "Cache-Control": "no-store" } });
+        const expectedExtension = input.content_type === "video/quicktime" ? "mov" : "mp4";
+        if (providerInputMatch[2].toLowerCase() !== expectedExtension) return new Response("Not found", { status: 404, headers: { "Cache-Control": "no-store" } });
         const object = await env.MEDIA.get(input.r2_key);
         if (!object || Number(object.size) !== Number(input.byte_size)) return new Response("Not found", { status: 404, headers: { "Cache-Control": "no-store" } });
         return new Response(request.method === "HEAD" ? null : object.body, {
@@ -329,7 +331,7 @@ export default {
           headers: {
             "Content-Type": input.content_type,
             "Content-Length": String(object.size),
-            "Content-Disposition": 'inline; filename="reference-video"',
+            "Content-Disposition": 'inline; filename="reference-video.' + expectedExtension + '"',
             "Cache-Control": "private, no-store, max-age=0",
             "X-Content-Type-Options": "nosniff",
           }
@@ -727,7 +729,7 @@ export default {
           })),
           ...(inputVideo ? [{
             type: "video_url",
-            video_url: { url: PREVIEW_WORKER_ORIGIN + "/api/provider-input/" + encodeURIComponent(inputVideo.id) + "?token=" + encodeURIComponent(providerInputToken) },
+            video_url: { url: PREVIEW_WORKER_ORIGIN + "/api/provider-input/" + encodeURIComponent(inputVideo.id) + (inputVideo.content_type === "video/quicktime" ? ".mov" : ".mp4") + "?token=" + encodeURIComponent(providerInputToken) },
             role: "reference_video"
           }] : [])
         ];
