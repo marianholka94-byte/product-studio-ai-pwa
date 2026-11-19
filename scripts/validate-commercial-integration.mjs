@@ -40,6 +40,15 @@ assert.ok(worker.includes("ALLOWED_ORIGINS"), "Worker must enforce an origin all
 assert.ok(worker.includes("user.id"), "Worker must scope library operations to the authenticated account");
 assert.ok(worker.includes("body.productId != null && productId === null") && worker.includes("body.productId !== undefined && body.productId !== null && productId === null"), "Project creation and updates must accept an intentionally unlinked product while rejecting invalid product IDs.");
 assert.ok(worker.includes("generationStatusMatch") && worker.includes("generationDownloadMatch"), "Generation status and download routes must exist.");
+const generationDownloadRoute = worker.slice(worker.indexOf("const generationDownloadMatch"), worker.indexOf("// Every library endpoint"));
+assert.ok(generationDownloadRoute.includes("WHERE id = ? AND user_id = ? LIMIT 1"), "Generated video downloads must verify the generation owner.");
+assert.ok(generationDownloadRoute.includes("WHERE generation_id = ? AND user_id = ? LIMIT 1"), "Generated video output metadata must be queried within the authenticated owner scope.");
+assert.ok(generationDownloadRoute.includes("Number(existingOutput.byte_size) !== Number(storedObject.size)"), "Cached R2 downloads must reject an object whose size differs from its metadata.");
+assert.ok(generationDownloadRoute.includes("Number(savedOutput.byte_size) !== Number(storedObject.size)"), "Newly persisted R2 downloads must verify stored object size against metadata.");
+assert.ok(generationDownloadRoute.includes("const maxVideoBytes = 250 * 1024 * 1024") && generationDownloadRoute.includes("new TransformStream"), "Generated video persistence must enforce its size cap while streaming.");
+assert.ok(generationDownloadRoute.includes("parsedVideoUrl.protocol !== \"https:\"") && generationDownloadRoute.includes("parsedVideoUrl.username || parsedVideoUrl.password"), "Provider video URLs must be HTTPS and must not embed credentials.");
+assert.ok(generationDownloadRoute.includes('Cache-Control": "private, no-store"') && generationDownloadRoute.includes('X-Content-Type-Options": "nosniff"'), "Private generated video downloads must disable caching and MIME sniffing.");
+assert.ok(worker.includes("delete safeTask.content.video_url"), "Temporary provider video URLs must never be exposed by the status API.");
 assert.ok(worker.includes("const user = await currentUser(request, env)") && worker.includes("WHERE id = ? AND user_id = ? LIMIT 1"), "Generation endpoints must resolve identity from D1 sessions and scope task lookups to the owner.");
 assert.ok(worker.includes("client_request_id") && worker.includes("request_fingerprint"), "Generation submissions must persist account-scoped idempotency keys and payload fingerprints.");
 assert.ok(worker.includes("PREVIEW_DAILY_GENERATION_LIMIT = 3") && worker.includes("generation_daily_limit"), "Preview generation must enforce a daily per-account limit, including concurrent requests.");
