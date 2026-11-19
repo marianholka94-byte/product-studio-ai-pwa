@@ -114,6 +114,13 @@ jobs:
               "INSERT INTO generations (id,user_id,project_id,model,duration_seconds,status,prompt_snapshot,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?)",
               ("g_bad","u2","pr1","test-model",5,"queued","test",1,1))
 
+          generation_schema = db.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='generations'").fetchone()[0]
+          for allowed_status in ("queued", "processing", "succeeded", "failed", "cancelled"):
+              if allowed_status not in generation_schema:
+                  raise SystemExit(f"Generation status constraint is missing {allowed_status}")
+          if "submission_unknown" in generation_schema:
+              raise SystemExit("Do not persist unsupported submission_unknown status; use processing plus provider_submission_unknown error_code")
+          db.execute("UPDATE generations SET status='processing', error_code='provider_submission_unknown' WHERE id='g1'")
           generation_columns = {row[1] for row in db.execute("PRAGMA table_info(generations)")}
           if not {"client_request_id", "request_fingerprint"}.issubset(generation_columns):
               raise SystemExit("Missing account-bound generation idempotency columns")
