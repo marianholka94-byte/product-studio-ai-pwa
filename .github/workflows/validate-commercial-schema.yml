@@ -72,10 +72,11 @@ jobs:
               "INSERT INTO product_images (product_id,asset_id,user_id,created_at) VALUES (?,?,?,?)",
               ("p1","a1","u2",1))
 
+          db.execute("INSERT INTO assets (id,user_id,product_id,kind,r2_key,content_type,byte_size,created_at) VALUES ('a3','u1','p1','product_image','u1/a3','image/jpeg',100,1)")
           db.execute("INSERT INTO product_images (product_id,asset_id,user_id,is_primary,created_at) VALUES ('p1','a1','u1',1,1)")
           must_reject("second primary image",
               "INSERT INTO product_images (product_id,asset_id,user_id,is_primary,created_at) VALUES (?,?,?,?,?)",
-              ("p1","a1","u1",1,2))
+              ("p1","a3","u1",1,2))
 
           print(f"Commercial D1 schema valid: {len(expected)} tables; tenant isolation and primary-image constraints passed.")
           PY
