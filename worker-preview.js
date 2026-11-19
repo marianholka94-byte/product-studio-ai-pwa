@@ -1,6 +1,6 @@
 // PRODUCT STUDIO AI commercial preview Worker.
 // Isolated preview only: D1-backed customer accounts and session management.
-// Does not replace the production Worker or invoke paid generation APIs.
+// Does not replace the production Worker. Generation is account-bound and remains disabled until a dedicated preview provider key is configured.
 const ALLOWED_ORIGINS = new Set([
   "https://feature-social-export-preset.product-studio-ai-pwa.pages.dev",
   "https://feature-commercial-worker-pr.product-studio-ai-pwa.pages.dev",
