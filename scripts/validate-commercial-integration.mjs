@@ -70,7 +70,8 @@ assert.ok(cloud.includes("if (user?.id !== accountId) throw new Error(\"Cloudov�
 assert.ok(cloud.includes("requestEpoch !== accountEpoch || accountId !== user?.id"), "In-flight manual saves must not mutate another account workspace.");
 assert.ok(cloud.includes("const previewObjectUrls = new Set();") && cloud.includes("URL.revokeObjectURL(url)"), "Cloud image previews must release object URLs when the account workspace resets.");
 assert.ok(cloud.includes('api("/api/auth/me").then(data =>'), "A restored tab session must be revalidated with the server before showing private cloud data.");
-assert.ok(cloud.includes('const isCurrentBootstrap = () => token === bootstrapToken && accountEpoch === bootstrapEpoch;') && cloud.includes('if (!isCurrentBootstrap()) return;'), "Restored-session success and failure handlers must ignore stale responses after an account switch.");\nassert.ok(cloud.includes('if (!isCurrentBootstrap()) return;\n      token = ""; user = null;'), "An invalid current restored session must fail closed and clear stale account-specific editor state.");
+assert.ok(cloud.includes('const isCurrentBootstrap = () => token === bootstrapToken && accountEpoch === bootstrapEpoch;') && cloud.includes('if (!isCurrentBootstrap()) return;'), "Restored-session success and failure handlers must ignore stale responses after an account switch.");
+assert.ok(cloud.includes('if (!isCurrentBootstrap()) return;\\n      token = "" ; user = null;'), "An invalid current restored session must fail closed and clear stale account-specific editor state.");
 
 assert.ok(cloud.includes('"Použiť v štúdiu"'), "Cloud products must offer an explicit read-only Studio import action");
 assert.ok(cloud.includes('api("/api/products/" + encodeURIComponent(product.id) + "/images")'), "Studio import must load the product's private image manifest");
