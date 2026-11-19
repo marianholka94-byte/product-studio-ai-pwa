@@ -23,6 +23,15 @@ async function request(path, { token, method = "GET", body } = {}) {
   });
   return response;
 }
+async function uploadAcceptanceImage(token, productId) {
+  const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/aZ0AAAAASUVORK5CYII=", "base64");
+  return fetch(base + "/api/products/" + encodeURIComponent(productId) + "/images", {
+    method: "POST",
+    headers: { Authorization: "Bearer " + token, "Content-Type": "image/png" },
+    body: png,
+    cache: "no-store"
+  });
+}
 async function login(account) {
   const response = await request("/api/auth/login", {
     method: "POST",
@@ -113,6 +122,9 @@ try {
   ]);
   assert.equal(afterProductReplay.products.filter(item => item.id === idempotentProductId).length, 1, "Product retry must not create duplicate records.");
   assert.equal(afterProjectReplay.projects.filter(item => item.id === idempotentProjectId).length, 1, "Project retry must not create duplicate records.");
+  // Use a deterministic temporary image instead of depending on existing
+  // customer data to contain an uploaded product photo.
+  await expectStatus("Upload temporary acceptance image", await uploadAcceptanceImage(tokenA, idempotentProductId), 201);
   const [historyAResponse, historyBResponse] = await Promise.all([
     request("/api/generations?limit=20", { token: tokenA }),
     request("/api/generations?limit=20", { token: tokenB })
@@ -139,8 +151,9 @@ try {
   ]);
   assert.ok(productsA.products?.length, "Account A needs at least one saved product for this test.");
   assert.ok(projectsA.projects?.length, "Account A needs at least one saved project for this test.");
-  const product = productsA.products[0];
-  const project = projectsA.projects[0];
+  const product = productsA.products.find(item => item.id === idempotentProductId);
+  const project = projectsA.projects.find(item => item.id !== idempotentProjectId) || projectsA.projects[0];
+  assert.ok(product, "Account A must be able to read its temporary idempotency product.");
 
   const manifestAResponse = await request("/api/products/" + encodeURIComponent(product.id) + "/images", { token: tokenA });
   await expectStatus("Account A product image manifest", manifestAResponse, 200);
