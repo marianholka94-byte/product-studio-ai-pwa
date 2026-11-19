@@ -108,6 +108,22 @@ try {
   assert.equal(replayProject.project?.id, idempotentProjectId, "Retrying a committed project create must return the original project ID.");
   assert.equal(replayProject.replayed, true, "Project replay must be explicitly identified.");
 
+  const clearOptionalProductResponse = await request("/api/projects/" + encodeURIComponent(idempotentProjectId), {
+    token: tokenA,
+    method: "PATCH",
+    body: {
+      name: projectPayload.name,
+      prompt: projectPayload.prompt,
+      productId: null,
+      settings: {},
+      exportPreset: null,
+      expectedUpdatedAt: firstProject.project.updatedAt
+    }
+  });
+  await expectStatus("Update project while keeping product unlinked", clearOptionalProductResponse, 200);
+  const unlinkedProject = await clearOptionalProductResponse.json();
+  assert.equal(unlinkedProject.project?.productId, null, "Project updates must preserve an intentionally empty product link.");
+
   const changedProjectResponse = await request("/api/projects", {
     token: tokenA, method: "POST",
     body: { ...projectPayload, prompt: projectPayload.prompt + " changed" }
