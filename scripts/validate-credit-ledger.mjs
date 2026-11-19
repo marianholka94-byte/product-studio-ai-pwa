@@ -28,7 +28,7 @@ assert.match(worker, /credit_ledger[\s\S]*?trg_credit_ledger_no_update[\s\S]*?tr
 const generationRouteStart = worker.indexOf('if (url.pathname === "/api/generate" && request.method === "POST")');
 assert.notEqual(generationRouteStart, -1, "Commercial generation route must exist.");
 const generationHandler = worker.slice(generationRouteStart);
-assert.doesNotMatch(generationHandler, /INSERT INTO credit_accounts|INSERT INTO credit_ledger|UPDATE credit_accounts|UPDATE generation_credit_reservations/, "Preview generation must not mutate the foundation tables before reservation logic is implemented.");
+assert.match(generationHandler, /reserveGenerationCredits\(env, user\.id, generationId, estimatedCredits, now\)/, "Generation route must use the audited reservation helper rather than ad hoc balance writes.");
 assert.match(worker, /url\.pathname === "\/api\/credits\/admin-grant"[\s\S]*?INSERT INTO credit_accounts[\s\S]*?INSERT INTO credit_ledger/, "Only the authenticated admin-grant route may add manual credit grants.");
 assert.match(workflow, /node scripts\/validate-credit-ledger\.mjs/, "Preview deployment must run the credit ledger validator.");
 assert.match(workflow, /creditSchema.*accounts.*ledger.*reservations/, "Deployment smoke test must verify credit schema readiness.");
