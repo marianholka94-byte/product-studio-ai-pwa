@@ -60,7 +60,7 @@ CREATE TABLE IF NOT EXISTS projects (
   updated_at INTEGER NOT NULL,
   archived_at INTEGER,
   UNIQUE (id, user_id),
-  FOREIGN KEY (product_id, user_id) REFERENCES products(id, user_id) ON DELETE SET NULL
+  FOREIGN KEY (product_id, user_id) REFERENCES products(id, user_id) ON DELETE RESTRICT
 );
 CREATE INDEX IF NOT EXISTS idx_projects_owner_updated ON projects(user_id, updated_at DESC);
 CREATE INDEX IF NOT EXISTS idx_projects_product ON projects(product_id);
@@ -84,7 +84,7 @@ CREATE TABLE IF NOT EXISTS assets (
   CHECK (project_id IS NOT NULL OR product_id IS NOT NULL),
   UNIQUE (id, user_id),
   FOREIGN KEY (project_id, user_id) REFERENCES projects(id, user_id) ON DELETE CASCADE,
-  FOREIGN KEY (product_id, user_id) REFERENCES products(id, user_id) ON DELETE CASCADE
+  FOREIGN KEY (product_id, user_id) REFERENCES products(id, user_id) ON DELETE RESTRICT
 );
 CREATE INDEX IF NOT EXISTS idx_assets_owner_created ON assets(user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_assets_project ON assets(project_id);
@@ -99,7 +99,7 @@ CREATE TABLE IF NOT EXISTS product_images (
   created_at INTEGER NOT NULL,
   PRIMARY KEY (product_id, asset_id),
   FOREIGN KEY (product_id, user_id) REFERENCES products(id, user_id) ON DELETE CASCADE,
-  FOREIGN KEY (asset_id, user_id) REFERENCES assets(id, user_id) ON DELETE CASCADE
+  FOREIGN KEY (asset_id, user_id) REFERENCES assets(id, user_id) ON DELETE RESTRICT
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_product_images_one_primary
   ON product_images(product_id) WHERE is_primary = 1;
@@ -125,7 +125,7 @@ CREATE TABLE IF NOT EXISTS generations (
   updated_at INTEGER NOT NULL,
   completed_at INTEGER,
   UNIQUE(provider, provider_task_id),
-  FOREIGN KEY (project_id, user_id) REFERENCES projects(id, user_id) ON DELETE SET NULL
+  FOREIGN KEY (project_id, user_id) REFERENCES projects(id, user_id) ON DELETE RESTRICT
 );
 CREATE INDEX IF NOT EXISTS idx_generations_owner_created ON generations(user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_generations_status_updated ON generations(status, updated_at);
@@ -140,7 +140,7 @@ CREATE TABLE IF NOT EXISTS credit_ledger (
   idempotency_key TEXT UNIQUE,
   description TEXT NOT NULL DEFAULT '',
   created_at INTEGER NOT NULL,
-  FOREIGN KEY (generation_id, user_id) REFERENCES generations(id, user_id) ON DELETE SET NULL
+  FOREIGN KEY (generation_id, user_id) REFERENCES generations(id, user_id) ON DELETE RESTRICT
 );
 CREATE INDEX IF NOT EXISTS idx_credit_ledger_user_created ON credit_ledger(user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_credit_ledger_generation ON credit_ledger(generation_id);
