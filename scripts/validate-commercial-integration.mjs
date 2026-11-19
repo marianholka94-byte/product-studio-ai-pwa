@@ -5,6 +5,7 @@ const worker = readFileSync("worker-preview.js", "utf8");
 const cloud = readFileSync("cloud-library.js", "utf8");
 const nav = readFileSync("app-navigation.js", "utf8");
 const html = readFileSync("index.html", "utf8");
+const serviceWorker = readFileSync("sw.js", "utf8");
 
 assert.ok(nav.includes("Nie sú viazané na cloudový účet"), "The local project screen must explain that device-local projects are independent of the signed-in cloud account.");
 
@@ -143,3 +144,6 @@ assert.ok(cloud.includes("const remoteProduct = await api(\"/api/products/\" + e
 assert.ok(nav.includes("latest.cloudSyncByAccount={...(latest.cloudSyncByAccount||{}),[sync.accountId]:sync}"), "Cloud save checkpoints must be persisted under their owning account.");
 assert.ok(nav.includes("[result.accountId]:result"), "Completed cloud saves must remain associated with the account that owns them.");
 assert.ok(nav.includes("psai-cloud-account-change"), "Switching cloud accounts must refresh local project cloud-status labels.");
+assert.ok(html.includes("cloud-library.js?v=account-scoped-cloud-sync-20261119") && html.includes("app-navigation.js?v=account-scoped-cloud-sync-20261119"), "PWA HTML must request the account-scoped cloud-sync asset versions.");
+assert.ok(serviceWorker.includes("product-studio-ai-v30-account-scoped-cloud-sync-20261119"), "PWA service worker cache must be versioned for the account-scoped cloud-sync release.");
+assert.ok(serviceWorker.includes("/cloud-library.js?v=account-scoped-cloud-sync-20261119") && serviceWorker.includes("/app-navigation.js?v=account-scoped-cloud-sync-20261119"), "Offline precache must include the exact account-scoped cloud-sync asset URLs.");
