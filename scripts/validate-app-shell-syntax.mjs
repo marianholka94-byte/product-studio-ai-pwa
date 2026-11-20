@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { Script } from "node:vm";
 
 const html = readFileSync("index.html", "utf8");
-const inlineScripts = [...html.matchAll(/<script\\b[^>]*>([\\s\\S]*?)<\\/script>/gi)]
+const inlineScripts = [...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)]
   .map(match => match[1])
   .filter(source => source.trim());
 
