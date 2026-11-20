@@ -72,7 +72,7 @@
       "Zadanie bolo rozdelené do častí a vložené do promptu. Skontroluj a podľa potreby uprav výsledok.":"The prompt has been split into sections and added to the prompt editor. Review and adjust the result if needed.",
 
       "☁️ Cloudová knižnica":"☁️ Cloud library",
-      "Jazyk":"Language","Kredity":"Credits","Názov produktu":"Product name",
+      "Jazyk":"Language","Kredity":"Credits","💳 Kredity":"💳 Credits","meno@priklad.sk":"name@example.com","Názov produktu":"Product name",
       "Napr. Prémiová káva":"E.g. Premium coffee","Popis produktu":"Product description",
       "Produkt vytvorený pri ukladaní reklamného projektu.":"Product created while saving an advertising project.",
       "Čaká":"Queued","Spracúva sa":"Processing","Hotové":"Completed","Neúspešné":"Failed","Zrušené":"Cancelled","Neznámy stav":"Unknown status",
