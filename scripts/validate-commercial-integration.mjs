@@ -61,6 +61,7 @@ assert.ok(worker.includes("access_expires_at") && worker.includes("cleanupExpire
 assert.ok(html.includes('accept="video/mp4,video/quicktime,.mp4,.mov"') && !html.includes('id="sourceVideo" type="file" accept="video/mp4,video/quicktime,video/webm" disabled'), "The UI must enable only supported MP4/MOV source video formats.");
 assert.ok(html.includes("selectedSourceVideoDuration") && html.includes("X-Video-Duration") && html.includes("generation-input-video"), "The UI must validate source video duration and upload it through the authenticated cloud bridge.");
 assert.ok(html.includes("sourceVideoTestUpload") && html.includes("AI generovanie sa nespustilo"), "The Studio must expose a safe source-video upload test without starting paid generation.");
+assert.ok(html.includes("selectedSourceVideoUploaded.accountId===account.id") && html.includes("accountId:account.id"), "A previously uploaded private video must never be reused after switching cloud accounts.");
 const videoTestHandler = html.slice(html.indexOf("sourceVideoTestUpload').addEventListener"), html.indexOf("async function uploadFormApi"));
 assert.ok(videoTestHandler.includes("ensureSelectedSourceVideoUploaded") && !videoTestHandler.includes("/api/generate"), "The standalone video upload test must store the source file without submitting a generation request.");
 assert.ok(html.includes("selectedSourceVideoUploading=true;sourceVideo.disabled=true"), "Changing the selected source file must be blocked while a large upload is in progress.");
