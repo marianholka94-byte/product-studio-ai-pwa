@@ -109,8 +109,8 @@
       "Tvoje zmeny boli uložené ako samostatný projekt. Pôvodná cloudová verzia zostala zachovaná.":"Your changes were saved as a separate project. The original cloud version was preserved.",
       "Cloudový účet je prihlásený.":"Cloud account is signed in.","Cloudová knižnica je synchronizovaná.":"Cloud library is synchronized.",
       "＋ Uložiť do Cloudu":"＋ Save to Cloud","Ukladám…":"Saving…","Nahrávam":"Uploading","Nahrávanie":"Uploading",
-      "Zobraziť informáciu o histórii":"Show history information"
-            "Nie je čo kopírovať.":"Nothing to copy.","Prompt bol skopírovaný.":"Prompt copied.","Kopírovanie sa nepodarilo. Označ text a skopíruj ho ručne.":"Copying failed. Select the text and copy it manually."
+      "Zobraziť informáciu o histórii":"Show history information",
+      "Nie je čo kopírovať.":"Nothing to copy.","Prompt bol skopírovaný.":"Prompt copied.","Kopírovanie sa nepodarilo. Označ text a skopíruj ho ručne.":"Copying failed. Select the text and copy it manually."
     }
   };
   const reverse = Object.fromEntries(Object.entries(dictionaries.en).map(([sk,en]) => [en,sk]));
