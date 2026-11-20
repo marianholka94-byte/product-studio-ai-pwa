@@ -41,3 +41,16 @@ CREATE INDEX IF NOT EXISTS idx_generation_input_videos_expiry
   ON generation_input_videos(expires_at ASC);
 CREATE INDEX IF NOT EXISTS idx_generation_input_videos_owner_created
   ON generation_input_videos(user_id, created_at DESC);
+
+-- Enforce the per-account daily upload cap in D1 as well as in the Worker,
+-- so concurrent requests cannot race past the preview quota.
+CREATE TRIGGER IF NOT EXISTS trg_generation_input_videos_daily_limit
+BEFORE INSERT ON generation_input_videos
+WHEN (
+  SELECT COUNT(*) FROM generation_input_videos
+  WHERE user_id = NEW.user_id
+    AND created_at >= (CAST(NEW.created_at / 86400 AS INTEGER) * 86400)
+) >= 3
+BEGIN
+  SELECT RAISE(ABORT, 'generation input video daily limit reached');
+END;
