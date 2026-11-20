@@ -203,7 +203,7 @@ assert.ok(productMigration.includes("CREATE UNIQUE INDEX") && productMigration.i
 assert.ok(projectMigration.includes("WHERE client_operation_id IS NOT NULL") && productMigration.includes("WHERE client_operation_id IS NOT NULL"), "Legacy rows without operation keys must remain compatible.");
 
 // A retry must reconcile the server manifest before sending another image.
-const saveFlow = cloud.match(/async saveLocalProject\(record, onProgress = \(\) => \{\}\)[\s\S]*?\n    }\n  };/)?.[0] || "";
+const saveFlow = cloud.match(/async saveLocalProject\(record, onProgress = \(\) => \{\}, onTransferProgress = \(\) => \{\}\)[\s\S]*?\n    }\n  };/)?.[0] || "";
 assert.ok(saveFlow.indexOf("const manifest = await accountApi(") < saveFlow.indexOf("for (let index = uploaded; index < images.length; index++)"), "Cloud save must read the remote manifest before uploading any retry images.");
 assert.ok(saveFlow.includes("if (!remoteDigests[index] || remoteDigests[index] !== imageDigests[index])"), "Cloud save must refuse to resume when a previously uploaded image cannot be checksum-verified.");
 assert.ok(saveFlow.includes("sync.idempotencyKey = crypto.randomUUID()") && saveFlow.indexOf("await onProgress({ ...sync })") < saveFlow.indexOf("accountApi(\"/api/projects\""), "Project operation key must be persisted before the create request can lose its response.");
