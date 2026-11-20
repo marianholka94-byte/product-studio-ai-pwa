@@ -972,7 +972,6 @@
       return { ...sync, alreadySaved: false };
     }
   };
-  panel.appendChild(auth);
   panel.appendChild(workspace);
   renderAuth();
   openLogin.hidden = false;
