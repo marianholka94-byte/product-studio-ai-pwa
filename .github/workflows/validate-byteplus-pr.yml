@@ -8,6 +8,7 @@ on:
       - "worker-preview.js"
       - "index.html"
       - "scripts/validate-generation-safety.mjs"
+      - "scripts/validate-commercial-security.mjs"
       - ".github/workflows/validate-byteplus-pr.yml"
 
 permissions:
