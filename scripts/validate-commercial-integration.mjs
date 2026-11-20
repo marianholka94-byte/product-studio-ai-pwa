@@ -307,4 +307,16 @@ const projectImportHandler = projectImportStart >= 0 && projectImportEnd > proje
 assert.ok(projectImportHandler.includes("const requestToken = token") && projectImportHandler.includes('Authorization: "Bearer " + requestToken'), "Cloud project imports must retain their initiating session token.");
 assert.ok((projectImportHandler.match(/requestEpoch !== accountEpoch/g) || []).length >= 4, "Cloud project imports must stop between asynchronous media operations after an account switch.");
 
-
+const deployWorkflow = readFileSync(".github/workflows/deploy-commercial-preview.yml", "utf8");
+const preMigrationChecks = [
+  "Validate commercial cloud integration contract",
+  "Validate generation provider readiness and paid-request safety",
+  "Validate credit ledger foundation",
+  "Validate tenant isolation and private media access",
+  "Validate preview Worker bundle without deploying"
+];
+const migrationStepIndex = deployWorkflow.indexOf("Apply pending preview D1 migrations before deployment");
+const deployStepIndex = deployWorkflow.indexOf("Deploy isolated preview Worker");
+assert.ok(migrationStepIndex >= 0 && deployStepIndex > migrationStepIndex, "Preview D1 migrations must be applied before deploying the Worker.");
+assert.ok(preMigrationChecks.every(name => deployWorkflow.indexOf(name) >= 0 && deployWorkflow.indexOf(name) < migrationStepIndex), "All static, security, ledger, and Worker dry-run checks must pass before remote D1 migrations are applied.");
+assert.ok(deployWorkflow.includes("group: commercial-preview-deploy") && deployWorkflow.includes("cancel-in-progress: false"), "Preview deployment and D1 migration operations must remain serialized.");
