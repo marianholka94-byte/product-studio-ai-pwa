@@ -1,5 +1,5 @@
-const CACHE = "product-studio-ai-v60-cloud-button-state-20261120a";
-const FILES = ["/", "/index.html", "/manifest.webmanifest", "/icon.svg", "/cloud-library.js?v=cloud-button-state-20261120a", "/app-navigation.js?v=prompt-accordion-20261120a"];
+const CACHE = "product-studio-ai-v61-brand-icon-20261120";
+const FILES = ["/", "/index.html", "/manifest.webmanifest", "/icon.svg?v=brand-icon-20261120", "/cloud-library.js?v=cloud-button-state-20261120a", "/app-navigation.js?v=prompt-accordion-20261120a"];
 
 self.addEventListener("install", event => event.waitUntil(
   caches.open(CACHE)
@@ -21,11 +21,8 @@ self.addEventListener("fetch", event => {
 
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
-
-  // Never cache authenticated API responses or user-specific data.
   if (url.pathname.startsWith("/api/")) return;
 
-  // Keep navigation fresh, with an offline fallback to the app shell.
   if (request.mode === "navigate") {
     event.respondWith(fetch(request).then(response => {
       if (response.ok) {
@@ -37,7 +34,6 @@ self.addEventListener("fetch", event => {
     return;
   }
 
-  // Cache only successful static GET responses; prefer the network when online.
   event.respondWith(fetch(request).then(response => {
     if (response.ok && response.type === "basic") {
       const copy = response.clone();

@@ -1,27 +1,16 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-<defs>
-<radialGradient id="bg"><stop stop-color="#25211a"/><stop offset="1" stop-color="#080a0e"/></radialGradient>
-<linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff4cb"/><stop offset=".35" stop-color="#e9bd65"/><stop offset=".75" stop-color="#9c6b2c"/><stop offset="1" stop-color="#ffdf91"/></linearGradient>
-<linearGradient id="silver" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff"/><stop offset=".55" stop-color="#b7bdc5"/><stop offset="1" stop-color="#626a75"/></linearGradient>
-<radialGradient id="cube" cx=".35" cy=".2" r=".9"><stop stop-color="#fff1bf"/><stop offset=".4" stop-color="#d9a84f"/><stop offset="1" stop-color="#674019"/></radialGradient>
-<filter id="glow"><feGaussianBlur stdDeviation="5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-</defs>
-<rect width="512" height="512" rx="112" fill="url(#bg)"/>
-<g transform="translate(0 4)" stroke-linejoin="round" filter="url(#glow)">
-<path d="M222 62 Q278 48 328 84 L286 190 176 158Z" fill="url(#gold)" stroke="#ffe5a3" stroke-width="3"/>
-<path d="M328 84 Q399 116 422 195 L321 231 286 190Z" fill="url(#silver)" stroke="#f8f8f8" stroke-width="3"/>
-<path d="M422 195 Q446 261 405 331 L307 278 321 231Z" fill="url(#gold)" stroke="#f8d98e" stroke-width="3"/>
-<path d="M405 331 Q365 396 290 411 L266 308 307 278Z" fill="url(#silver)" stroke="#f8f8f8" stroke-width="3"/>
-<path d="M290 411 Q216 431 149 385 L210 298 266 308Z" fill="url(#gold)" stroke="#f8d98e" stroke-width="3"/>
-<path d="M149 385 Q88 340 82 264 L190 250 210 298Z" fill="url(#silver)" stroke="#f8f8f8" stroke-width="3"/>
-<path d="M82 264 Q78 184 132 124 L207 203 190 250Z" fill="url(#gold)" stroke="#f8d98e" stroke-width="3"/>
-<path d="M132 124 Q170 77 222 62 L207 203 132 124Z" fill="url(#silver)" stroke="#f8f8f8" stroke-width="3"/>
+<rect width="512" height="512" rx="112" fill="#061431"/>
+<rect x="66" y="66" width="380" height="380" rx="88" fill="none" stroke="#DDB85F" stroke-width="10"/>
+<g fill="#DDB85F" stroke="#061431" stroke-width="5" stroke-linejoin="miter">
+<path d="M112 112H242L188 151H151Z"/>
+<path d="M270 112H400L361 151H270Z"/>
+<path d="M112 112L151 151V236L112 260Z"/>
+<path d="M400 112L361 151V236L400 260Z"/>
+<path d="M112 281L151 305V361L112 400Z"/>
+<path d="M400 281L361 305V361L400 400Z"/>
+<path d="M112 400L151 361H361L400 400Z"/>
+<path d="M188 190L256 151L324 190L256 230Z"/>
+<path d="M188 190V276L256 316V230Z"/>
+<path d="M324 190V276L256 316V230Z"/>
 </g>
-<ellipse cx="255" cy="340" rx="111" ry="24" fill="#0a0b0e" stroke="url(#gold)" stroke-width="7"/>
-<path d="M145 339v46q0 25 110 25t110-25v-46" fill="#161719" stroke="url(#gold)" stroke-width="6"/>
-<path d="M208 222 256 198 304 222 256 247Z" fill="#ffe8aa" stroke="#fff1c6" stroke-width="3"/>
-<path d="M208 222v83l48 24v-82Z" fill="url(#gold)" stroke="#ffdf91" stroke-width="3"/>
-<path d="M304 222v83l-48 24v-82Z" fill="url(#cube)" stroke="#ffdf91" stroke-width="3"/>
-<path d="M339 271 Q443 190 397 116 Q382 90 374 57" fill="none" stroke="url(#gold)" stroke-width="11" stroke-linecap="round"/>
-<path d="M374 30 Q383 85 438 94 Q383 103 374 158 Q365 103 310 94 Q365 85 374 30Z" fill="url(#gold)" filter="url(#glow)"/>
 </svg>
