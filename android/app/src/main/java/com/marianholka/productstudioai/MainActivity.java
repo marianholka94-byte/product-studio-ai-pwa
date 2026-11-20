@@ -131,24 +131,37 @@ public class MainActivity extends Activity {
             // Crop the source image to its upper lockup: large gold mark + title + divider.
             // The lower small app icon is intentionally excluded.
             Bitmap splashSource = BitmapFactory.decodeResource(getResources(), R.drawable.splash_brand_lockup);
-            int splashCropHeight = Math.min(splashSource.getHeight(), Math.round(splashSource.getHeight() * 0.5534f));
-            Bitmap splashTop = Bitmap.createBitmap(splashSource, 0, 0, splashSource.getWidth(), splashCropHeight);
-            if (splashTop != splashSource) splashSource.recycle();
+            ImageView brandLockup = null;
+            if (splashSource != null && splashSource.getWidth() > 0 && splashSource.getHeight() > 0) {
+                int splashCropHeight = Math.min(splashSource.getHeight(), Math.round(splashSource.getHeight() * 0.5534f));
+                Bitmap splashTop = Bitmap.createBitmap(splashSource, 0, 0, splashSource.getWidth(), splashCropHeight);
+                if (splashTop != splashSource) splashSource.recycle();
 
-            ImageView brandLockup = new ImageView(this);
-            brandLockup.setImageBitmap(splashTop);
-            brandLockup.setScaleType(ImageView.ScaleType.FIT_CENTER);
-            brandLockup.setAdjustViewBounds(true);
-            brandLockup.setBackgroundColor(Color.rgb(6, 20, 49));
-            int screenWidth = getResources().getDisplayMetrics().widthPixels;
-            int splashHeight = Math.round(screenWidth * (splashCropHeight / (float) splashTop.getWidth()));
-            FrameLayout.LayoutParams splashParams = new FrameLayout.LayoutParams(
-                    FrameLayout.LayoutParams.MATCH_PARENT, splashHeight, Gravity.CENTER);
-            root.addView(brandLockup, splashParams);
+                brandLockup = new ImageView(this);
+                brandLockup.setImageBitmap(splashTop);
+                brandLockup.setScaleType(ImageView.ScaleType.FIT_CENTER);
+                brandLockup.setAdjustViewBounds(true);
+                brandLockup.setBackgroundColor(Color.rgb(6, 20, 49));
+                int screenWidth = getResources().getDisplayMetrics().widthPixels;
+                int splashHeight = Math.round(screenWidth * (splashCropHeight / (float) splashTop.getWidth()));
+                FrameLayout.LayoutParams splashParams = new FrameLayout.LayoutParams(
+                        FrameLayout.LayoutParams.MATCH_PARENT, splashHeight, Gravity.CENTER);
+                root.addView(brandLockup, splashParams);
+            } else {
+                android.util.Log.e("ProductStudioAI", "Splash image resource is missing or unreadable; continuing without splash artwork.");
+                if (splashSource != null) splashSource.recycle();
+            }
             setContentView(root);
-            new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                if (brandLockup.getParent() == root) root.removeView(brandLockup);
-            }, 2000);
+            final ImageView splashView = brandLockup;
+            if (splashView != null) {
+                new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                    if (splashView.getParent() == root) root.removeView(splashView);
+                    if (splashView.getDrawable() instanceof android.graphics.drawable.BitmapDrawable) {
+                        android.graphics.drawable.Drawable drawable = splashView.getDrawable();
+                        splashView.setImageDrawable(null);
+                    }
+                }, 2000);
+            }
             if (savedInstanceState == null || webView.restoreState(savedInstanceState) == null) {
                 webView.loadUrl(BuildConfig.WEB_APP_URL);
             }
