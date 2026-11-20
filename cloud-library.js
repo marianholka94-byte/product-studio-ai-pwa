@@ -198,8 +198,8 @@ const MAX_PRODUCT_IMAGES = 9;
       const requestEpoch = accountEpoch;
       if (!requestToken || !requestAccountId) return reject(new Error("Najskôr sa prihlás do cloudovej knižnice."));
       const xhr = new XMLHttpRequest();
-      xhr.timeout = 15 * 60 * 1000;
       xhr.open("POST", API + path, true);
+      xhr.timeout = 15 * 60 * 1000;
       xhr.setRequestHeader("Authorization", "Bearer " + requestToken);
       for (const [name, value] of Object.entries(headers)) xhr.setRequestHeader(name, value);
       xhr.upload.addEventListener("progress", event => {
