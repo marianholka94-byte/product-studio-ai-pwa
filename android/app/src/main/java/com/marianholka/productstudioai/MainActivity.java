@@ -19,6 +19,10 @@ import android.webkit.WebResourceError;
 import android.widget.TextView;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.graphics.Paint;
+import android.graphics.Path;
+import android.graphics.Typeface;
 import android.os.Handler;
 import android.os.Looper;
 
@@ -126,29 +130,33 @@ public class MainActivity extends Activity {
             networkErrorView.setOnClickListener(v -> webView.reload());
             root.addView(networkErrorView, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
 
-            // Keep WebView hidden until the 2-second brand intro has been displayed.
+            // Render the two-second brand intro natively; do not depend on a packaged bitmap.
             webView.setVisibility(View.INVISIBLE);
-            ImageView brandLockup = new ImageView(this);
-            brandLockup.setImageResource(R.drawable.splash_brand_lockup);
-            brandLockup.setScaleType(ImageView.ScaleType.FIT_CENTER);
-            brandLockup.setBackgroundColor(Color.rgb(6, 20, 49));
-            android.graphics.drawable.Drawable splashDrawable = brandLockup.getDrawable();
-            if (splashDrawable == null || splashDrawable.getIntrinsicWidth() <= 0 || splashDrawable.getIntrinsicHeight() <= 0) {
-                throw new IllegalStateException("PRODUCT STUDIO AI splash artwork could not be loaded");
-            }
-            int screenWidth = getResources().getDisplayMetrics().widthPixels;
-            int splashHeight = Math.round(screenWidth * (splashDrawable.getIntrinsicHeight() / (float) splashDrawable.getIntrinsicWidth()));
-            FrameLayout.LayoutParams splashParams = new FrameLayout.LayoutParams(
-                    FrameLayout.LayoutParams.MATCH_PARENT, splashHeight, Gravity.CENTER);
-            root.addView(brandLockup, splashParams);
-            brandLockup.bringToFront();
+            LinearLayout splash = new LinearLayout(this);
+            splash.setOrientation(LinearLayout.VERTICAL);
+            splash.setGravity(Gravity.CENTER);
+            splash.setBackgroundColor(Color.rgb(6, 20, 49));
+            BrandMarkView mark = new BrandMarkView(this);
+            int markSize = Math.round(190 * getResources().getDisplayMetrics().density);
+            splash.addView(mark, new LinearLayout.LayoutParams(markSize, markSize));
+            TextView brandTitle = new TextView(this);
+            brandTitle.setText("PRODUCT STUDIO AI");
+            brandTitle.setTextColor(Color.rgb(221, 184, 95));
+            brandTitle.setTextSize(27);
+            brandTitle.setTypeface(Typeface.create("sans-serif", Typeface.BOLD));
+            brandTitle.setGravity(Gravity.CENTER);
+            brandTitle.setLetterSpacing(0.08f);
+            LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT);
+            titleParams.setMargins(18, Math.round(18 * getResources().getDisplayMetrics().density), 18, 0);
+            splash.addView(brandTitle, titleParams);
+            root.addView(splash, new FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
+            splash.bringToFront();
 
             setContentView(root);
-            brandLockup.post(() -> {
-                if (brandLockup.getParent() == root) brandLockup.bringToFront();
-            });
             new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                if (brandLockup.getParent() == root) root.removeView(brandLockup);
+                if (splash.getParent() == root) root.removeView(splash);
                 if (webView != null) webView.setVisibility(View.VISIBLE);
             }, 2000);
             if (savedInstanceState == null || webView.restoreState(savedInstanceState) == null) {
@@ -164,6 +172,30 @@ public class MainActivity extends Activity {
             android.util.Log.e("ProductStudioAI", "Startup failed", error);
             message.setText(message.getText() + "\n\n" + (error.getMessage() == null ? "Bez ďalších detailov" : error.getMessage()));
             setContentView(message);
+        }
+    }
+
+    private static final class BrandMarkView extends View {
+        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        BrandMarkView(Activity activity) { super(activity); setLayerType(View.LAYER_TYPE_SOFTWARE, null); }
+        @Override protected void onDraw(android.graphics.Canvas canvas) {
+            super.onDraw(canvas);
+            float d = getResources().getDisplayMetrics().density;
+            float s = Math.min(getWidth(), getHeight()) * 0.88f;
+            float x = (getWidth() - s) / 2f, y = (getHeight() - s) / 2f;
+            float u = s / 10f;
+            paint.setColor(Color.rgb(221,184,95)); paint.setStyle(Paint.Style.STROKE);
+            paint.setStrokeWidth(2.2f*d); paint.setStrokeJoin(Paint.Join.MITER);
+            canvas.drawRect(x+u,y+u,x+9*u,y+9*u,paint);
+            paint.setStyle(Paint.Style.FILL);
+            Path p = new Path();
+            p.moveTo(x+u,y+u); p.lineTo(x+5*u,y+u); p.lineTo(x+3*u,y+2.5f*u); p.close(); canvas.drawPath(p,paint);
+            p.reset(); p.moveTo(x+5.5f*u,y+u); p.lineTo(x+9*u,y+u); p.lineTo(x+7.5f*u,y+2.5f*u); p.lineTo(x+5.5f*u,y+2.5f*u); p.close(); canvas.drawPath(p,paint);
+            p.reset(); p.moveTo(x+3.5f*u,y+4*u); p.lineTo(x+5*u,y+3*u); p.lineTo(x+7*u,y+4.2f*u); p.lineTo(x+5*u,y+5.3f*u); p.close(); canvas.drawPath(p,paint);
+            p.reset(); p.moveTo(x+3.5f*u,y+4*u); p.lineTo(x+5*u,y+5.3f*u); p.lineTo(x+5*u,y+8*u); p.lineTo(x+3.5f*u,y+7*u); p.close(); canvas.drawPath(p,paint);
+            p.reset(); p.moveTo(x+u,y+3.5f*u); p.lineTo(x+2.8f*u,y+4.6f*u); p.lineTo(x+2.8f*u,y+7.3f*u); p.lineTo(x+u,y+8.8f*u); p.close(); canvas.drawPath(p,paint);
+            p.reset(); p.moveTo(x+9*u,y+6*u); p.lineTo(x+6*u,y+7.5f*u); p.lineTo(x+9*u,y+8.8f*u); p.close(); canvas.drawPath(p,paint);
+            p.reset(); p.moveTo(x+u,y+9*u); p.lineTo(x+3*u,y+7.3f*u); p.lineTo(x+7*u,y+7.3f*u); p.lineTo(x+9*u,y+9*u); p.close(); canvas.drawPath(p,paint);
         }
     }
 
