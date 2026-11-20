@@ -6,8 +6,6 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Build;
 import android.graphics.Color;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.view.Gravity;
 import android.view.Window;
 import android.view.View;
@@ -127,41 +125,21 @@ public class MainActivity extends Activity {
             networkErrorView.setOnClickListener(v -> webView.reload());
             root.addView(networkErrorView, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
 
-            // Show the original PRODUCT STUDIO AI brand artwork.
-            // Crop the source image to its upper lockup: large gold mark + title + divider.
-            // The lower small app icon is intentionally excluded.
-            Bitmap splashSource = BitmapFactory.decodeResource(getResources(), R.drawable.splash_brand_lockup);
-            ImageView brandLockup = null;
-            if (splashSource != null && splashSource.getWidth() > 0 && splashSource.getHeight() > 0) {
-                int splashCropHeight = Math.min(splashSource.getHeight(), Math.round(splashSource.getHeight() * 0.5534f));
-                Bitmap splashTop = Bitmap.createBitmap(splashSource, 0, 0, splashSource.getWidth(), splashCropHeight);
-                if (splashTop != splashSource) splashSource.recycle();
+            // Show the pre-cropped PRODUCT STUDIO AI lockup for exactly two seconds.
+            // The source asset contains only the large mark and title; no secondary app icon.
+            ImageView brandLockup = new ImageView(this);
+            brandLockup.setImageResource(R.drawable.splash_brand_lockup);
+            brandLockup.setScaleType(ImageView.ScaleType.FIT_CENTER);
+            brandLockup.setAdjustViewBounds(true);
+            brandLockup.setBackgroundColor(Color.rgb(6, 20, 49));
+            FrameLayout.LayoutParams splashParams = new FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.CENTER);
+            root.addView(brandLockup, splashParams);
 
-                brandLockup = new ImageView(this);
-                brandLockup.setImageBitmap(splashTop);
-                brandLockup.setScaleType(ImageView.ScaleType.FIT_CENTER);
-                brandLockup.setAdjustViewBounds(true);
-                brandLockup.setBackgroundColor(Color.rgb(6, 20, 49));
-                int screenWidth = getResources().getDisplayMetrics().widthPixels;
-                int splashHeight = Math.round(screenWidth * (splashCropHeight / (float) splashTop.getWidth()));
-                FrameLayout.LayoutParams splashParams = new FrameLayout.LayoutParams(
-                        FrameLayout.LayoutParams.MATCH_PARENT, splashHeight, Gravity.CENTER);
-                root.addView(brandLockup, splashParams);
-            } else {
-                android.util.Log.e("ProductStudioAI", "Splash image resource is missing or unreadable; continuing without splash artwork.");
-                if (splashSource != null) splashSource.recycle();
-            }
             setContentView(root);
-            final ImageView splashView = brandLockup;
-            if (splashView != null) {
-                new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                    if (splashView.getParent() == root) root.removeView(splashView);
-                    if (splashView.getDrawable() instanceof android.graphics.drawable.BitmapDrawable) {
-                        android.graphics.drawable.Drawable drawable = splashView.getDrawable();
-                        splashView.setImageDrawable(null);
-                    }
-                }, 2000);
-            }
+            new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                if (brandLockup.getParent() == root) root.removeView(brandLockup);
+            }, 2000);
             if (savedInstanceState == null || webView.restoreState(savedInstanceState) == null) {
                 webView.loadUrl(BuildConfig.WEB_APP_URL);
             }
@@ -172,6 +150,8 @@ public class MainActivity extends Activity {
             message.setTextSize(16);
             message.setGravity(Gravity.CENTER);
             message.setPadding(32, 32, 32, 32);
+            android.util.Log.e("ProductStudioAI", "Startup failed", error);
+            message.setText(message.getText() + "\n\n" + (error.getMessage() == null ? "Bez ďalších detailov" : error.getMessage()));
             setContentView(message);
         }
     }
