@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 const worker = readFileSync("worker-preview.js", "utf8");
 const html = readFileSync("index.html", "utf8");
 const wrangler = readFileSync("wrangler.preview.toml", "utf8");
+const workflow = readFileSync(".github/workflows/deploy-commercial-preview.yml", "utf8");
 
 function mustContain(source, pattern, message) {
   assert.ok(pattern.test(source), message);
@@ -64,6 +65,7 @@ mustContain(wrangler, /bucket_name = "product-studio-ai-media-preview"/, "Previe
 mustNotContain(wrangler, /database_name = "product-studio-ai-db"/, "Preview must not bind the production D1 database.");
 mustNotContain(wrangler, /bucket_name = "product-studio-ai-media"/, "Preview must not bind the production R2 bucket.");
 mustNotContain(wrangler, /APP_OWNER_EMAIL\s*=/, "The preview owner email must not be committed as a public Worker variable.");
+assert.ok(workflow.includes("APP_OWNER_EMAIL_PREVIEW") && workflow.includes("secret put APP_OWNER_EMAIL"), "The preview owner email must be injected only as a Worker secret.");
 
 console.log("Commercial tenant-isolation and private-media security checks passed.");
 
