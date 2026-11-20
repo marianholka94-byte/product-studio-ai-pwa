@@ -130,7 +130,7 @@ assert.ok(cloud.includes("async saveLocalProject(record, onProgress"), "Cloud sa
 assert.ok(cloud.includes("function uploadWithProgress(") && cloud.includes("xhr.upload.addEventListener(\"progress\""), "Cloud uploads must expose real byte-level transfer progress.");
 assert.ok(cloud.includes("async upload(path, body, headers = {}, onProgress = () => {})"), "Authenticated cloud bridge must expose a progress-aware upload method.");
 assert.ok(cloud.includes("onTransferProgress({ imageIndex: index + 1, imageCount: images.length, ...progress })"), "Cloud project image uploads must report per-image transfer progress.");
-assert.ok(html.includes("sourceVideoUploadProgress") && html.includes("bridge.upload(\"/api/generation-input-video\""), "Reference video upload must show real transfer progress.");
+assert.ok(html.includes("sourceVideoUploadProgress") && html.includes("bridge.upload(\'/api/generation-input-video\'"), "Reference video upload must show real transfer progress.");
 assert.ok(cloud.includes('accountApi("/api/products", {'), "Cloud save must create an account-scoped product before uploading media");
 assert.ok(cloud.includes('accountApi("/api/products/" + encodeURIComponent(sync.productId) + "/images"'), "Cloud save must upload images through the authenticated product media API");
 assert.ok(cloud.includes("await onProgress({ ...sync })"), "Cloud save must persist every upload checkpoint before continuing");
