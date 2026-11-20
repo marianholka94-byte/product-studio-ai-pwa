@@ -217,7 +217,7 @@
       grid-template-columns:repeat(3,minmax(0,1fr)) !important;
       align-items:stretch !important;
       gap:4px !important;
-      padding:8px 12px calc(8px + env(safe-area-inset-bottom, 0px)) !important;
+      padding:8px 12.5% calc(8px + env(safe-area-inset-bottom, 0px)) !important;
       background:#10141b !important;
       border:0 !important;
       border-top:1px solid #293442 !important;
