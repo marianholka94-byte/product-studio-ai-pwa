@@ -157,7 +157,7 @@ public class MainActivity extends Activity {
                     FrameLayout.LayoutParams.MATCH_PARENT));
             setContentView(root);
             new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                if (launchScreen.getParent() == root) root.removeView(launchScreen);
+                if (brandLockup.getParent() == root) root.removeView(brandLockup);
             }, 2000);
             if (savedInstanceState == null || webView.restoreState(savedInstanceState) == null) {
                 webView.loadUrl(BuildConfig.WEB_APP_URL);
