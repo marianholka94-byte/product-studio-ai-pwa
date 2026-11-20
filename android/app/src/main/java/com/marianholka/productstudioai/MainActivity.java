@@ -35,6 +35,7 @@ public class MainActivity extends Activity {
         // Bottom navigation alignment is controlled by the WebView frontend; Android system controls are unchanged.
         // Navigation item centers are aligned to the three Android system navigation controls.
         // CSS box sizing keeps the full-width navigation background and centered item track.
+        // Studio-only bottom navigation uses fixed side gutters for Android button alignment.
         Window w = getWindow();
         w.setStatusBarColor(Color.rgb(8, 8, 14));
         w.setNavigationBarColor(Color.rgb(8, 8, 14));
