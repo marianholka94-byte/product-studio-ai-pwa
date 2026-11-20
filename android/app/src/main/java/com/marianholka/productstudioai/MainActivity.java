@@ -5,8 +5,6 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Build;
-import android.os.Handler;
-import android.os.Looper;
 import android.graphics.Color;
 import android.view.Gravity;
 import android.view.Window;
@@ -20,7 +18,6 @@ import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceError;
 import android.widget.TextView;
 import android.widget.FrameLayout;
-import android.widget.ImageView;
 
 public class MainActivity extends Activity {
     private static final int FILE_CHOOSER_REQUEST = 4107;
@@ -114,19 +111,6 @@ public class MainActivity extends Activity {
             FrameLayout root = new FrameLayout(this);
             root.setBackgroundColor(Color.rgb(11, 14, 19));
             root.addView(webView, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
-
-            // Show the supplied full logo lockup for two seconds while the WebView loads behind it.
-            ImageView launchScreen = new ImageView(this);
-            launchScreen.setImageResource(R.drawable.splash_brand_lockup);
-            launchScreen.setScaleType(ImageView.ScaleType.FIT_CENTER);
-            launchScreen.setBackgroundColor(Color.rgb(6, 20, 49));
-            launchScreen.setPadding(24, 0, 24, 0);
-            root.addView(launchScreen, new FrameLayout.LayoutParams(
-                    FrameLayout.LayoutParams.MATCH_PARENT,
-                    FrameLayout.LayoutParams.MATCH_PARENT));
-            new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                if (launchScreen.getParent() == root) root.removeView(launchScreen);
-            }, 2000);
             networkErrorView = new TextView(this);
             networkErrorView.setText("Nepodarilo sa načítať PRODUCT STUDIO AI\n\nSkontroluj internetové pripojenie a ťukni sem pre opakovanie.");
             networkErrorView.setTextColor(Color.WHITE);
