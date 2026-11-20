@@ -1,5 +1,5 @@
-const CACHE = "product-studio-ai-v53-credit-wallet-20261119";
-const FILES = ["/", "/index.html", "/manifest.webmanifest", "/icon.svg", "/cloud-library.js?v=personal-workspace-20261119g", "/app-navigation.js?v=personal-workspace-20261119g"];
+const CACHE = "product-studio-ai-v54-cloud-resume-20261120a";
+const FILES = ["/", "/index.html", "/manifest.webmanifest", "/icon.svg", "/cloud-library.js?v=cloud-resume-20261120a", "/app-navigation.js?v=cloud-resume-20261120a"];
 
 self.addEventListener("install", event => event.waitUntil(
   caches.open(CACHE)
