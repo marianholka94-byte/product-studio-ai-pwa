@@ -256,8 +256,11 @@
       });
     }
   };
+  const readSavedLanguage = () => {
+    try { return localStorage.getItem(KEY) === "en" ? "en" : "sk"; }
+    catch (_) { return language === "en" ? "en" : "sk"; }
+  };
   const renderLanguage = () => {
-    language = localStorage.getItem(KEY) === "en" ? "en" : "sk";
     document.documentElement.lang = language;
     walk(document.body);
     const selector = document.getElementById("psaiLanguageSelect");
@@ -265,6 +268,16 @@
     const note = document.getElementById("psaiLanguageNote");
     if (note) note.textContent = language === "en" ? "Your language preference is saved automatically on this device." : "Tvoja voľba jazyka sa automaticky uloží v tomto zariadení.";
   };
+  const setLanguage = value => {
+    if (value !== "sk" && value !== "en") return false;
+    language = value;
+    try { localStorage.setItem(KEY,value); } catch (_) {}
+    renderLanguage();
+    return true;
+  };
+  // Expose the language API immediately, not only after DOMContentLoaded.
+  window.PSAII18n = { getLanguage:()=>language, setLanguage, t:translate };
+  language = readSavedLanguage();
   const addSettings = () => {
     const settings = document.getElementById("screenSettings");
     if (!settings || document.getElementById("psaiLanguagePanel")) return;
@@ -282,16 +295,15 @@
   const init = () => {
     addSettings();
     renderLanguage();
-    // Delegated handler also works when app-navigation.js creates the Settings screen later.
-    document.addEventListener("change",event => {
+    // Capture both change and input so native Android WebView selects are handled reliably.
+    const handleLanguageSelection = event => {
       if (event.target?.id !== "psaiLanguageSelect") return;
-      const value = event.target.value;
-      if (value !== "sk" && value !== "en") return;
-      localStorage.setItem(KEY,value);
-      renderLanguage();
+      if (!setLanguage(event.target.value)) return;
       const heading = document.querySelector("#psaiLanguagePanel h2");
-      if (heading) heading.textContent = value === "en" ? "App language" : "Jazyk aplikácie";
-    });
+      if (heading) heading.textContent = language === "en" ? "App language" : "Jazyk aplikácie";
+    };
+    document.addEventListener("change",handleLanguageSelection,true);
+    document.addEventListener("input",handleLanguageSelection,true);
     const observer = new MutationObserver(records => {
       let structureChanged = false;
       for (const record of records) {
@@ -310,7 +322,7 @@
       }
     });
     observer.observe(document.body,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:["placeholder","title","aria-label"]});
-    window.PSAII18n = { getLanguage:()=>language, setLanguage:value=>{if(value!=="sk"&&value!=="en")return;localStorage.setItem(KEY,value);renderLanguage();}, t:translate };
+    window.PSAII18n = { getLanguage:()=>language, setLanguage, t:translate };
   };
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded",init,{once:true}); else init();
 })();
