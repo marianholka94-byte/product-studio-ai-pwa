@@ -555,7 +555,7 @@ export default {
               `SELECT a.id, a.content_type, a.byte_size, a.width, a.height, a.checksum_sha256, pi.sort_order, pi.is_primary, a.created_at
                FROM product_images pi JOIN assets a ON a.id = pi.asset_id
                WHERE pi.product_id = ? AND pi.user_id = ? AND a.deleted_at IS NULL
-               ORDER BY pi.sort_order ASC LIMIT 5`
+               ORDER BY pi.sort_order ASC LIMIT 9`
             ).bind(productId, user.id).all();
             return json({ images: (result.results || []).map(row => ({ id: row.id, contentType: row.content_type, byteSize: row.byte_size, width: row.width, height: row.height, checksumSha256: row.checksum_sha256, sortOrder: row.sort_order, isPrimary: !!row.is_primary, createdAt: row.created_at, url: `/api/assets/${row.id}` })) }, 200, origin);
           }
@@ -568,7 +568,7 @@ export default {
             const current = await env.DB.prepare(
               "SELECT COUNT(*) AS count FROM product_images WHERE product_id = ? AND user_id = ?"
             ).bind(productId, user.id).first();
-            if (Number(current?.count || 0) >= 5) return json({ error: "Produkt môže obsahovať najviac 5 fotografií." }, 409, origin);
+            if (Number(current?.count || 0) >= 9) return json({ error: "Produkt môže obsahovať najviac 9 fotografií." }, 409, origin);
             const bytes = await readBytes(request, 10 * 1024 * 1024);
             if (!matchesImageSignature(bytes, contentType)) return json({ error: "Obsah súboru nezodpovedá deklarovanému formátu fotografie." }, 415, origin);
             const assetId = crypto.randomUUID();
