@@ -125,20 +125,39 @@ public class MainActivity extends Activity {
             networkErrorView.setOnClickListener(v -> webView.reload());
             root.addView(networkErrorView, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
 
-            // Display the supplied full brand lockup for two seconds while the WebView loads underneath.
-            // Use the bitmap resource directly; avoid XML layer-list inflation in the launch theme.
-            ImageView launchScreen = new ImageView(this);
-            launchScreen.setImageResource(R.drawable.splash_brand_lockup);
-            launchScreen.setScaleType(ImageView.ScaleType.FIT_CENTER);
-            launchScreen.setBackgroundColor(Color.rgb(6, 20, 49));
-            launchScreen.setPadding(24, 0, 24, 0);
-            launchScreen.setContentDescription("PRODUCT STUDIO AI");
-            root.addView(launchScreen, new FrameLayout.LayoutParams(
+            // Draw the brand lockup with native Android views. This avoids loading
+            // a malformed bitmap resource while keeping the startup screen reliable.
+            android.widget.LinearLayout brandLockup = new android.widget.LinearLayout(this);
+            brandLockup.setOrientation(android.widget.LinearLayout.VERTICAL);
+            brandLockup.setGravity(Gravity.CENTER);
+            brandLockup.setBackgroundColor(Color.rgb(6, 20, 49));
+            brandLockup.setPadding(24, 24, 24, 24);
+
+            ImageView brandMark = new ImageView(this);
+            brandMark.setImageResource(R.drawable.ic_launcher_foreground);
+            brandMark.setScaleType(ImageView.ScaleType.FIT_CENTER);
+            android.widget.LinearLayout.LayoutParams markParams =
+                    new android.widget.LinearLayout.LayoutParams(190, 190);
+            markParams.bottomMargin = 22;
+            brandLockup.addView(brandMark, markParams);
+
+            TextView brandName = new TextView(this);
+            brandName.setText("PRODUCT STUDIO AI");
+            brandName.setTextColor(Color.rgb(221, 184, 95));
+            brandName.setTextSize(29);
+            brandName.setTypeface(android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.BOLD));
+            brandName.setLetterSpacing(0.035f);
+            brandName.setGravity(Gravity.CENTER);
+            brandName.setSingleLine(true);
+            brandLockup.addView(brandName, new android.widget.LinearLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT));
+
+            root.addView(brandLockup, new FrameLayout.LayoutParams(
                     FrameLayout.LayoutParams.MATCH_PARENT,
                     FrameLayout.LayoutParams.MATCH_PARENT));
             setContentView(root);
             new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                if (launchScreen.getParent() == root) root.removeView(launchScreen);
+                if (brandLockup.getParent() == root) root.removeView(brandLockup);
             }, 2000);
             if (savedInstanceState == null || webView.restoreState(savedInstanceState) == null) {
                 webView.loadUrl(BuildConfig.WEB_APP_URL);
