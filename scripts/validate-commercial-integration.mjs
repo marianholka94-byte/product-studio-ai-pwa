@@ -96,6 +96,8 @@ assert.ok(cloud.includes("if (!confirm("), "Studio import must confirm before re
 
 new vm.Script(nav, { filename: "app-navigation.js" });
 assert.ok(nav.includes("const cloudLibraryPanel=document.getElementById('commercialCloudPanel');") && (nav.includes("if(cloudLibraryPanel)projects.append(cloudLibraryPanel);") || nav.includes("if(cloudLibraryPanel)cloudTab.append(cloudLibraryPanel);")), "The cloud library must live inside the Projects navigation screen.");
+assert.ok(nav.includes("setAttribute('role','tablist')") && nav.includes("aria-orientation','vertical'") && nav.includes("aria-selected"), "Project side navigation must expose accessible tab semantics and selection state.");
+assert.ok(nav.includes("role='tabpanel'") && nav.includes("aria-labelledby") && nav.includes("event.key==='ArrowDown'") && nav.includes("event.key==='Home'") && nav.includes("event.key==='End'"), "Project tabs must expose labelled panels and support arrow/Home/End keyboard navigation.");
 assert.ok(nav.includes("if(target==='screenProjects'){") && !nav.includes("}renderProducts().catch"), "Local libraries must not be reloaded on unrelated bottom-navigation switches.");
 assert.ok(nav.includes("clearLocalProductObjectUrls();") && nav.includes("localProductObjectUrls.add(objectUrl)"), "Local product thumbnails must release object URLs before re-rendering.");
 assert.ok(nav.includes("request.onblocked=()=>{projectDbPromise=null;") && nav.includes("request.onerror=()=>{projectDbPromise=null;"), "IndexedDB open failures and blocked upgrades must allow a later retry.");
