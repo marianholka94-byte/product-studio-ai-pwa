@@ -133,7 +133,8 @@ a{color:#174ea6;overflow-wrap:anywhere}
 <label for="sourceVideo">Voliteľné zdrojové video (MP4 alebo MOV, 2–15 sekúnd, max. 90 MB)</label>
 <input id="sourceVideo" type="file" accept="video/mp4,video/quicktime,.mp4,.mov">
 <video id="sourceVideoPreview" controls playsinline preload="metadata" style="display:none;max-height:280px"></video>
-<div id="sourceVideoInfo" class="note">Po aktivácii Seedance môžeš pridať krátke video produktu spolu s fotografiami. Video sa bezpečne uloží do súkromného úložiska. Priame referenčné videá s rozpoznateľnými ľudskými tvárami model nepodporuje.</div>
+<div id="sourceVideoInfo" class="note">Nahratie videa do súkromného cloudu môžeš otestovať aj bez aktivácie plateného AI generovania. Testovacie video sa automaticky odstráni po 7 dňoch. Priame referenčné videá s rozpoznateľnými ľudskými tvárami model nepodporuje.</div>
+<button type="button" class="secondary" id="sourceVideoTestUpload" disabled>Otestovať nahratie videa do cloudu</button>
 <progress id="sourceVideoUploadProgress" max="100" value="0" hidden></progress><p id="sourceVideoUploadProgressLabel" class="note" hidden></p>
 <label for="product">Názov alebo typ produktu</label>
 <input id="product" type="text" name="product-name" autocomplete="off" autocapitalize="sentences" placeholder="Napr. čierny parfum MUSTANG">
@@ -672,11 +673,11 @@ async function pollTask(id, outputId='videoWrap', statusId='status'){
 }
 
 // Voliteľné zdrojové video: súkromné nahratie do R2 a časovo obmedzený odkaz pre ModelArk.
-let selectedSourceVideo=null, selectedSourceVideoDuration=null, selectedSourceVideoUploadId=null, selectedSourceVideoContentType=null, sourceVideoObjectUrl=null;
+let selectedSourceVideo=null, selectedSourceVideoDuration=null, selectedSourceVideoUploadId=null, selectedSourceVideoContentType=null, selectedSourceVideoUploaded=null, sourceVideoObjectUrl=null;
 const sourceVideo=$('sourceVideo'), sourceVideoPreview=$('sourceVideoPreview');
 function clearSelectedSourceVideo(message='Môžeš pridať krátke video produktu spolu s fotografiami.'){
- selectedSourceVideo=null;selectedSourceVideoDuration=null;selectedSourceVideoUploadId=null;selectedSourceVideoContentType=null;sourceVideo.value='';
- const uploadProgress=$('sourceVideoUploadProgress'),uploadProgressLabel=$('sourceVideoUploadProgressLabel');if(uploadProgress){uploadProgress.value=0;uploadProgress.hidden=true;}if(uploadProgressLabel){uploadProgressLabel.textContent='';uploadProgressLabel.hidden=true;}
+ selectedSourceVideo=null;selectedSourceVideoDuration=null;selectedSourceVideoUploadId=null;selectedSourceVideoContentType=null;selectedSourceVideoUploaded=null;sourceVideo.value='';
+ const uploadProgress=$('sourceVideoUploadProgress'),uploadProgressLabel=$('sourceVideoUploadProgressLabel');if(uploadProgress){uploadProgress.value=0;uploadProgress.hidden=true;}if(uploadProgressLabel){uploadProgressLabel.textContent='';uploadProgressLabel.hidden=true;}const testUploadButton=$('sourceVideoTestUpload');if(testUploadButton){testUploadButton.disabled=true;testUploadButton.textContent='Otestovať nahratie videa do cloudu';}
  sourceVideoPreview.pause();sourceVideoPreview.removeAttribute('src');sourceVideoPreview.load();sourceVideoPreview.style.display='none';
  if(sourceVideoObjectUrl){URL.revokeObjectURL(sourceVideoObjectUrl);sourceVideoObjectUrl=null;}
  $('sourceVideoInfo').textContent=message;$('sourceVideoInfo').className='note';updateReadyStatus();
@@ -699,8 +700,9 @@ sourceVideo.addEventListener('change',()=>{
    $('sourceVideoInfo').className='status err';return;
   }
   selectedSourceVideoDuration=Number(seconds.toFixed(2));
-  $('sourceVideoInfo').textContent=`Vybrané: ${file.name} · ${(file.size/1024/1024).toFixed(1)} MB · ${seconds.toFixed(1)} s. Video je vybrané. Nahrávanie sa sprístupní po aktivácii Seedance.`;
-  $('sourceVideoInfo').className='note';updateReadyStatus();
+  selectedSourceVideoUploaded=null;
+  $('sourceVideoInfo').textContent=`Vybrané: ${file.name} · ${(file.size/1024/1024).toFixed(1)} MB · ${seconds.toFixed(1)} s. Môžeš otestovať bezpečné nahratie do cloudu bez spustenia AI generovania.`;
+  $('sourceVideoInfo').className='note';$('sourceVideoTestUpload').disabled=false;updateReadyStatus();
  };
  sourceVideoPreview.onerror=()=>{
   if(selectedSourceVideo===file){
@@ -709,23 +711,54 @@ sourceVideo.addEventListener('change',()=>{
   }
  };
 });
+async function ensureSelectedSourceVideoUploaded(){
+ if(!selectedSourceVideo||!selectedSourceVideoDuration||!selectedSourceVideoUploadId)throw new Error('Vyber platné zdrojové video s dĺžkou 2 až 15 sekúnd.');
+ if(selectedSourceVideoUploaded?.uploadId===selectedSourceVideoUploadId)return selectedSourceVideoUploaded;
+ const bridge=window.PSAICloudLibrary;
+ if(!bridge?.upload)throw new Error('Najskôr sa prihlás do Cloudovej knižnice. Nahrávanie potrebuje overený účet.');
+ const uploadId=selectedSourceVideoUploadId;
+ const progress=$('sourceVideoUploadProgress'),progressLabel=$('sourceVideoUploadProgressLabel');
+ progress.value=0;progress.hidden=false;progressLabel.hidden=false;
+ progressLabel.textContent='Nahrávam zdrojové video: 0%';
+ try{
+  const uploaded=await bridge.upload('/api/generation-input-video',selectedSourceVideo,{
+   'Content-Type':selectedSourceVideoContentType,'X-Upload-Id':uploadId,'X-Video-Duration':String(selectedSourceVideoDuration)
+  },value=>{
+   progress.value=value.percent;
+   progressLabel.textContent='Nahrávam zdrojové video: '+value.percent+'% ('+(value.loaded/1024/1024).toFixed(1)+' / '+(value.total/1024/1024).toFixed(1)+' MB)';
+  });
+  if(selectedSourceVideoUploadId!==uploadId)throw new Error('Výber videa sa počas nahrávania zmenil. Výsledok nebol priradený k novému súboru.');
+  selectedSourceVideoUploaded={uploadId,videoId:uploaded.videoId,byteSize:uploaded.byteSize};
+  progress.value=100;
+  progressLabel.textContent='Upload dokončený: '+(uploaded.byteSize/1024/1024).toFixed(1)+' MB bezpečne uložených v cloude.';
+  return selectedSourceVideoUploaded;
+ }catch(error){
+  progressLabel.textContent='Nahrávanie sa nepodarilo dokončiť. Pôvodný súbor zostal vybraný; môžeš bezpečne skúsiť znova.';
+  throw error;
+ }
+}
+$('sourceVideoTestUpload').addEventListener('click',async()=>{
+ const button=$('sourceVideoTestUpload');
+ if(button.disabled)return;
+ button.disabled=true;
+ try{
+  const uploaded=await ensureSelectedSourceVideoUploaded();
+  $('sourceVideoInfo').textContent='Úspech: video ('+(uploaded.byteSize/1024/1024).toFixed(1)+' MB) je uložené v súkromnom cloude. AI generovanie sa nespustilo.';
+  $('sourceVideoInfo').className='note';
+  button.textContent='Video je uložené v cloude';
+ }catch(error){
+  $('sourceVideoInfo').textContent=error.message||'Video sa nepodarilo nahrať.';
+  $('sourceVideoInfo').className='status err';
+  button.disabled=false;
+ }
+});
 async function uploadFormApi(path, form){
  if(path!=='/api/generate-video'||!(form instanceof FormData))throw new Error('Nepodporovaná požiadavka na generovanie videa.');
  const video=form.get('video');
  if(!(video instanceof File)||!selectedSourceVideoDuration||!selectedSourceVideoUploadId)throw new Error('Vyber platné zdrojové video s dĺžkou 2 až 15 sekúnd.');
  const bridge=window.PSAICloudLibrary;
  if(!bridge?.request)throw new Error('Cloudová knižnica sa ešte načítava. Obnov stránku a skús to znova.');
- setStatus('Nahrávam zdrojové video do súkromného úložiska…');
- const progress=$('sourceVideoUploadProgress'),progressLabel=$('sourceVideoUploadProgressLabel');
- progress.value=0;progress.hidden=false;progressLabel.hidden=false;
- progressLabel.textContent='Nahrávam zdrojové video: 0%';
- const uploaded=await bridge.upload('/api/generation-input-video',video,{
-  'Content-Type':selectedSourceVideoContentType,'X-Upload-Id':selectedSourceVideoUploadId,'X-Video-Duration':String(selectedSourceVideoDuration)
- },value=>{
-  progress.value=value.percent;
-  progressLabel.textContent='Nahrávam zdrojové video: '+value.percent+'% ('+(value.loaded/1024/1024).toFixed(1)+' / '+(value.total/1024/1024).toFixed(1)+' MB)';
- });
- progress.value=100;progressLabel.textContent='Zdrojové video je bezpečne uložené v cloude.';
+ const uploaded=await ensureSelectedSourceVideoUploaded();
  const references=JSON.parse(String(form.get('references')||'[]'));
  const model=String(form.get('model')||$('model').value);
  const resolution=String(form.get('resolution')||$('resolution').value);
@@ -769,7 +802,7 @@ async function generateFromCombinedInputs(){
  setGenerationProgress(1,'AI spracúva zdrojové video','Video a referenčné fotografie boli odoslané. Sledujem stav úlohy.');
  $('status').textContent='Video a referenčné fotografie boli odoslané. Prebieha AI spracovanie…';
  await pollTask(created.id);
- selectedSourceVideoUploadId=crypto.randomUUID();
+ selectedSourceVideoUploadId=crypto.randomUUID();selectedSourceVideoUploaded=null;$('sourceVideoTestUpload').disabled=false;$('sourceVideoTestUpload').textContent='Otestovať nahratie videa do cloudu';
  await Promise.all([refreshGenerationHistory(),refreshCommercialConnection()]);
  return true;
 }
@@ -842,6 +875,6 @@ if ('serviceWorker' in navigator && new URLSearchParams(location.search).get('na
   });
 }
   </script>
-  <script src="/cloud-library.js?v=upload-engine-2-20261120b"></script>
-<script src="/app-navigation.js?v=upload-engine-2-20261120b"></script>
+  <script src="/cloud-library.js?v=upload-engine-3-20261120c"></script>
+<script src="/app-navigation.js?v=upload-engine-3-20261120c"></script>
 </body></html>
