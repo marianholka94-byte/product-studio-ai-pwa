@@ -631,7 +631,29 @@
         try{await removeProduct(record.id);await renderProducts();}
         catch(error){alert(error.message||'Produkt sa nepodarilo vymazať.');}
       });
-      buttons.append(manage,use,rename,remove);info.append(title,meta,buttons);card.append(thumb,info);productsList.append(card);
+      const cloudSync=window.PSAICloudLibrary?.getSyncState(record)||null;
+      const saveCloud=document.createElement('button');saveCloud.type='button';saveCloud.className='secondary';
+      saveCloud.textContent=cloudSync?.productId?'Uložené v cloude':'☁ Uložiť do Cloudu';saveCloud.disabled=!!cloudSync?.productId;
+      saveCloud.addEventListener('click',async()=>{
+        if(!window.PSAICloudLibrary?.saveLocalProduct){setProjectMessage('Cloudová knižnica ešte nie je pripravená. Obnov stránku a skús to znova.',true);return;}
+        if(!window.PSAICloudLibrary.getCurrentUser()){setProjectMessage('Najskôr sa prihlás do Cloudovej knižnice.',true);return;}
+        saveCloud.disabled=true;saveCloud.textContent='Ukladám…';
+        try{
+          const latest=await getProduct(record.id);if(!latest)throw new Error('Produkt sa už nenašiel.');
+          const result=await window.PSAICloudLibrary.saveLocalProduct(latest,async sync=>{
+            latest.cloudSyncByAccount={...(latest.cloudSyncByAccount||{}),[sync.accountId]:sync};latest.updatedAt=Date.now();await putProduct(latest);
+            saveCloud.textContent='Nahrávam '+(sync.uploadedImages||0)+'/'+(latest.images?.length||0)+'…';
+          });
+          latest.cloudSyncByAccount={...(latest.cloudSyncByAccount||{}),[result.accountId]:result};latest.updatedAt=Date.now();await putProduct(latest);
+          saveCloud.textContent='Uložené v cloude';saveCloud.disabled=true;
+          setProjectMessage('Produkt „'+latest.name+'“ a '+latest.images.length+' fotografií boli uložené do Cloudu.');
+          await renderProducts();
+        }catch(error){
+          saveCloud.disabled=false;saveCloud.textContent='☁ Pokračovať v ukladaní';
+          setProjectMessage(error.message||'Produkt sa nepodarilo uložiť do Cloudu.',true);
+        }
+      });
+      buttons.append(manage,use,rename,remove,saveCloud);info.append(title,meta,buttons);card.append(thumb,info);productsList.append(card);
     });
   };
   const saveProductToLibrary=async()=>{
