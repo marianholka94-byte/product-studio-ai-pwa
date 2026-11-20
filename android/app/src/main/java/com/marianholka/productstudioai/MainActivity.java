@@ -30,6 +30,7 @@ public class MainActivity extends Activity {
 
     @Override public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        // Bottom navigation alignment is controlled by the WebView frontend; Android system controls are unchanged.
         Window w = getWindow();
         w.setStatusBarColor(Color.rgb(8, 8, 14));
         w.setNavigationBarColor(Color.rgb(8, 8, 14));
