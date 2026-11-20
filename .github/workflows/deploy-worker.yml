@@ -6,6 +6,9 @@ on:
       - main
     paths:
       - "worker.js"
+      - "cloud-library.js"
+      - "index.html"
+      - "sw.js"
       - ".github/workflows/deploy-worker.yml"
   workflow_dispatch:
 
