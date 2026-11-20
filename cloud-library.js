@@ -77,7 +77,7 @@
     wrap.append(el);
     return { wrap, el };
   };
-  const email = field("E-mail", "email", "meno@priklad.sk", 254);
+  const email = field("E-mail", "email", "name@example.com", 254);
   const password = field("Heslo (min. 12 znakov pri registrácii)", "password", "Heslo", 128);
   const displayName = field("Meno (nepovinné)", "text", "Meno", 80);
   const invite = field("Pozývací kód", "password", "Pozývací kód", 200);
@@ -580,7 +580,12 @@
       accountLine.textContent = "Prihlásený účet: " + user.email;
       setStatus("Cloudový účet je prihlásený.");
       await refresh();
-      try { await refreshCredits(); } catch (error) { setStatus("Kreditový účet sa nepodarilo načítať: " + error.message, true); }
+      try { await refreshCredits(); } catch (error) {
+        creditBalance.textContent = "Kreditový zostatok sa nepodarilo načítať.";
+        creditReserved.textContent = "";
+        creditHistory.replaceChildren($("small", {}, "Skontroluj pripojenie a obnov údaje. " + (error.message || "")));
+        setStatus("Kreditový účet sa nepodarilo načítať: " + error.message, true);
+      }
     } catch (e) { if (attempt === authAttempt) setStatus(e.message, true); }
     finally { if (attempt === authAttempt) { login.disabled = false; register.disabled = false; } }
   }
