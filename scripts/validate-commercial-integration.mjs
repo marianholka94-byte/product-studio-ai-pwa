@@ -132,6 +132,7 @@ assert.ok(worker.includes("(?:images|restore)"), "Product route matcher must acc
 assert.ok(cloud.includes("window.PSAICloudLibrary"), "Cloud library must expose the explicit local project save bridge");
 assert.ok(cloud.includes("async saveLocalProject(record, onProgress"), "Cloud save bridge must accept a local project and durable progress callback");
 assert.ok(cloud.includes("function uploadWithProgress(") && cloud.includes("xhr.upload.addEventListener(\"progress\""), "Cloud uploads must expose real byte-level transfer progress.");
+assert.ok(cloud.includes("xhr.timeout = 15 * 60 * 1000") && cloud.includes("xhr.ontimeout"), "Large cloud uploads must terminate cleanly after a bounded timeout.");
 assert.ok(cloud.includes("async upload(path, body, headers = {}, onProgress = () => {})"), "Authenticated cloud bridge must expose a progress-aware upload method.");
 assert.ok(cloud.includes("onTransferProgress({ imageIndex: index + 1, imageCount: images.length, ...progress })"), "Cloud project image uploads must report per-image transfer progress.");
 assert.ok(html.includes("sourceVideoUploadProgress") && html.includes("bridge.upload(\'/api/generation-input-video\'"), "Reference video upload must show real transfer progress.");
