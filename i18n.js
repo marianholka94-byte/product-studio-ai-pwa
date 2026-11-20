@@ -72,6 +72,16 @@
       "Zadanie bolo rozdelené do častí a vložené do promptu. Skontroluj a podľa potreby uprav výsledok.":"The prompt has been split into sections and added to the prompt editor. Review and adjust the result if needed.",
 
       "☁️ Cloudová knižnica":"☁️ Cloud library",
+      "Jazyk":"Language","Kredity":"Credits","Názov produktu":"Product name",
+      "Napr. Prémiová káva":"E.g. Premium coffee","Popis produktu":"Product description",
+      "Produkt vytvorený pri ukladaní reklamného projektu.":"Product created while saving an advertising project.",
+      "Čaká":"Queued","Spracúva sa":"Processing","Hotové":"Completed","Neúspešné":"Failed","Zrušené":"Cancelled","Neznámy stav":"Unknown status",
+      "Dátum neznámy":"Unknown date","STIAHNUŤ VIDEO":"DOWNLOAD VIDEO","POKRAČOVAŤ V SLEDOVANÍ":"CONTINUE TRACKING",
+      "Najskôr sa prihlás do cloudového účtu a vyber fotografiu produktu.":"Please sign in to your cloud account first and select a product photo.",
+      "Zatiaľ žiadne generovania · Po prvom videu sa tu zobrazí tvoja história.":"No generations yet · Your history will appear here after your first video.",
+      "Zatiaľ nemáš žiadne uložené generovania.":"You don't have any saved generations yet.",
+      "Názov produktu nemôže byť prázdny.":"Product name cannot be empty.",
+
       "História sa načíta po prihlásení do cloudového účtu.":"History loads after you sign in to your cloud account.",
       "Formát":"Format","9:16 – Reels":"9:16 – Reels","1:1 – štvorcový":"1:1 – Square","16:9 – široký":"16:9 – Landscape",
       "720p – vyššia kvalita":"720p – higher quality","720p – vyvážená kvalita":"720p – balanced quality","480p – menší súbor":"480p – smaller file",
@@ -204,6 +214,7 @@
         [/^Vyber aspoň jednu fotografiu/,"Select at least one photo"]
       ];
       patterns.push(
+        [/^Spolu (\\d+) · Hotové (\\d+) · Rozpracované (\\d+) · Neúspešné\\/zrušené (\\d+)$/, "Total $1 · Completed $2 · In progress $3 · Failed/cancelled $4"],
         [/^Odhad: (\d+[,.]\d+ USD) \((\d+) kreditov\)$/, "Estimate: $1 ($2 credits)"],
         [/^Odhad: (.+)$/, "Estimate: $1"],
         [/^Model: (.+)$/, "Model: $1"],
