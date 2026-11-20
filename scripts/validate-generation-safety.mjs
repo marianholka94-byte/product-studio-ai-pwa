@@ -5,6 +5,7 @@ const worker = readFileSync("worker-preview.js", "utf8");
 const html = readFileSync("index.html", "utf8");
 const outputMigration = readFileSync("migrations/0010_generation_outputs_r2.sql", "utf8");
 const inputMigration = readFileSync("migrations/0011_generation_input_videos_r2.sql", "utf8");
+const inputLimitMigration = readFileSync("migrations/0013_generation_input_videos_90mb.sql", "utf8");
 
 // Provider readiness is deliberately opt-in: an API key alone must never trigger paid calls.
 assert.match(worker, /BYTEPLUS_MODELARK_API_KEY/);
@@ -43,7 +44,11 @@ assert.match(worker, /function generationStatus\(providerStatus\)[\s\S]*?toLower
 const videoUploadStart = worker.indexOf('if (request.method === "POST" && url.pathname === "/api/generation-input-video")');
 assert.ok(videoUploadStart >= 0, "Authenticated reference video upload route must exist.");
 const videoUploadRoute = worker.slice(videoUploadStart, worker.indexOf('if (request.method === "GET" && url.pathname === "/api/health")'));
-assert.ok(videoUploadRoute.includes("currentUser(request, env)") && videoUploadRoute.includes("byteplusReady(env)"), "Reference video uploads must require an authenticated account and explicit provider readiness.");
+assert.ok(videoUploadRoute.includes("currentUser(request, env)") && !videoUploadRoute.includes("byteplusReady(env)"), "Private source-video uploads must require an authenticated account but remain testable while paid generation is disabled.");
+assert.match(inputMigration, /byte_size INTEGER NOT NULL CHECK \(byte_size BETWEEN 12 AND 52428800\)/);
+assert.match(inputLimitMigration, /byte_size INTEGER NOT NULL CHECK \(byte_size BETWEEN 12 AND 94371840\)/);
+assert.match(inputLimitMigration, /INSERT INTO generation_input_videos_new[\s\S]*?FROM generation_input_videos/);
+assert.match(inputLimitMigration, /ALTER TABLE generation_input_videos_new RENAME TO generation_input_videos/);
 assert.ok(worker.includes("const MAX_SOURCE_VIDEO_BYTES = 90 * 1024 * 1024") && videoUploadRoute.includes("MAX_SOURCE_VIDEO_BYTES") && videoUploadRoute.includes("new TransformStream") && videoUploadRoute.includes('"ftyp"') && videoUploadRoute.includes("90 MB"), "Reference video uploads must stream to R2 with the 90 MB hard size cap and MP4/MOV signature validation.");
 assert.ok(videoUploadRoute.includes('throw new Error("Zdrojové video môže mať najviac 90 MB.")'), "The streamed source video byte counter must report the same 90 MB limit as the upload header check.");
 const providerInputRoute = worker.slice(worker.indexOf("const providerInputMatch"), videoUploadStart);
