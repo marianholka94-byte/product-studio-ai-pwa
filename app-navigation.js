@@ -212,6 +212,7 @@
       z-index:9999 !important;
       transform:none !important;
       width:100% !important;
+      box-sizing:border-box !important;
       margin:0 !important;
       display:grid !important;
       grid-template-columns:repeat(3,minmax(0,1fr)) !important;
