@@ -28,6 +28,8 @@ jobs:
         run: node --check worker-preview.js
       - name: Check cloud library JavaScript syntax
         run: node --check cloud-library.js
+      - name: Validate PWA app shell and navigation syntax
+        run: node scripts/validate-app-shell-syntax.mjs
       - name: Check two-account acceptance test syntax
         run: node --check scripts/test-preview-tenant-isolation.mjs
       - name: Validate commercial cloud integration contract
