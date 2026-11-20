@@ -6,6 +6,7 @@ const html = readFileSync("index.html", "utf8");
 const outputMigration = readFileSync("migrations/0010_generation_outputs_r2.sql", "utf8");
 const inputMigration = readFileSync("migrations/0011_generation_input_videos_r2.sql", "utf8");
 const inputLimitMigration = readFileSync("migrations/0013_generation_input_videos_90mb.sql", "utf8");
+const inputQuotaMigration = readFileSync("migrations/0014_generation_input_video_daily_limit.sql", "utf8");
 
 // Provider readiness is deliberately opt-in: an API key alone must never trigger paid calls.
 assert.match(worker, /BYTEPLUS_MODELARK_API_KEY/);
@@ -49,8 +50,8 @@ assert.match(inputMigration, /byte_size INTEGER NOT NULL CHECK \(byte_size BETWE
 assert.match(inputLimitMigration, /byte_size INTEGER NOT NULL CHECK \(byte_size BETWEEN 12 AND 94371840\)/);
 assert.match(inputLimitMigration, /INSERT INTO generation_input_videos_new[\s\S]*?FROM generation_input_videos/);
 assert.match(inputLimitMigration, /ALTER TABLE generation_input_videos_new RENAME TO generation_input_videos/);
-assert.match(inputLimitMigration, /trg_generation_input_videos_daily_limit/);
-assert.match(inputLimitMigration, /generation input video daily limit reached/);
+assert.match(inputQuotaMigration, /trg_generation_input_videos_daily_limit/);
+assert.match(inputQuotaMigration, /generation input video daily limit reached/);
 assert.ok(worker.includes("const MAX_SOURCE_VIDEO_BYTES = 90 * 1024 * 1024") && videoUploadRoute.includes("MAX_SOURCE_VIDEO_BYTES") && videoUploadRoute.includes("new TransformStream") && videoUploadRoute.includes('"ftyp"') && videoUploadRoute.includes("90 MB"), "Reference video uploads must stream to R2 with the 90 MB hard size cap and MP4/MOV signature validation.");
 assert.ok(videoUploadRoute.includes('throw new Error("Zdrojové video môže mať najviac 90 MB.")'), "The streamed source video byte counter must report the same 90 MB limit as the upload header check.");
 assert.ok(videoUploadRoute.includes("if (!raced) throw insertError") && videoUploadRoute.includes("Number(raced.byte_size) !== streamedBytes"), "Concurrent retries of the same source video must reuse the committed object only when the byte count matches.");
