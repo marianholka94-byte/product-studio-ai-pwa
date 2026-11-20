@@ -1,4 +1,4 @@
-const CACHE = "product-studio-ai-v63-bilingual-dynamic-fixes-20261120";
+const CACHE = "product-studio-ai-v64-bilingual-account-history-20261120";
 const FILES = ["/", "/index.html", "/manifest.webmanifest", "/icon.svg?v=brand-icon-20261120", "/cloud-library.js?v=cloud-button-state-20261120a", "/app-navigation.js?v=prompt-accordion-20261120a", "/i18n.js?v=sk-en-1"];
 
 self.addEventListener("install", event => event.waitUntil(
