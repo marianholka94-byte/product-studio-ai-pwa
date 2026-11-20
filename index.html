@@ -50,7 +50,7 @@ a{color:#174ea6;overflow-wrap:anywhere}
 .account-account-line{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .account-pill{font-size:11px;font-weight:700;border-radius:99px;padding:5px 8px;background:#eee;color:#555;white-space:nowrap}
 .account-pill.ready{background:#e7f4e9;color:#236132}
-.account-footnote{font-size:12px;color:#666;line-height:1.45;margin:10px 0 0}
+.account-footnote{font-size:12px;color:#666;line-height:1.45;margin:10px 0 0}\n#sourceVideoUploadProgress{display:block;width:100%;height:9px;margin:10px 0 4px;accent-color:#d9bd7d}#sourceVideoUploadProgress[hidden],#sourceVideoUploadProgressLabel[hidden]{display:none}
 @media(max-width:430px){.account-dashboard{gap:7px}.account-metric{padding:10px 8px}.account-metric-value{font-size:15px}.account-metric-label{font-size:10px}}
 .generation-history-list{display:grid;gap:10px;margin-top:12px}.generation-history-item{padding:12px;border:1px solid var(--border,#d8dce3);border-radius:10px}.generation-history-item p{margin:6px 0 0}
 .credit-wallet{border:1px solid #e4e5e7;border-radius:12px;padding:13px;margin:12px 0;background:#fafaf9}
@@ -133,6 +133,7 @@ a{color:#174ea6;overflow-wrap:anywhere}
 <input id="sourceVideo" type="file" accept="video/mp4,video/quicktime,.mp4,.mov">
 <video id="sourceVideoPreview" controls playsinline preload="metadata" style="display:none;max-height:280px"></video>
 <div id="sourceVideoInfo" class="note">Po aktivácii Seedance môžeš pridať krátke video produktu spolu s fotografiami. Video sa bezpečne uloží do súkromného úložiska. Priame referenčné videá s rozpoznateľnými ľudskými tvárami model nepodporuje.</div>
+<progress id="sourceVideoUploadProgress" max="100" value="0" hidden></progress><p id="sourceVideoUploadProgressLabel" class="note" hidden></p>
 <label for="product">Názov alebo typ produktu</label>
 <input id="product" type="text" name="product-name" autocomplete="off" autocapitalize="sentences" placeholder="Napr. čierny parfum MUSTANG">
 </section>
@@ -674,6 +675,7 @@ let selectedSourceVideo=null, selectedSourceVideoDuration=null, selectedSourceVi
 const sourceVideo=$('sourceVideo'), sourceVideoPreview=$('sourceVideoPreview');
 function clearSelectedSourceVideo(message='Môžeš pridať krátke video produktu spolu s fotografiami.'){
  selectedSourceVideo=null;selectedSourceVideoDuration=null;selectedSourceVideoUploadId=null;selectedSourceVideoContentType=null;sourceVideo.value='';
+ const uploadProgress=$('sourceVideoUploadProgress'),uploadProgressLabel=$('sourceVideoUploadProgressLabel');if(uploadProgress){uploadProgress.value=0;uploadProgress.hidden=true;}if(uploadProgressLabel){uploadProgressLabel.textContent='';uploadProgressLabel.hidden=true;}
  sourceVideoPreview.pause();sourceVideoPreview.removeAttribute('src');sourceVideoPreview.load();sourceVideoPreview.style.display='none';
  if(sourceVideoObjectUrl){URL.revokeObjectURL(sourceVideoObjectUrl);sourceVideoObjectUrl=null;}
  $('sourceVideoInfo').textContent=message;$('sourceVideoInfo').className='note';updateReadyStatus();
@@ -713,11 +715,16 @@ async function uploadFormApi(path, form){
  const bridge=window.PSAICloudLibrary;
  if(!bridge?.request)throw new Error('Cloudová knižnica sa ešte načítava. Obnov stránku a skús to znova.');
  setStatus('Nahrávam zdrojové video do súkromného úložiska…');
- const uploaded=await bridge.request('/api/generation-input-video',{
-  method:'POST',
-  headers:{'Content-Type':selectedSourceVideoContentType,'X-Upload-Id':selectedSourceVideoUploadId,'X-Video-Duration':String(selectedSourceVideoDuration)},
-  body:video
+ const progress=$('sourceVideoUploadProgress'),progressLabel=$('sourceVideoUploadProgressLabel');
+ progress.value=0;progress.hidden=false;progressLabel.hidden=false;
+ progressLabel.textContent='Nahrávam zdrojové video: 0%';
+ const uploaded=await bridge.upload('/api/generation-input-video',video,{
+  'Content-Type':selectedSourceVideoContentType,'X-Upload-Id':selectedSourceVideoUploadId,'X-Video-Duration':String(selectedSourceVideoDuration)
+ },value=>{
+  progress.value=value.percent;
+  progressLabel.textContent='Nahrávam zdrojové video: '+value.percent+'% ('+(value.loaded/1024/1024).toFixed(1)+' / '+(value.total/1024/1024).toFixed(1)+' MB)';
  });
+ progress.value=100;progressLabel.textContent='Zdrojové video je bezpečne uložené v cloude.';
  const references=JSON.parse(String(form.get('references')||'[]'));
  const model=String(form.get('model')||$('model').value);
  const resolution=String(form.get('resolution')||$('resolution').value);
@@ -834,6 +841,6 @@ if ('serviceWorker' in navigator && new URLSearchParams(location.search).get('na
   });
 }
   </script>
-  <script src="/cloud-library.js?v=product-images-9-20261120a"></script>
-<script src="/app-navigation.js?v=product-images-9-20261120a"></script>
+  <script src="/cloud-library.js?v=upload-engine-2-20261120b"></script>
+<script src="/app-navigation.js?v=upload-engine-2-20261120b"></script>
 </body></html>
