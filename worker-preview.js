@@ -4,6 +4,7 @@
 const ALLOWED_ORIGINS = new Set([
   "https://feature-social-export-preset.product-studio-ai-pwa.pages.dev",
   "https://feature-commercial-worker-pr.product-studio-ai-pwa.pages.dev",
+  "https://feat-seedance-reference-vide.product-studio-ai-pwa.pages.dev",
   "https://07bfc5c3.product-studio-ai-pwa.pages.dev",
   "https://product-studio-ai-pwa.pages.dev",
   "https://localhost",
@@ -22,7 +23,7 @@ function corsHeaders(origin) {
   return {
     "Access-Control-Allow-Origin": allowed,
     "Access-Control-Allow-Methods": "GET,POST,PATCH,DELETE,OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type,Authorization",
+    "Access-Control-Allow-Headers": "Content-Type,Authorization,X-Upload-Id,X-Video-Duration",
     "Access-Control-Max-Age": "86400",
     "Cache-Control": "no-store",
     "Vary": "Origin"
@@ -58,11 +59,22 @@ async function passwordHash(password, salt = randomToken(16)) {
   );
   return `pbkdf2-sha256$${PASSWORD_ITERATIONS}$${salt}$${b64url(new Uint8Array(bits))}`;
 }
+function constantTimeEqual(leftValue, rightValue) {
+  const left = encoder.encode(String(leftValue));
+  const right = encoder.encode(String(rightValue));
+  let difference = left.length ^ right.length;
+  const length = Math.max(left.length, right.length);
+  for (let index = 0; index < length; index++) {
+    difference |= (left[index] || 0) ^ (right[index] || 0);
+  }
+  return difference === 0;
+}
 async function verifyPassword(password, stored) {
   try {
     const [algorithm, iterationsText, salt, expected] = stored.split("$");
     if (algorithm !== "pbkdf2-sha256" || Number(iterationsText) !== PASSWORD_ITERATIONS || !salt || !expected) return false;
-    return (await passwordHash(password, salt)).split("$")[3] === expected;
+    const actual = (await passwordHash(password, salt)).split("$")[3];
+    return constantTimeEqual(actual, expected);
   } catch { return false; }
 }
 function bearerToken(request) {
@@ -185,22 +197,44 @@ async function clearLoginFailures(env, key) {
 const MINI_RATIOS = new Set(["864:496","640:640","496:864","1280:720","960:960","720:1280"]);
 const FULL_RATIOS = new Set([...MINI_RATIOS,"1920:1080","1440:1440","1080:1920","3840:2160","3840:3840","2160:3840"]);
 const PREVIEW_DAILY_GENERATION_LIMIT = 3;
-function runwayHeaders(env) {
-  return { Authorization: "Bearer " + env.RUNWAY_API_KEY, "X-Runway-Version": "2024-11-06", "Content-Type": "application/json" };
+const MAX_PRODUCT_IMAGES = 9;
+const MAX_GENERATION_IMAGES = 9;
+const MAX_SOURCE_VIDEO_BYTES = 90 * 1024 * 1024;
+// Official BytePlus ModelArk model IDs. Paid requests remain disabled unless the
+// owner explicitly sets BYTEPLUS_MODELARK_ENABLED=true and supplies a server secret.
+const BYTEPLUS_MODEL_IDS = Object.freeze({
+  seedance2_mini: "dreamina-seedance-2-0-mini-260615",
+  seedance2: "dreamina-seedance-2-0-260128"
+});
+const BYTEPLUS_TASKS_URL = "https://ark.ap-southeast.bytepluses.com/api/v3/contents/generations/tasks";
+const PREVIEW_WORKER_ORIGIN = "https://product-studio-ai-commercial-preview.marianholka94.workers.dev";
+function byteplusConfigured(env) {
+  return Boolean(String(env.BYTEPLUS_MODELARK_API_KEY || "").trim());
+}
+function byteplusReady(env) {
+  return byteplusConfigured(env) &&
+    String(env.BYTEPLUS_MODELARK_ENABLED || "").toLowerCase() === "true";
+}
+function byteplusHeaders(env) {
+  return { Authorization: "Bearer " + env.BYTEPLUS_MODELARK_API_KEY, "Content-Type": "application/json" };
+}
+function byteplusRatio(pixelRatio) {
+  const [width, height] = String(pixelRatio || "").split(":").map(Number);
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return null;
+  const value = width / height;
+  if (value > 1.15) return "16:9";
+  if (value < 0.87) return "9:16";
+  return "1:1";
 }
 function generationStatus(providerStatus) {
-  const value = String(providerStatus || "").toUpperCase();
-  if (value === "SUCCEEDED") return "succeeded";
-  if (value === "FAILED") return "failed";
-  if (value === "CANCELED" || value === "CANCELLED") return "cancelled";
-  if (["PENDING","THROTTLED","QUEUED"].includes(value)) return "queued";
+  const value = String(providerStatus || "").toLowerCase();
+  if (value === "succeeded") return "succeeded";
+  if (value === "failed" || value === "expired") return "failed";
+  if (value === "canceled" || value === "cancelled") return "cancelled";
+  if (["pending","throttled","queued"].includes(value)) return "queued";
   return "processing";
 }
-function estimatedGenerationCredits(model, resolution, duration) {
-  const rates = model === "seedance2" ? { "480p": 14, "720p": 30, "1080p": 40, "4K": 150 } : { "480p": 7, "720p": 15 };
-  const rate = rates[resolution];
-  return rate ? Math.max(rate * 4, duration * rate) : null;
-}
+
 function validText(value, max, fallback = "") {
   if (value == null) return fallback;
   if (typeof value !== "string") return null;
@@ -239,7 +273,50 @@ function matchesImageSignature(bytes, contentType) {
 }
 
 
+
+async function reserveGenerationCredits(env, userId, generationId, units, now) {
+  const reservationId = crypto.randomUUID();
+  const idempotencyKey = "generation:" + generationId + ":reserve";
+  const fingerprint = await sha256(JSON.stringify({ userId, generationId, units, action: "reserve" }));
+  await env.DB.prepare("INSERT INTO credit_accounts (user_id, available_units, reserved_units, version, created_at, updated_at) VALUES (?, 0, 0, 0, ?, ?) ON CONFLICT(user_id) DO NOTHING").bind(userId, now, now).run();
+  await env.DB.batch([
+    env.DB.prepare("UPDATE credit_accounts SET available_units = available_units - ?, reserved_units = reserved_units + ?, version = version + 1, updated_at = ? WHERE user_id = ? AND available_units >= ?").bind(units, units, now, userId, units),
+    env.DB.prepare("INSERT INTO generation_credit_reservations (id, user_id, generation_id, reserved_units, captured_units, state, reserve_idempotency_key, reserve_fingerprint, created_at, updated_at) SELECT ?, ?, ?, ?, 0, 'reserved', ?, ?, ?, ? WHERE changes() = 1").bind(reservationId, userId, generationId, units, idempotencyKey, fingerprint, now, now),
+    env.DB.prepare("INSERT INTO credit_ledger (id, user_id, entry_type, units, reference_type, reference_id, idempotency_key, payload_fingerprint, note, created_at) SELECT ?, ?, 'reserve', ?, 'generation', ?, ?, ?, 'Rezervácia kreditov pre generovanie', ? WHERE EXISTS (SELECT 1 FROM generation_credit_reservations WHERE user_id = ? AND generation_id = ? AND state = 'reserved')").bind(crypto.randomUUID(), userId, units, generationId, idempotencyKey, fingerprint, now, userId, generationId)
+  ]);
+  return env.DB.prepare("SELECT id, reserved_units, state FROM generation_credit_reservations WHERE user_id = ? AND generation_id = ? LIMIT 1").bind(userId, generationId).first();
+}
+async function settleGenerationCredits(env, userId, generationId, outcome, now) {
+  if (!["capture", "release"].includes(outcome)) throw new Error("Invalid credit settlement outcome.");
+  const reservation = await env.DB.prepare("SELECT id, reserved_units, state FROM generation_credit_reservations WHERE user_id = ? AND generation_id = ? LIMIT 1").bind(userId, generationId).first();
+  if (!reservation || reservation.state !== "reserved") return false;
+  const units = Number(reservation.reserved_units);
+  const settlementKey = "generation:" + generationId + ":" + outcome;
+  const fingerprint = await sha256(JSON.stringify({ userId, generationId, units, outcome }));
+  await env.DB.batch([
+    env.DB.prepare("UPDATE credit_accounts SET reserved_units = reserved_units - ?, available_units = available_units + ?, version = version + 1, updated_at = ? WHERE user_id = ? AND reserved_units >= ? AND EXISTS (SELECT 1 FROM generation_credit_reservations WHERE user_id = ? AND generation_id = ? AND state = 'reserved')").bind(units, outcome === "release" ? units : 0, now, userId, units, userId, generationId),
+    env.DB.prepare("UPDATE generation_credit_reservations SET state = ?, captured_units = ?, settlement_idempotency_key = ?, settled_at = ?, updated_at = ? WHERE user_id = ? AND generation_id = ? AND state = 'reserved' AND changes() = 1").bind(outcome === "capture" ? "captured" : "released", outcome === "capture" ? units : 0, settlementKey, now, now, userId, generationId),
+    env.DB.prepare("INSERT INTO credit_ledger (id, user_id, entry_type, units, reference_type, reference_id, idempotency_key, payload_fingerprint, note, created_at) SELECT ?, ?, ?, ?, 'generation', ?, ?, ?, ?, ? WHERE changes() = 1").bind(crypto.randomUUID(), userId, outcome, units, generationId, settlementKey, fingerprint, outcome === "capture" ? "Kredity za úspešné generovanie" : "Vrátenie kreditov po neúspešnom generovaní", now)
+  ]);
+  const settled = await env.DB.prepare("SELECT state FROM generation_credit_reservations WHERE user_id = ? AND generation_id = ? LIMIT 1").bind(userId, generationId).first();
+  return settled?.state === (outcome === "capture" ? "captured" : "released");
+}
+
+async function cleanupExpiredGenerationInputs(env, now) {
+  const expired = await env.DB.prepare(
+    "SELECT id, r2_key FROM generation_input_videos WHERE expires_at <= ? ORDER BY expires_at ASC LIMIT 100"
+  ).bind(now).all();
+  for (const row of expired.results || []) {
+    await env.MEDIA.delete(row.r2_key);
+    await env.DB.prepare("DELETE FROM generation_input_videos WHERE id = ? AND expires_at <= ?").bind(row.id, now).run();
+  }
+}
+
 export default {
+  async scheduled(controller, env) {
+    if (!env.DB || !env.MEDIA) return;
+    await cleanupExpiredGenerationInputs(env, Math.floor(Date.now() / 1000));
+  },
   async fetch(request, env) {
     const origin = request.headers.get("Origin");
     if (origin && !ALLOWED_ORIGINS.has(origin)) return json({ error: "Tento pôvod požiadavky nie je povolený." }, 403, origin);
@@ -249,6 +326,165 @@ export default {
     if (!env.DB || !env.MEDIA) return json({ ok: false, error: "Preview storage bindings are missing." }, 503, origin);
 
     try {
+      const providerInputMatch = /^\/api\/provider-input\/([0-9a-f-]{36})\.(mp4|mov)$/i.exec(url.pathname);
+      if (providerInputMatch && ["GET", "HEAD"].includes(request.method)) {
+        const token = url.searchParams.get("token") || "";
+        if (!/^[A-Za-z0-9_-]{40,60}$/.test(token)) return new Response("Not found", { status: 404, headers: { "Cache-Control": "no-store" } });
+        const tokenHash = await sha256(token);
+        const now = Math.floor(Date.now() / 1000);
+        const input = await env.DB.prepare(
+          "SELECT r2_key, content_type, byte_size FROM generation_input_videos WHERE id = ? AND access_token_hash = ? AND access_expires_at > ? AND expires_at > ? LIMIT 1"
+        ).bind(providerInputMatch[1], tokenHash, now, now).first();
+        if (!input) return new Response("Not found", { status: 404, headers: { "Cache-Control": "no-store" } });
+        const expectedExtension = input.content_type === "video/quicktime" ? "mov" : "mp4";
+        if (providerInputMatch[2].toLowerCase() !== expectedExtension) return new Response("Not found", { status: 404, headers: { "Cache-Control": "no-store" } });
+        const totalSize = Number(input.byte_size);
+        if (!Number.isSafeInteger(totalSize) || totalSize <= 0) return new Response("Not found", { status: 404, headers: { "Cache-Control": "no-store" } });
+        const rangeHeader = request.headers.get("Range");
+        let object;
+        let responseStatus = 200;
+        let responseLength = totalSize;
+        let contentRange = "";
+        if (rangeHeader) {
+          // BytePlus may request only part of a reference video. Support one
+          // RFC 7233 byte range and reject malformed/multipart ranges safely.
+          const match = /^bytes=(\d*)-(\d*)$/i.exec(rangeHeader.trim());
+          if (!match || (!match[1] && !match[2])) {
+            return new Response(null, { status: 416, headers: { "Accept-Ranges": "bytes", "Content-Range": "bytes */" + totalSize, "Cache-Control": "no-store" } });
+          }
+          let start;
+          let end;
+          if (!match[1]) {
+            const suffixLength = Number(match[2]);
+            if (!Number.isSafeInteger(suffixLength) || suffixLength <= 0) {
+              return new Response(null, { status: 416, headers: { "Accept-Ranges": "bytes", "Content-Range": "bytes */" + totalSize, "Cache-Control": "no-store" } });
+            }
+            start = Math.max(totalSize - suffixLength, 0);
+            end = totalSize - 1;
+          } else {
+            start = Number(match[1]);
+            end = match[2] ? Number(match[2]) : totalSize - 1;
+            if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start < 0 || start >= totalSize || end < start) {
+              return new Response(null, { status: 416, headers: { "Accept-Ranges": "bytes", "Content-Range": "bytes */" + totalSize, "Cache-Control": "no-store" } });
+            }
+            end = Math.min(end, totalSize - 1);
+          }
+          responseLength = end - start + 1;
+          object = await env.MEDIA.get(input.r2_key, { range: { offset: start, length: responseLength } });
+          responseStatus = 206;
+          contentRange = "bytes " + start + "-" + end + "/" + totalSize;
+        } else {
+          object = await env.MEDIA.get(input.r2_key);
+        }
+        if (!object || Number(object.size) !== totalSize) return new Response("Not found", { status: 404, headers: { "Cache-Control": "no-store" } });
+        const headers = {
+          "Content-Type": input.content_type,
+          "Content-Length": String(responseLength),
+          "Accept-Ranges": "bytes",
+          "Content-Disposition": 'inline; filename="reference-video.' + expectedExtension + '"',
+          "Cache-Control": "private, no-store, max-age=0",
+          "X-Content-Type-Options": "nosniff",
+        };
+        if (contentRange) headers["Content-Range"] = contentRange;
+        return new Response(request.method === "HEAD" ? null : object.body, {
+          status: responseStatus,
+          headers
+        });
+      }
+
+      if (request.method === "POST" && url.pathname === "/api/generation-input-video") {
+        const user = await currentUser(request, env);
+        if (!user) return json({ error: "Na nahratie zdrojového videa sa najskôr prihlás." }, 401, origin);
+        // Private upload testing is safe without enabling paid generation; /api/generate remains separately gated.
+        const contentType = String(request.headers.get("Content-Type") || "").split(";")[0].trim().toLowerCase();
+        if (!["video/mp4", "video/quicktime"].includes(contentType)) return json({ error: "Použi video vo formáte MP4 alebo MOV." }, 415, origin);
+        const uploadId = String(request.headers.get("X-Upload-Id") || "");
+        if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(uploadId)) return json({ error: "Nahrávanie nemá platný identifikátor. Obnov výber videa a skús to znova." }, 400, origin);
+        const duration = Number(request.headers.get("X-Video-Duration"));
+        if (!Number.isFinite(duration) || duration < 2 || duration > 15) return json({ error: "Zdrojové video musí mať 2 až 15 sekúnd." }, 400, origin);
+        const maxInputBytes = MAX_SOURCE_VIDEO_BYTES;
+        const declaredLength = Number(request.headers.get("Content-Length") || 0);
+        if (!Number.isSafeInteger(declaredLength) || declaredLength <= 0) return json({ error: "Nahrávanie neobsahuje platnú veľkosť súboru. Skús obnoviť stránku." }, 411, origin);
+        if (declaredLength > maxInputBytes) return json({ error: "Zdrojové video môže mať najviac 90 MB." }, 413, origin);
+        const prior = await env.DB.prepare(
+          "SELECT id, content_type, byte_size, duration_seconds FROM generation_input_videos WHERE user_id = ? AND client_upload_id = ? AND expires_at > ? LIMIT 1"
+        ).bind(user.id, uploadId, Math.floor(Date.now() / 1000)).first();
+        if (prior) {
+          if (prior.content_type !== contentType || Number(prior.duration_seconds) !== duration) return json({ error: "Identifikátor nahrávania už bol použitý pre iné video." }, 409, origin);
+          return json({ videoId: prior.id, byteSize: Number(prior.byte_size), replayed: true }, 200, origin);
+        }
+        const nowForUpload = Math.floor(Date.now() / 1000);
+        const uploadDayStart = Math.floor(nowForUpload / 86400) * 86400;
+        const uploadUsage = await env.DB.prepare("SELECT COUNT(*) AS count FROM generation_input_videos WHERE user_id = ? AND created_at >= ?")
+          .bind(user.id, uploadDayStart).first();
+        if (Number(uploadUsage?.count || 0) >= PREVIEW_DAILY_GENERATION_LIMIT) return json({ error: "Dosiahol si denný limit " + PREVIEW_DAILY_GENERATION_LIMIT + " zdrojových videí. Skús to znova zajtra." }, 429, origin);
+        if (!request.body) return json({ error: "Súbor je prázdny." }, 400, origin);
+        const id = crypto.randomUUID();
+        const r2Key = `users/${user.id}/generation-inputs/${id}/source`;
+        let streamedBytes = 0;
+        let prefix = new Uint8Array(0);
+        const limitedStream = request.body.pipeThrough(new TransformStream({
+          transform(chunk, controller) {
+            streamedBytes += chunk.byteLength;
+            if (streamedBytes > maxInputBytes) throw new Error("Zdrojové video môže mať najviac 90 MB.");
+            if (prefix.length < 12) {
+              const take = Math.min(12 - prefix.length, chunk.byteLength);
+              const next = new Uint8Array(prefix.length + take);
+              next.set(prefix);
+              next.set(chunk.subarray(0, take), prefix.length);
+              prefix = next;
+            }
+            controller.enqueue(chunk);
+          },
+          flush() {
+            if (streamedBytes < 12 || String.fromCharCode(...prefix.subarray(4, 8)) !== "ftyp") {
+              throw new Error("Súbor nemá platnú MP4/MOV signatúru.");
+            }
+          }
+        }));
+        try {
+          // R2 requires a known-length stream. The validation TransformStream above
+          // intentionally inspects the MP4 signature, so preserve the request's
+          // exact Content-Length through a FixedLengthStream before writing to R2.
+          const fixedLength = new FixedLengthStream(declaredLength);
+          const [storedObject] = await Promise.all([
+            env.MEDIA.put(r2Key, fixedLength.readable, {
+              httpMetadata: { contentType },
+              customMetadata: { ownerId: user.id, inputVideoId: id }
+            }),
+            limitedStream.pipeTo(fixedLength.writable)
+          ]);
+          if (!storedObject || streamedBytes !== declaredLength || Number(storedObject.size) !== declaredLength) {
+            throw new Error("Veľkosť uloženého videa sa nezhoduje s odoslaným súborom.");
+          }
+          if (streamedBytes < 1) throw new Error("Súbor je prázdny.");
+          const now = Math.floor(Date.now() / 1000);
+          try {
+            await env.DB.prepare(
+              "INSERT INTO generation_input_videos (id, user_id, client_upload_id, r2_key, content_type, byte_size, duration_seconds, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            ).bind(id, user.id, uploadId, r2Key, contentType, streamedBytes, duration, now, now + 7 * 24 * 60 * 60).run();
+          } catch (insertError) {
+            const raced = await env.DB.prepare(
+              "SELECT id, content_type, byte_size, duration_seconds FROM generation_input_videos WHERE user_id = ? AND client_upload_id = ? AND expires_at > ? LIMIT 1"
+            ).bind(user.id, uploadId, now).first();
+            if (!raced) throw insertError;
+            await env.MEDIA.delete(r2Key).catch(() => {});
+            if (raced.content_type !== contentType || Number(raced.duration_seconds) !== duration || Number(raced.byte_size) !== streamedBytes) {
+              return json({ error: "Identifikátor nahrávania už bol použitý pre iné video." }, 409, origin);
+            }
+            return json({ videoId: raced.id, byteSize: Number(raced.byte_size), replayed: true }, 200, origin);
+          }
+          return json({ videoId: id, byteSize: streamedBytes, replayed: false }, 201, origin);
+        } catch (error) {
+          await env.MEDIA.delete(r2Key).catch(() => {});
+          const message = String(error?.message || "");
+          if (message.includes("daily limit")) return json({ error: "Dosiahol si denný limit " + PREVIEW_DAILY_GENERATION_LIMIT + " zdrojových videí. Skús to znova zajtra." }, 429, origin);
+          if (message.includes("90 MB")) return json({ error: message }, 413, origin);
+          if (message.includes("signatúru")) return json({ error: message }, 415, origin);
+          return json({ error: "Zdrojové video sa nepodarilo bezpečne uložiť." }, 502, origin);
+        }
+      }
+
       if (request.method === "GET" && url.pathname === "/api/health") {
         const db = await env.DB.prepare("SELECT 1 AS ok").first();
         const objects = await env.MEDIA.list({ limit: 1 });
@@ -256,6 +492,12 @@ export default {
         const sessionColumns = await env.DB.prepare("PRAGMA table_info(sessions)").all();
         const rateLimitTable = await env.DB.prepare(
           "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'auth_rate_limits'"
+        ).first();
+        const generationOutputsTable = await env.DB.prepare(
+          "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'generation_outputs'"
+        ).first();
+        const generationInputVideosTable = await env.DB.prepare(
+          "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'generation_input_videos'"
         ).first();
         const userColumnNames = (userColumns.results || []).map(column => column.name);
         const sessionColumnNames = (sessionColumns.results || []).map(column => column.name);
@@ -274,7 +516,7 @@ export default {
           ledger: creditTableNames.includes("credit_ledger"),
           reservations: creditTableNames.includes("generation_credit_reservations"),
           appendOnly: creditTriggerNames.includes("trg_credit_ledger_no_update") && creditTriggerNames.includes("trg_credit_ledger_no_delete"),
-          enabled: false
+          enabled: true
         };
         const authSchema = {
           usersTable: userColumnNames.length > 0,
@@ -283,7 +525,9 @@ export default {
           sessionTokenHash: sessionColumnNames.includes("token_hash"),
           rateLimitsTable: !!rateLimitTable,
           generationRequestId: generationColumnNames.includes("client_request_id"),
-          generationFingerprint: generationColumnNames.includes("request_fingerprint")
+          generationFingerprint: generationColumnNames.includes("request_fingerprint"),
+          generationOutputsTable: !!generationOutputsTable,
+          generationInputVideosTable: !!generationInputVideosTable
         };
         return json({
           ok: db?.ok === 1 && Array.isArray(objects?.objects),
@@ -291,7 +535,20 @@ export default {
           storage: { d1: db?.ok === 1, r2: Array.isArray(objects?.objects) },
           authSchema,
           creditSchema,
-          generation: { configured: Boolean(env.RUNWAY_API_KEY), dailyLimit: PREVIEW_DAILY_GENERATION_LIMIT }
+          adminGrantConfigured: Boolean(String(env.APP_OWNER_EMAIL || "").trim()),
+          generation: {
+            provider: "byteplus_modelark",
+            configured: Boolean(String(env.BYTEPLUS_MODELARK_API_KEY || "").trim()),
+            enabled: String(env.BYTEPLUS_MODELARK_ENABLED || "").toLowerCase() === "true",
+            modelIntegrationReady: byteplusReady(env),
+            supportedModels: Object.keys(BYTEPLUS_MODEL_IDS),
+            reason: !String(env.BYTEPLUS_MODELARK_API_KEY || "").trim()
+              ? "Chýba serverový BytePlus ModelArk API kľúč."
+              : !byteplusReady(env)
+                ? "Platené generovanie je vypnuté. Aktivuje sa až po výslovnom nastavení BYTEPLUS_MODELARK_ENABLED=true."
+                : null,
+            dailyLimit: PREVIEW_DAILY_GENERATION_LIMIT
+          }
         }, 200, origin);
       }
 
@@ -364,46 +621,86 @@ export default {
       }
 
 
-      if (url.pathname === "/api/generate-video" && request.method === "POST") {
-        const user=await currentUser(request,env);
-        if(!user)return json({error:"Na generovanie sa najskôr prihlás do svojho zákazníckeho účtu."},401,origin);
-        if(!env.RUNWAY_API_KEY)return json({error:"Generátor zatiaľ nie je nakonfigurovaný."},503,origin);
-        const contentLength=Number(request.headers.get("Content-Length")||0);
-        if(contentLength>99*1024*1024)return json({error:"Video a referenčné fotografie spolu prekračujú limit požiadavky 99 MB."},413,origin);
-        let form;try{form=await request.formData();}catch{return json({error:"Nepodarilo sa načítať video a fotografie."},400,origin);}
-        const video=form.get("video");
-        if(!(video instanceof File)||video.size<512||video.size>90*1024*1024)return json({error:"Vstupné video musí mať najviac 90 MB."},413,origin);
-        if(!new Set(["video/mp4","video/quicktime","video/webm"]).has(video.type))return json({error:"Podporované video formáty sú MP4, MOV a WebM."},400,origin);
-        let images;try{images=JSON.parse(String(form.get("references")||"[]"));}catch{return json({error:"Referenčné fotografie nie sú v platnom formáte."},400,origin);}
-        if(!Array.isArray(images)||images.length<1||images.length>9)return json({error:"Pridaj 1 až 9 referenčných fotografií produktu."},400,origin);
-        if(images.some(x=>typeof x!=="string"||!/^data:image\/(jpeg|jpg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(x)||x.length>1.2*1024*1024)||images.reduce((s,x)=>s+x.length,0)>8*1024*1024)return json({error:"Referenčné fotografie sú neplatné alebo prekračujú limit 8 MB po kompresii."},413,origin);
-        const model=String(form.get("model")||"seedance2_mini"),resolution=String(form.get("resolution")||(model==="seedance2"?"1080p":"720p")),ratio=String(form.get("ratio")||""),duration=Number(form.get("duration")),prompt=String(form.get("prompt")||"").trim();
-        const allowed=model==="seedance2"?FULL_RATIOS:model==="seedance2_mini"?MINI_RATIOS:null,estimated=estimatedGenerationCredits(model,resolution,duration);
-        if(!allowed||!allowed.has(ratio)||estimated===null||!Number.isInteger(duration)||duration<4||duration>15||!prompt||prompt.length>1000)return json({error:"Nepodporovaná kombinácia nastavení alebo neplatné zadanie."},400,origin);
-        const requestId=String(form.get("requestId")||"");if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestId))return json({error:"Neplatný identifikátor požiadavky."},400,origin);
-        const fingerprint=await sha256(JSON.stringify({videoName:video.name,videoSize:video.size,videoType:video.type,references:images,prompt,model,resolution,ratio,duration}));
-        const prior=await env.DB.prepare("SELECT id,request_fingerprint,provider_task_id,status,estimated_credits FROM generations WHERE user_id=? AND client_request_id=? LIMIT 1").bind(user.id,requestId).first();
-        if(prior){if(prior.request_fingerprint!==fingerprint)return json({error:"Identifikátor už bol použitý pre iné zadanie."},409,origin);if(!prior.provider_task_id)return json({error:"Požiadavka sa už spracúva. Neposielaj ju znova."},409,origin);return json({id:prior.id,status:prior.status,replayed:true,estimatedCredits:prior.estimated_credits},200,origin);}
-        const now=Math.floor(Date.now()/1000),dayStart=Math.floor(now/86400)*86400,usage=await env.DB.prepare("SELECT COUNT(*) AS count FROM generations WHERE user_id=? AND created_at>=?").bind(user.id,dayStart).first();
-        if(Number(usage?.count||0)>=PREVIEW_DAILY_GENERATION_LIMIT)return json({error:"Dosiahol si denný limit "+PREVIEW_DAILY_GENERATION_LIMIT+" skúšobných generovaní."},429,origin);
-        const id=crypto.randomUUID();
-        await env.DB.prepare("INSERT INTO generations (id,user_id,provider,model,resolution,aspect_ratio,duration_seconds,status,prompt_snapshot,estimated_credits,client_request_id,request_fingerprint,created_at,updated_at) VALUES (?,?,'runway',?,?,?,?,'queued',?,?,?,?,?,?)").bind(id,user.id,model,resolution,ratio,duration,prompt,estimated,requestId,fingerprint,now,now).run();
-        const init=await fetch("https://api.dev.runwayml.com/v1/uploads",{method:"POST",headers:runwayHeaders(env),body:JSON.stringify({filename:video.name||"product-source.mp4",type:"ephemeral"})}),info=await init.json().catch(()=>({}));
-        if(!init.ok||!info.uploadUrl||!info.runwayUri||!info.fields){const msg=info.error?.message||info.error||"Runway upload zlyhal.";await env.DB.prepare("UPDATE generations SET status='failed',error_code='video_upload_failed',error_message=?,updated_at=?,completed_at=? WHERE id=? AND user_id=?").bind(String(msg).slice(0,500),now,now,id,user.id).run();return json({error:String(msg)},502,origin);}
-        const upload=new FormData();for(const [k,v] of Object.entries(info.fields))upload.append(k,String(v));upload.append("file",video,video.name||"product-source.mp4");
-        const sent=await fetch(info.uploadUrl,{method:"POST",body:upload});
-        if(!sent.ok){await env.DB.prepare("UPDATE generations SET status='failed',error_code='video_upload_failed',error_message='Nahratie videa do Runway zlyhalo.',updated_at=?,completed_at=? WHERE id=? AND user_id=?").bind(now,now,id,user.id).run();return json({error:"Nahratie videa do Runway zlyhalo."},502,origin);}
-        const upstream=await fetch("https://api.dev.runwayml.com/v1/video_to_video",{method:"POST",headers:runwayHeaders(env),body:JSON.stringify({model,promptVideo:info.runwayUri,promptText:prompt,references:images.map(uri=>({uri})),ratio,duration,audio:false,bitrate:"high"})}),result=await upstream.json().catch(()=>({}));
-        if(!upstream.ok||!result.id){const msg=result.error?.message||result.error||"Runway požiadavku neprijal.";await env.DB.prepare("UPDATE generations SET status='failed',error_code='provider_rejected',error_message=?,updated_at=?,completed_at=? WHERE id=? AND user_id=?").bind(String(msg).slice(0,500),now,now,id,user.id).run();return json({error:String(msg)},502,origin);}
-        const status=generationStatus(result.status||"PENDING");await env.DB.prepare("UPDATE generations SET provider_task_id=?,status=?,updated_at=? WHERE id=? AND user_id=?").bind(String(result.id),status,Math.floor(Date.now()/1000),id,user.id).run();
-        return json({id,status:result.status||"PENDING",estimatedCredits:estimated,dailyLimit:PREVIEW_DAILY_GENERATION_LIMIT,usedToday:Number(usage?.count||0)+1},201,origin);
+      // Account-scoped credit wallet and owner-only manual top-ups.
+      if (url.pathname === "/api/credits" && request.method === "GET") {
+        let creditStage = "authenticate";
+        try {
+          const user = await currentUser(request, env);
+          if (!user) return json({ error: "Prihlásenie vypršalo. Prihlás sa znova." }, 401, origin);
+          const now = Math.floor(Date.now() / 1000);
+          creditStage = "account_initialization";
+          await env.DB.prepare(
+            "INSERT INTO credit_accounts (user_id, available_units, reserved_units, version, created_at, updated_at) VALUES (?, 0, 0, 0, ?, ?) ON CONFLICT(user_id) DO NOTHING"
+          ).bind(user.id, now, now).run();
+          creditStage = "account_read";
+          const account = await env.DB.prepare(
+            "SELECT available_units, reserved_units, version FROM credit_accounts WHERE user_id = ? LIMIT 1"
+          ).bind(user.id).first();
+          creditStage = "ledger_read";
+          const ledger = await env.DB.prepare(
+            "SELECT id, entry_type, units, reference_type, reference_id, note, created_at FROM credit_ledger WHERE user_id = ? ORDER BY created_at DESC LIMIT 20"
+          ).bind(user.id).all();
+          return json({
+            available: Number(account?.available_units || 0),
+            reserved: Number(account?.reserved_units || 0),
+            version: Number(account?.version || 0),
+            isAdmin: Boolean(env.APP_OWNER_EMAIL && user.email.toLowerCase() === String(env.APP_OWNER_EMAIL).trim().toLowerCase()),
+            history: (ledger.results || []).map(row => ({
+              id: row.id, type: row.entry_type, units: Number(row.units),
+              reference: row.reference_id || null, referenceType: row.reference_type || null, note: row.note || "", createdAt: row.created_at
+            }))
+          }, 200, origin);
+        } catch (error) {
+          console.error("Credit wallet read failed", { stage: creditStage, name: String(error?.name || "Error"), message: String(error?.message || "Unknown error") });
+          return json({ error: "Kreditový účet sa nepodarilo načítať.", stage: creditStage, diagnostic: String(error?.message || error?.name || "Unknown database error").slice(0, 240) }, 500, origin);
+        }
+      }
+
+      if (url.pathname === "/api/credits/admin-grant" && request.method === "POST") {
+        const user = await currentUser(request, env);
+        if (!user) return json({ error: "Prihlásenie vypršalo. Prihlás sa znova." }, 401, origin);
+        const adminEmail = String(env.APP_OWNER_EMAIL || "").trim().toLowerCase();
+        if (!adminEmail || user.email.toLowerCase() !== adminEmail) {
+          return json({ error: "Manuálne dobíjanie je povolené iba správcovi aplikácie." }, 403, origin);
+        }
+        const body = await readJson(request, 2000);
+        const units = Number(body.units);
+        const note = validText(body.note, 160, "Manuálne dobitie správcom");
+        const idempotencyKey = String(body.idempotencyKey || "");
+        if (!Number.isSafeInteger(units) || units < 1 || units > 100000 || note === null ||
+            !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(idempotencyKey)) {
+          return json({ error: "Skontroluj počet kreditov a poznámku k dobitiu." }, 400, origin);
+        }
+        const existing = await env.DB.prepare(
+          "SELECT id, units, payload_fingerprint FROM credit_ledger WHERE user_id = ? AND idempotency_key = ? LIMIT 1"
+        ).bind(user.id, idempotencyKey).first();
+        const fingerprint = await sha256(JSON.stringify({ userId: user.id, units, note }));
+        if (existing) {
+          if (Number(existing.units) !== units || existing.payload_fingerprint !== fingerprint) {
+            return json({ error: "Identifikátor dobitia už bol použitý pre inú operáciu." }, 409, origin);
+          }
+          const account = await env.DB.prepare("SELECT available_units, reserved_units FROM credit_accounts WHERE user_id = ?").bind(user.id).first();
+          return json({ ok: true, replayed: true, available: Number(account?.available_units || 0), reserved: Number(account?.reserved_units || 0) }, 200, origin);
+        }
+        const now = Math.floor(Date.now() / 1000);
+        const entryId = crypto.randomUUID();
+        await env.DB.batch([
+          env.DB.prepare(
+            "INSERT INTO credit_accounts (user_id, available_units, reserved_units, version, created_at, updated_at) VALUES (?, ?, 0, 1, ?, ?) ON CONFLICT(user_id) DO UPDATE SET available_units = credit_accounts.available_units + excluded.available_units, version = credit_accounts.version + 1, updated_at = excluded.updated_at"
+          ).bind(user.id, units, now, now),
+          env.DB.prepare(
+            "INSERT INTO credit_ledger (id, user_id, entry_type, units, reference_type, reference_id, idempotency_key, payload_fingerprint, note, created_at) VALUES (?, ?, 'grant', ?, 'admin', ?, ?, ?, ?, ?)"
+          ).bind(entryId, user.id, units, entryId, idempotencyKey, fingerprint, note, now)
+        ]);
+        const account = await env.DB.prepare("SELECT available_units, reserved_units FROM credit_accounts WHERE user_id = ?").bind(user.id).first();
+        return json({ ok: true, replayed: false, available: Number(account?.available_units || 0), reserved: Number(account?.reserved_units || 0), granted: units }, 201, origin);
       }
 
       // Commercial generation always resolves the owner from the D1 session.
       if (url.pathname === "/api/generate" && request.method === "POST") {
         const user = await currentUser(request, env);
         if (!user) return json({ error: "Na generovanie sa najskôr prihlás do svojho zákazníckeho účtu." }, 401, origin);
-        if (!env.RUNWAY_API_KEY) return json({ error: "Generátor zatiaľ nie je nakonfigurovaný pre komerčnú preview verziu." }, 503, origin);
+        if (!byteplusReady(env)) return json({ error: "Seedance API zatiaľ nie je aktivované. Platené generovanie zostáva vypnuté." }, 503, origin);
         const contentLength = Number(request.headers.get("Content-Length") || 0);
         if (contentLength > 22 * 1024 * 1024) return json({ error: "Súhrnná veľkosť fotografií je príliš veľká. Použi menšie obrázky." }, 413, origin);
         const body = await readJson(request, 22 * 1024 * 1024);
@@ -412,25 +709,44 @@ export default {
           return json({ error: "Požiadavka nemá platný identifikátor. Obnov stránku a skús to znova." }, 400, origin);
         }
         const images = Array.isArray(body.images) ? body.images : (typeof body.image === "string" ? [body.image] : []);
-        if (images.length < 1 || images.length > 9) return json({ error: "Nahraj 1 až 9 fotografií produktu." }, 400, origin);
+        const inputVideoId = body.videoId == null ? "" : String(body.videoId);
+        if (images.length < 1 || images.length > MAX_GENERATION_IMAGES) return json({ error: "Nahraj 1 až " + MAX_GENERATION_IMAGES + " fotografií produktu." }, 400, origin);
+        if (inputVideoId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(inputVideoId)) return json({ error: "Zdrojové video nemá platný identifikátor." }, 400, origin);
         for (const image of images) {
           if (typeof image !== "string" || !/^data:image\/(jpeg|jpg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(image)) {
             return json({ error: "Jedna z fotografií nemá podporovaný formát. Použi JPG, PNG alebo WebP." }, 400, origin);
           }
           if (image.length > 5 * 1024 * 1024) return json({ error: "Každá fotografia musí mať menej než 5 MB." }, 413, origin);
         }
-        if (images.reduce((total, image) => total + image.length, 0) > 8 * 1024 * 1024) return json({ error: "Súhrnná veľkosť fotografií prekračuje 20 MB." }, 413, origin);
+        if (images.reduce((total, image) => total + image.length, 0) > 20 * 1024 * 1024) return json({ error: "Súhrnná veľkosť fotografií prekračuje 20 MB." }, 413, origin);
         if (typeof body.prompt !== "string" || !body.prompt.trim() || body.prompt.length > 1000) return json({ error: "Text zadania musí mať 1 až 1 000 znakov." }, 400, origin);
         const duration = Number(body.duration);
         const model = String(body.model || "seedance2_mini");
-        const resolution = String(body.resolution || (model === "seedance2" ? "1080p" : "720p"));
+        // Fail closed before recording a task or contacting the paid provider.
+        const providerModel = BYTEPLUS_MODEL_IDS[model];
+        if (!providerModel) {
+          return json({
+            error: "Vybraný Seedance model nie je podporovaný cez BytePlus ModelArk.",
+            provider: "byteplus_modelark",
+            model,
+            code: "PROVIDER_MODEL_NOT_SUPPORTED"
+          }, 503, origin);
+        }
+        const resolution = String(body.resolution || "720p");
         const ratio = String(body.ratio || "");
-        const allowedRatios = model === "seedance2" ? FULL_RATIOS : model === "seedance2_mini" ? MINI_RATIOS : null;
-        const estimatedCredits = estimatedGenerationCredits(model, resolution, duration);
-        if (!Number.isInteger(duration) || duration < 4 || duration > 15 || !allowedRatios || !allowedRatios.has(ratio) || estimatedCredits === null) {
+        const providerRatio = byteplusRatio(ratio);
+        const allowedResolutions = model === "seedance2"
+          ? new Set(["480p","720p","1080p","4K"])
+          : new Set(["480p","720p"]);
+        if (!Number.isInteger(duration) || duration < 4 || duration > 15 ||
+            !allowedResolutions.has(resolution) || !providerRatio ||
+            !(model === "seedance2" ? FULL_RATIOS : MINI_RATIOS).has(ratio)) {
           return json({ error: "Nepodporovaná kombinácia modelu, rozlíšenia, pomeru strán alebo dĺžky." }, 400, origin);
         }
-        const fingerprint = await sha256(JSON.stringify({ images, prompt: body.prompt.trim(), model, resolution, ratio, duration }));
+        // BytePlus bills the owner's provider account by actual token usage. Do not
+        // present the old Runway-derived estimate or debit the app's separate wallet.
+        const estimatedCredits = 0;
+        const fingerprint = await sha256(JSON.stringify({ images, videoId: inputVideoId || null, prompt: body.prompt.trim(), model, resolution, ratio, duration }));
         const prior = await env.DB.prepare(
           "SELECT id, request_fingerprint, provider_task_id, status, estimated_credits FROM generations WHERE user_id = ? AND client_request_id = ? LIMIT 1"
         ).bind(user.id, requestId).first();
@@ -446,10 +762,20 @@ export default {
         if (Number(usage?.count || 0) >= PREVIEW_DAILY_GENERATION_LIMIT) {
           return json({ error: "Dosiahol si denný limit " + PREVIEW_DAILY_GENERATION_LIMIT + " skúšobných generovaní. Skús to znova zajtra.", dailyLimit: PREVIEW_DAILY_GENERATION_LIMIT, usedToday: Number(usage?.count || 0) }, 429, origin);
         }
+        let inputVideo = null;
+        let providerInputToken = "";
+        if (inputVideoId) {
+          inputVideo = await env.DB.prepare(
+            "SELECT id, r2_key, content_type, byte_size, duration_seconds FROM generation_input_videos WHERE id = ? AND user_id = ? AND generation_id IS NULL AND expires_at > ? LIMIT 1"
+          ).bind(inputVideoId, user.id, now).first();
+          if (!inputVideo) return json({ error: "Zdrojové video sa nenašlo, už bolo použité alebo vypršala jeho platnosť. Nahraj ho znova." }, 404, origin);
+          if (Number(inputVideo.duration_seconds) < 2 || Number(inputVideo.duration_seconds) > 15 || Number(inputVideo.byte_size) < 12 || Number(inputVideo.byte_size) > MAX_SOURCE_VIDEO_BYTES) return json({ error: "Zdrojové video nespĺňa bezpečnostné limity." }, 400, origin);
+          providerInputToken = randomToken(32);
+        }
         const generationId = crypto.randomUUID();
         try {
           await env.DB.prepare(
-            "INSERT INTO generations (id, user_id, provider, model, resolution, aspect_ratio, duration_seconds, status, prompt_snapshot, estimated_credits, client_request_id, request_fingerprint, created_at, updated_at) VALUES (?, ?, 'runway', ?, ?, ?, ?, 'queued', ?, ?, ?, ?, ?, ?)"
+            "INSERT INTO generations (id, user_id, provider, model, resolution, aspect_ratio, duration_seconds, status, prompt_snapshot, estimated_credits, client_request_id, request_fingerprint, created_at, updated_at) VALUES (?, ?, 'byteplus_modelark', ?, ?, ?, ?, 'queued', ?, ?, ?, ?, ?, ?)"
           ).bind(generationId, user.id, model, resolution, ratio, duration, body.prompt.trim(), estimatedCredits, requestId, fingerprint, now, now).run();
         } catch (error) {
           if (/generation_daily_limit/i.test(String(error))) return json({ error: "Dosiahol si denný limit " + PREVIEW_DAILY_GENERATION_LIMIT + " skúšobných generovaní.", dailyLimit: PREVIEW_DAILY_GENERATION_LIMIT }, 429, origin);
@@ -461,31 +787,88 @@ export default {
           }
           throw error;
         }
-        const upstream = await fetch("https://api.dev.runwayml.com/v1/image_to_video", {
-          method: "POST",
-          headers: runwayHeaders(env),
-          body: JSON.stringify({
-            model,
-            promptImage: images.length === 1 ? images[0] : images.map(uri => ({ uri })),
-            promptText: body.prompt.trim(),
-            ratio,
-            duration,
-            audio: false,
-            bitrate: "high"
-          })
-        });
-        const result = await upstream.json().catch(() => ({}));
-        if (!upstream.ok || !result.id) {
-          const message = result.error?.message || result.error || result.message || "Runway požiadavku neprijal.";
+        if (inputVideo) {
+          const accessExpiresAt = now + 48 * 60 * 60;
+          const claimed = await env.DB.prepare(
+            "UPDATE generation_input_videos SET generation_id = ?, access_token_hash = ?, access_expires_at = ? WHERE id = ? AND user_id = ? AND generation_id IS NULL AND expires_at > ?"
+          ).bind(generationId, await sha256(providerInputToken), accessExpiresAt, inputVideo.id, user.id, now).run();
+          if (Number(claimed.meta?.changes || 0) !== 1) {
+            await env.DB.prepare("UPDATE generations SET status = 'failed', error_code = 'input_video_claim_failed', error_message = 'Zdrojové video sa nepodarilo bezpečne priradiť.', completed_at = ?, updated_at = ? WHERE id = ? AND user_id = ?")
+              .bind(now, now, generationId, user.id).run();
+            return json({ error: "Zdrojové video už bolo použité v inej požiadavke. Nahraj ho znova." }, 409, origin);
+          }
+        }
+        const content = [
+          { type: "text", text: body.prompt.trim() },
+          ...images.map(image => ({
+            type: "image_url",
+            image_url: { url: image },
+            role: "reference_image"
+          })),
+          ...(inputVideo ? [{
+            type: "video_url",
+            video_url: { url: PREVIEW_WORKER_ORIGIN + "/api/provider-input/" + encodeURIComponent(inputVideo.id) + (inputVideo.content_type === "video/quicktime" ? ".mov" : ".mp4") + "?token=" + encodeURIComponent(providerInputToken) },
+            role: "reference_video"
+          }] : [])
+        ];
+        // A network failure after sending a paid POST is ambiguous: BytePlus may
+        // already have accepted and billed the task. Never retry this POST blindly.
+        let upstream;
+        let result;
+        try {
+          upstream = await fetch(BYTEPLUS_TASKS_URL, {
+            method: "POST",
+            headers: byteplusHeaders(env),
+            body: JSON.stringify({
+              model: providerModel,
+              content,
+              resolution,
+              ratio: providerRatio,
+              duration,
+              watermark: false
+            })
+          });
+          result = await upstream.json().catch(() => ({}));
+        } catch (error) {
           const failedAt = Math.floor(Date.now() / 1000);
+          const diagnostic = String(error?.message || error?.name || "Network error").slice(0, 300);
+          await env.DB.prepare("UPDATE generations SET status = 'processing', error_code = ?, error_message = ?, updated_at = ? WHERE id = ? AND user_id = ? AND provider_task_id IS NULL")
+            .bind("provider_submission_unknown", "BytePlus odpoveď sa stratila počas odosielania. Úloha mohla byť prijatá; požiadavku neposielaj znova. Diagnostika: " + diagnostic, failedAt, generationId, user.id).run();
+          return json({
+            error: "Spojenie s BytePlus sa prerušilo počas odosielania. Poskytovateľ mohol úlohu prijať, preto ju z bezpečnostných dôvodov neposielam znova.",
+            generationId,
+            status: "submission_unknown",
+            recoveryRequired: true
+          }, 503, origin);
+        }
+        if (!upstream.ok || !result.id) {
+          const message = result.error?.message || result.error || result.message || "BytePlus ModelArk nevrátilo potvrdenie úlohy.";
+          const failedAt = Math.floor(Date.now() / 1000);
+          // A 5xx or a malformed 2xx response cannot prove that the paid task
+          // was rejected. Preserve the idempotency lock instead of permitting retry.
+          const ambiguous = upstream.status >= 500 || upstream.ok;
+          if (ambiguous) {
+            await env.DB.prepare("UPDATE generations SET status = 'processing', error_code = ?, error_message = ?, updated_at = ? WHERE id = ? AND user_id = ? AND provider_task_id IS NULL")
+              .bind("provider_submission_unknown", String(message).slice(0, 500), failedAt, generationId, user.id).run();
+            return json({
+              error: "BytePlus nevrátilo jednoznačné potvrdenie. Úloha mohla byť prijatá; automatické opakovanie je zablokované, aby nevzniklo duplicitné platené generovanie.",
+              providerStatus: upstream.status || 502,
+              generationId,
+              status: "submission_unknown",
+              recoveryRequired: true
+            }, 502, origin);
+          }
           await env.DB.prepare("UPDATE generations SET status = 'failed', error_code = ?, error_message = ?, updated_at = ?, completed_at = ? WHERE id = ? AND user_id = ?")
             .bind("provider_rejected", String(message).slice(0, 500), failedAt, failedAt, generationId, user.id).run();
+          await settleGenerationCredits(env, user.id, generationId, "release", failedAt);
           return json({ error: String(message), providerStatus: upstream.status || 502, generationId }, 502, origin);
         }
         const providerTaskId = String(result.id);
         const status = generationStatus(result.status || "PENDING");
         await env.DB.prepare("UPDATE generations SET provider_task_id = ?, status = ?, updated_at = ? WHERE id = ? AND user_id = ?")
           .bind(providerTaskId, status, Math.floor(Date.now() / 1000), generationId, user.id).run();
+        if (status === "succeeded") await settleGenerationCredits(env, user.id, generationId, "capture", Math.floor(Date.now() / 1000));
+        else if (status === "failed" || status === "cancelled") await settleGenerationCredits(env, user.id, generationId, "release", Math.floor(Date.now() / 1000));
         return json({ id: generationId, status: result.status || "PENDING", estimatedCredits, dailyLimit: PREVIEW_DAILY_GENERATION_LIMIT, usedToday: Number(usage?.count || 0) + 1 }, 201, origin);
       }
 
@@ -530,46 +913,110 @@ export default {
       if (generationStatusMatch && request.method === "GET") {
         const user = await currentUser(request, env);
         if (!user) return json({ error: "Prihlásenie vypršalo. Prihlás sa znova." }, 401, origin);
-        if (!env.RUNWAY_API_KEY) return json({ error: "Generátor zatiaľ nie je nakonfigurovaný." }, 503, origin);
-        const generation = await env.DB.prepare("SELECT id, provider_task_id, status FROM generations WHERE id = ? AND user_id = ? LIMIT 1")
+        if (!byteplusConfigured(env)) return json({ error: "Seedance API zatiaľ nie je nakonfigurované." }, 503, origin);
+        const generation = await env.DB.prepare("SELECT id, provider_task_id, status, error_code FROM generations WHERE id = ? AND user_id = ? LIMIT 1")
           .bind(generationStatusMatch[1], user.id).first();
         if (!generation) return json({ error: "Generovanie sa nenašlo." }, 404, origin);
-        if (!generation.provider_task_id) return json({ error: "Generovanie zatiaľ nemá potvrdené ID poskytovateľa.", status: generation.status }, 409, origin);
-        const upstream = await fetch("https://api.dev.runwayml.com/v1/tasks/" + encodeURIComponent(generation.provider_task_id), { headers: runwayHeaders(env) });
+        if (!generation.provider_task_id) {
+          const uncertain = generation.error_code === "provider_submission_unknown";
+          return json({
+            error: uncertain
+              ? "Stav odoslania do BytePlus nie je potvrdený. Úloha mohla byť prijatá; automatické opakovanie je zablokované, aby nevzniklo duplicitné platené generovanie."
+              : "Generovanie zatiaľ nemá potvrdené ID poskytovateľa.",
+            status: generation.status,
+            recoveryRequired: uncertain
+          }, 409, origin);
+        }
+        const upstream = await fetch(BYTEPLUS_TASKS_URL + "/" + encodeURIComponent(generation.provider_task_id), { headers: byteplusHeaders(env) });
         const task = await upstream.json().catch(() => ({}));
         if (!upstream.ok) return json({ error: task.error?.message || task.error || "Stav generovania sa nepodarilo načítať.", providerStatus: upstream.status }, 502, origin);
         const mapped = generationStatus(task.status);
         const now = Math.floor(Date.now() / 1000);
         await env.DB.prepare("UPDATE generations SET status = ?, error_message = ?, completed_at = CASE WHEN ? = 1 THEN COALESCE(completed_at, ?) ELSE completed_at END, updated_at = ? WHERE id = ? AND user_id = ? AND status NOT IN ('succeeded','failed','cancelled')")
           .bind(mapped, mapped === "failed" ? String(task.failure || task.error || "Generovanie zlyhalo.").slice(0,500) : null, ["succeeded","failed","cancelled"].includes(mapped) ? 1 : 0, now, now, generation.id, user.id).run();
-        return json({ ...task, id: generation.id }, 200, origin);
+        if (mapped === "succeeded") await settleGenerationCredits(env, user.id, generation.id, "capture", now);
+        else if (mapped === "failed" || mapped === "cancelled") await settleGenerationCredits(env, user.id, generation.id, "release", now);
+        // Provider video URLs are temporary bearer-like links. Keep them server-side;
+        // clients should only download through the authenticated R2-backed route.
+        const safeTask = { ...task };
+        if (safeTask.content && typeof safeTask.content === "object" && !Array.isArray(safeTask.content)) {
+          safeTask.content = { ...safeTask.content };
+          delete safeTask.content.video_url;
+        }
+        return json({ ...safeTask, providerStatus: task.status, status: mapped, id: generation.id }, 200, origin);
       }
 
       const generationDownloadMatch = /^\/api\/download\/([0-9a-f-]{36})$/i.exec(url.pathname);
       if (generationDownloadMatch && request.method === "GET") {
         const user = await currentUser(request, env);
         if (!user) return json({ error: "Prihlásenie vypršalo. Prihlás sa znova." }, 401, origin);
-        if (!env.RUNWAY_API_KEY) return json({ error: "Generátor zatiaľ nie je nakonfigurovaný." }, 503, origin);
-        const generation = await env.DB.prepare("SELECT id, provider_task_id FROM generations WHERE id = ? AND user_id = ? LIMIT 1")
+        const generation = await env.DB.prepare("SELECT id, provider_task_id, status FROM generations WHERE id = ? AND user_id = ? LIMIT 1")
           .bind(generationDownloadMatch[1], user.id).first();
         if (!generation) return json({ error: "Video sa nenašlo." }, 404, origin);
+        const existingOutput = await env.DB.prepare("SELECT r2_key, content_type, byte_size FROM generation_outputs WHERE generation_id = ? AND user_id = ? LIMIT 1")
+          .bind(generation.id, user.id).first();
+        if (existingOutput) {
+          const storedObject = await env.MEDIA.get(existingOutput.r2_key);
+          if (!storedObject) return json({ error: "Uložené video sa v súkromnom úložisku nenašlo. Kontaktuj podporu." }, 503, origin);
+          if (Number(existingOutput.byte_size) !== Number(storedObject.size)) return json({ error: "Veľkosť uloženého videa nesúhlasí s jeho databázovým záznamom. Kontaktuj podporu." }, 503, origin);
+          const completedAt = Math.floor(Date.now() / 1000);
+          await env.DB.prepare("UPDATE generations SET status = 'succeeded', completed_at = COALESCE(completed_at, ?), updated_at = ? WHERE id = ? AND user_id = ?")
+            .bind(completedAt, completedAt, generation.id, user.id).run();
+          await settleGenerationCredits(env, user.id, generation.id, "capture", completedAt);
+          return new Response(storedObject.body, {
+            status: 200,
+            headers: { ...corsHeaders(origin), "Content-Type": existingOutput.content_type || "video/mp4", "Content-Length": String(storedObject.size), "Content-Disposition": 'attachment; filename="product-studio-ai.mp4"', "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff" }
+          });
+        }
+        if (!byteplusConfigured(env)) return json({ error: "Video ešte nie je uložené v cloudovej knižnici a poskytovateľ nie je nakonfigurovaný." }, 503, origin);
         if (!generation.provider_task_id) return json({ error: "Video ešte nie je pripravené." }, 409, origin);
-        const taskResponse = await fetch("https://api.dev.runwayml.com/v1/tasks/" + encodeURIComponent(generation.provider_task_id), { headers: runwayHeaders(env) });
+        const taskResponse = await fetch(BYTEPLUS_TASKS_URL + "/" + encodeURIComponent(generation.provider_task_id), { headers: byteplusHeaders(env) });
         const task = await taskResponse.json().catch(() => ({}));
         if (!taskResponse.ok) return json({ error: task.error?.message || task.error || "Video sa nepodarilo načítať." }, 502, origin);
-        const videoUrl = Array.isArray(task.output) && typeof task.output[0] === "string" ? task.output[0] : "";
-        if (task.status !== "SUCCEEDED" || !videoUrl) return json({ error: "Video ešte nie je pripravené na stiahnutie." }, 409, origin);
+        const videoUrl = typeof task.content?.video_url === "string" ? task.content.video_url : "";
+        if (task.status !== "succeeded" || !videoUrl) return json({ error: "Video ešte nie je pripravené na stiahnutie." }, 409, origin);
         let parsedVideoUrl;
         try { parsedVideoUrl = new URL(videoUrl); } catch { return json({ error: "Poskytovateľ vrátil neplatnú adresu videa." }, 502, origin); }
         if (parsedVideoUrl.protocol !== "https:" || parsedVideoUrl.username || parsedVideoUrl.password) return json({ error: "Poskytovateľ vrátil neplatnú adresu videa." }, 502, origin);
         const videoResponse = await fetch(parsedVideoUrl.href);
         if (!videoResponse.ok || !videoResponse.body) return json({ error: "Hotové video sa nepodarilo stiahnuť." }, 502, origin);
+        const maxVideoBytes = 250 * 1024 * 1024;
+        const declaredLength = Number(videoResponse.headers.get("Content-Length") || 0);
+        if (declaredLength > maxVideoBytes) return json({ error: "Vygenerované video prekračuje bezpečný limit 250 MB." }, 413, origin);
+        let streamedBytes = 0;
+        const limitedBody = videoResponse.body.pipeThrough(new TransformStream({
+          transform(chunk, controller) {
+            streamedBytes += chunk.byteLength;
+            if (streamedBytes > maxVideoBytes) throw new Error("Vygenerované video prekračuje bezpečný limit 250 MB.");
+            controller.enqueue(chunk);
+          }
+        }));
+        const r2Key = `users/${user.id}/generations/${generation.id}/output.mp4`;
+        try {
+          await env.MEDIA.put(r2Key, limitedBody, { httpMetadata: { contentType: "video/mp4" } });
+          if (streamedBytes < 1) throw new Error("Poskytovateľ vrátil prázdny video súbor.");
+          await env.DB.prepare("INSERT INTO generation_outputs (id, generation_id, user_id, r2_key, content_type, byte_size, created_at) VALUES (?, ?, ?, ?, 'video/mp4', ?, ?) ON CONFLICT(generation_id) DO NOTHING")
+            .bind(crypto.randomUUID(), generation.id, user.id, r2Key, streamedBytes, Math.floor(Date.now() / 1000)).run();
+        } catch (error) {
+          const saved = await env.DB.prepare("SELECT id FROM generation_outputs WHERE generation_id = ? AND user_id = ? LIMIT 1")
+            .bind(generation.id, user.id).first();
+          if (!saved) await env.MEDIA.delete(r2Key);
+          const message = String(error?.message || "R2 storage failure");
+          return json({ error: message.includes("250 MB") ? message : "Hotové video sa nepodarilo bezpečne uložiť do cloudovej knižnice." }, message.includes("250 MB") ? 413 : 502, origin);
+        }
+        const savedOutput = await env.DB.prepare("SELECT r2_key, content_type, byte_size FROM generation_outputs WHERE generation_id = ? AND user_id = ? LIMIT 1")
+          .bind(generation.id, user.id).first();
+        if (!savedOutput) return json({ error: "Video sa uložilo, ale jeho záznam sa nepodarilo potvrdiť." }, 502, origin);
+        const storedObject = await env.MEDIA.get(savedOutput.r2_key);
+        if (!storedObject) return json({ error: "Video sa uložilo, ale vrátenie súboru z úložiska zlyhalo." }, 502, origin);
+        if (Number(savedOutput.byte_size) !== Number(storedObject.size)) return json({ error: "Veľkosť uloženého videa nesúhlasí s jeho databázovým záznamom." }, 502, origin);
         const completedAt = Math.floor(Date.now() / 1000);
         await env.DB.prepare("UPDATE generations SET status = 'succeeded', completed_at = COALESCE(completed_at, ?), updated_at = ? WHERE id = ? AND user_id = ?")
           .bind(completedAt, completedAt, generation.id, user.id).run();
-        return new Response(videoResponse.body, {
+        await settleGenerationCredits(env, user.id, generation.id, "capture", completedAt);
+        return new Response(storedObject.body, {
           status: 200,
-          headers: { ...corsHeaders(origin), "Content-Type": videoResponse.headers.get("Content-Type") || "video/mp4", "Content-Disposition": 'attachment; filename="product-studio-ai.mp4"', "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" }
+          headers: { ...corsHeaders(origin), "Content-Type": savedOutput.content_type || "video/mp4", "Content-Length": String(storedObject.size), "Content-Disposition": 'attachment; filename="product-studio-ai.mp4"', "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff" }
         });
       }
 
@@ -610,7 +1057,7 @@ export default {
               `SELECT a.id, a.content_type, a.byte_size, a.width, a.height, a.checksum_sha256, pi.sort_order, pi.is_primary, a.created_at
                FROM product_images pi JOIN assets a ON a.id = pi.asset_id
                WHERE pi.product_id = ? AND pi.user_id = ? AND a.deleted_at IS NULL
-               ORDER BY pi.sort_order ASC LIMIT 9`
+               ORDER BY pi.sort_order ASC LIMIT ${MAX_PRODUCT_IMAGES}`
             ).bind(productId, user.id).all();
             return json({ images: (result.results || []).map(row => ({ id: row.id, contentType: row.content_type, byteSize: row.byte_size, width: row.width, height: row.height, checksumSha256: row.checksum_sha256, sortOrder: row.sort_order, isPrimary: !!row.is_primary, createdAt: row.created_at, url: `/api/assets/${row.id}` })) }, 200, origin);
           }
@@ -623,7 +1070,7 @@ export default {
             const current = await env.DB.prepare(
               "SELECT COUNT(*) AS count FROM product_images WHERE product_id = ? AND user_id = ?"
             ).bind(productId, user.id).first();
-            if (Number(current?.count || 0) >= 9) return json({ error: "Produkt môže obsahovať najviac 9 fotografií." }, 409, origin);
+            if (Number(current?.count || 0) >= MAX_PRODUCT_IMAGES) return json({ error: "Produkt môže obsahovať najviac " + MAX_PRODUCT_IMAGES + " fotografií." }, 409, origin);
             const bytes = await readBytes(request, 10 * 1024 * 1024);
             if (!matchesImageSignature(bytes, contentType)) return json({ error: "Obsah súboru nezodpovedá deklarovanému formátu fotografie." }, 415, origin);
             const assetId = crypto.randomUUID();
@@ -728,7 +1175,7 @@ export default {
             const restored = await ownedProduct(env, user.id, productId);
             return json({ product: publicProduct(restored), restored: true }, 200, origin);
           }
-          if (productId && request.method === "DELETE") {
+          if (productId && request.method === "DELETE" && url.pathname === `/api/products/${productId}`) {
             const existing = await ownedProduct(env, user.id, productId);
             if (!existing) return json({ error: "Produkt sa nenašiel." }, 404, origin);
             await env.DB.prepare("UPDATE products SET archived_at = ?, updated_at = ? WHERE id = ? AND user_id = ?")
@@ -857,7 +1304,7 @@ export default {
             const updated = await ownedProject(env, user.id, projectId);
             return json({ project: publicProject(updated) }, 200, origin);
           }
-          if (projectId && request.method === "DELETE") {
+          if (projectId && request.method === "DELETE" && url.pathname === `/api/projects/${projectId}`) {
             const existing = await ownedProject(env, user.id, projectId);
             if (!existing) return json({ error: "Projekt sa nenašiel." }, 404, origin);
             await env.DB.prepare("UPDATE projects SET status = 'archived', archived_at = ?, updated_at = ? WHERE id = ? AND user_id = ?")
@@ -892,6 +1339,9 @@ export default {
         stack: String(error?.stack || "").slice(0, 2000)
       });
       const message = String(error?.message || "");
+      if (url.pathname === "/api/credits") {
+        return json({ ok: false, error: "Kreditový účet zlyhal mimo jeho lokálnej kontroly.", diagnostic: message.slice(0, 240) || String(error?.name || "Unknown error") }, 500, origin);
+      }
       if (message === "Požiadavka je príliš veľká." || message === "Požiadavka neobsahuje platné JSON dáta." || message === "Požiadavka musí obsahovať JSON objekt." || message === "Súbor je príliš veľký." || message === "Súbor je prázdny.") {
         return json({ error: message }, 400, origin);
       }
