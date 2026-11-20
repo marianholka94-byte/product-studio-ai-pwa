@@ -578,11 +578,31 @@ export default {
         const user = await currentUser(request, env);
         if (!user) return json({ error: "Prihlásenie vypršalo. Prihlás sa znova." }, 401, origin);
         const now = Math.floor(Date.now() / 1000);
-        const productMatch = /^\/api\/products(?:\/([a-zA-Z0-9_-]{1,80})(?:\/(?:images|restore))?)?$/.exec(url.pathname);
+        const productMatch = /^\/api\/products(?:\/([a-zA-Z0-9_-]{1,80})(?:\/(?:images|restore|permanent))?)?$/.exec(url.pathname);
         const projectMatch = /^\/api\/projects(?:\/([a-zA-Z0-9_-]{1,80}))?$/.exec(url.pathname);
 
         if (productMatch) {
           const productId = productMatch[1];
+          if (productId && request.method === "DELETE" && url.pathname === `/api/products/${productId}/permanent`) {
+            const product = await ownedProduct(env, user.id, productId);
+            if (!product) return json({ error: "Produkt sa nenašiel." }, 404, origin);
+            const assetRows = await env.DB.prepare(
+              "SELECT id, r2_key FROM assets WHERE product_id = ? AND user_id = ?"
+            ).bind(productId, user.id).all();
+            await env.DB.batch([
+              env.DB.prepare("UPDATE projects SET product_id = NULL, updated_at = ? WHERE product_id = ? AND user_id = ?").bind(now, productId, user.id),
+              env.DB.prepare("UPDATE products SET main_asset_id = NULL WHERE id = ? AND user_id = ?").bind(productId, user.id),
+              env.DB.prepare("DELETE FROM product_images WHERE product_id = ? AND user_id = ?").bind(productId, user.id),
+              env.DB.prepare("DELETE FROM assets WHERE product_id = ? AND user_id = ?").bind(productId, user.id),
+              env.DB.prepare("DELETE FROM products WHERE id = ? AND user_id = ?").bind(productId, user.id)
+            ]);
+            let deletedFiles = 0;
+            for (const asset of assetRows.results || []) {
+              try { await env.MEDIA.delete(asset.r2_key); deletedFiles += 1; }
+              catch (error) { console.error("Product asset cleanup failed", { assetId: asset.id, message: String(error?.message || error) }); }
+            }
+            return json({ ok: true, deletedFiles }, 200, origin);
+          }
           if (productId && request.method === "GET" && url.pathname === `/api/products/${productId}/images`) {
             const product = await ownedProduct(env, user.id, productId);
             if (!product) return json({ error: "Produkt sa nenašiel." }, 404, origin);
@@ -732,6 +752,24 @@ export default {
         }
         if (projectMatch) {
           const projectId = projectMatch[1];
+          if (projectId && request.method === "DELETE" && url.pathname === `/api/projects/${projectId}/permanent`) {
+            const project = await ownedProject(env, user.id, projectId);
+            if (!project) return json({ error: "Projekt sa nenašiel." }, 404, origin);
+            const assetRows = await env.DB.prepare(
+              "SELECT id, r2_key FROM assets WHERE project_id = ? AND user_id = ?"
+            ).bind(projectId, user.id).all();
+            await env.DB.batch([
+              env.DB.prepare("UPDATE generations SET project_id = NULL WHERE project_id = ? AND user_id = ?").bind(projectId, user.id),
+              env.DB.prepare("DELETE FROM assets WHERE project_id = ? AND user_id = ?").bind(projectId, user.id),
+              env.DB.prepare("DELETE FROM projects WHERE id = ? AND user_id = ?").bind(projectId, user.id)
+            ]);
+            let deletedFiles = 0;
+            for (const asset of assetRows.results || []) {
+              try { await env.MEDIA.delete(asset.r2_key); deletedFiles += 1; }
+              catch (error) { console.error("Project asset cleanup failed", { assetId: asset.id, message: String(error?.message || error) }); }
+            }
+            return json({ ok: true, deletedFiles, historyPreserved: true }, 200, origin);
+          }
           if (request.method === "GET" && !projectId) {
             const result = await env.DB.prepare(
               "SELECT id, product_id, name, status, prompt, settings_json, export_preset, created_at, updated_at, archived_at FROM projects WHERE user_id = ? ORDER BY updated_at DESC LIMIT 100"
