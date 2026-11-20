@@ -44,7 +44,7 @@ const videoUploadStart = worker.indexOf('if (request.method === "POST" && url.pa
 assert.ok(videoUploadStart >= 0, "Authenticated reference video upload route must exist.");
 const videoUploadRoute = worker.slice(videoUploadStart, worker.indexOf('if (request.method === "GET" && url.pathname === "/api/health")'));
 assert.ok(videoUploadRoute.includes("currentUser(request, env)") && videoUploadRoute.includes("byteplusReady(env)"), "Reference video uploads must require an authenticated account and explicit provider readiness.");
-assert.ok(videoUploadRoute.includes("50 * 1024 * 1024") && videoUploadRoute.includes("new TransformStream") && videoUploadRoute.includes('"ftyp"'), "Reference video uploads must stream to R2 with a hard size cap and MP4/MOV signature validation.");
+assert.ok(worker.includes("const MAX_SOURCE_VIDEO_BYTES = 90 * 1024 * 1024") && videoUploadRoute.includes("MAX_SOURCE_VIDEO_BYTES") && videoUploadRoute.includes("new TransformStream") && videoUploadRoute.includes('"ftyp"') && videoUploadRoute.includes("90 MB"), "Reference video uploads must stream to R2 with the 90 MB hard size cap and MP4/MOV signature validation.");
 const providerInputRoute = worker.slice(worker.indexOf("const providerInputMatch"), videoUploadStart);
 assert.ok(providerInputRoute.includes('request.headers.get("Range")') && providerInputRoute.includes('range: { offset: start, length: responseLength }'), "The private provider video endpoint must stream valid byte ranges directly from R2.");
 assert.ok(providerInputRoute.includes('"Accept-Ranges": "bytes"') && providerInputRoute.includes('headers["Content-Range"] = contentRange') && providerInputRoute.includes('status: responseStatus'), "Provider video range responses must include correct 206/416 metadata.");
