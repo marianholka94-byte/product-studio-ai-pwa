@@ -32,12 +32,18 @@
   document.body.append(loginGate);
   panel.append(openLogin);
   const showLoginGate = (checking = false) => {
+    document.documentElement.classList.add("psai-login-open");
+    document.body.classList.add("psai-login-open");
     loginGate.hidden = false;
     loginLocal.hidden = checking;
     auth.hidden = checking;
     if (checking) setStatus("Overujem tvoje prihlásenie…");
   };
-  const hideLoginGate = () => { loginGate.hidden = true; };
+  const hideLoginGate = () => {
+    loginGate.hidden = true;
+    document.documentElement.classList.remove("psai-login-open");
+    document.body.classList.remove("psai-login-open");
+  };
   loginLocal.addEventListener("click", () => { hideLoginGate(); openLogin.hidden = false; updateCloudLoginButton(); });
   openLogin.addEventListener("click", () => { if (user) return; showLoginGate(false); auth.hidden = false; });
   const style = $("style");
