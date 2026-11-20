@@ -1,5 +1,5 @@
-const CACHE = "product-studio-ai-v78-permanent-delete-20261120";
-const FILES = ["/", "/index.html", "/manifest.webmanifest", "/icon.svg?v=brand-icon-20261120", "/cloud-library.js?v=permanent-delete-controls-20261120", "/app-navigation.js?v=lock-horizontal-touch-20261120", "/i18n.js?v=fix-whitespace-regex-20261120"];
+const CACHE = "product-studio-ai-v79-permanent-delete-english-20261120";
+const FILES = ["/", "/index.html", "/manifest.webmanifest", "/icon.svg?v=brand-icon-20261120", "/cloud-library.js?v=permanent-delete-english-20261120", "/app-navigation.js?v=lock-horizontal-touch-20261120", "/i18n.js?v=permanent-delete-english-20261120"];
 
 self.addEventListener("install", event => event.waitUntil(
   caches.open(CACHE)
