@@ -39,6 +39,16 @@
       max-width:100% !important;
       overflow-x:hidden !important;
       overscroll-behavior-x:none !important;
+      touch-action:pan-y pinch-zoom !important;
+    }
+    html.psai-login-open, body.psai-login-open {
+      overflow:hidden !important;
+      overscroll-behavior:none !important;
+      touch-action:pan-y !important;
+    }
+    .psai-login-gate, .psai-login-card {
+      touch-action:pan-y !important;
+      overscroll-behavior-x:none !important;
     }
     body {
       display:block !important;
