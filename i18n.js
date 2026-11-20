@@ -222,8 +222,13 @@
   let language = "sk";
   const translate = value => {
     const source = String(value ?? "");
+    const leading = source.match(/^\\s*/)?.[0] || "";
+    const trailing = source.match(/\\s*$/)?.[0] || "";
+    const core = source.slice(leading.length, source.length - trailing.length || undefined);
+    if (!core) return source;
     const dict = language === "en" ? dictionaries.en : reverse;
-    if (dict[source]) return dict[source];
+    if (dict[core]) return leading + dict[core] + trailing;
+    // Match labels even when a button's text node includes indentation or trailing spaces.
     // Translate common labels while preserving user-entered values and interpolated data.
     if (language === "en") {
       const patterns = [
@@ -252,7 +257,7 @@
         [/^Úloha: (.+) · Model: (.+) · Stav: (.+)$/, "Task: $1 · Model: $2 · Status: $3"],
         [/^Produkt musí mať aspoň jednu fotografiu\.$/, "The product must have at least one photo."]
       );
-      for (const [pattern,replacement] of patterns) if (pattern.test(source)) return source.replace(pattern,replacement);
+      for (const [pattern,replacement] of patterns) if (pattern.test(core)) return leading + core.replace(pattern,replacement) + trailing;
     }
     return source;
   };
