@@ -20,8 +20,6 @@ import android.widget.TextView;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.graphics.Paint;
-import android.graphics.Path;
 import android.graphics.Typeface;
 import android.os.Handler;
 import android.os.Looper;
@@ -136,7 +134,9 @@ public class MainActivity extends Activity {
             splash.setOrientation(LinearLayout.VERTICAL);
             splash.setGravity(Gravity.CENTER);
             splash.setBackgroundColor(Color.rgb(6, 20, 49));
-            BrandMarkView mark = new BrandMarkView(this);
+            ImageView mark = new ImageView(this);
+            mark.setImageResource(R.drawable.brand_mark);
+            mark.setScaleType(ImageView.ScaleType.FIT_CENTER);
             int markSize = Math.round(190 * getResources().getDisplayMetrics().density);
             splash.addView(mark, new LinearLayout.LayoutParams(markSize, markSize));
             TextView brandTitle = new TextView(this);
@@ -172,30 +172,6 @@ public class MainActivity extends Activity {
             android.util.Log.e("ProductStudioAI", "Startup failed", error);
             message.setText(message.getText() + "\n\n" + (error.getMessage() == null ? "Bez ďalších detailov" : error.getMessage()));
             setContentView(message);
-        }
-    }
-
-    private static final class BrandMarkView extends View {
-        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        BrandMarkView(Activity activity) { super(activity); setLayerType(View.LAYER_TYPE_SOFTWARE, null); }
-        @Override protected void onDraw(android.graphics.Canvas canvas) {
-            super.onDraw(canvas);
-            float d = getResources().getDisplayMetrics().density;
-            float s = Math.min(getWidth(), getHeight()) * 0.88f;
-            float x = (getWidth() - s) / 2f, y = (getHeight() - s) / 2f;
-            float u = s / 10f;
-            paint.setColor(Color.rgb(221,184,95)); paint.setStyle(Paint.Style.STROKE);
-            paint.setStrokeWidth(2.2f*d); paint.setStrokeJoin(Paint.Join.MITER);
-            canvas.drawRect(x+u,y+u,x+9*u,y+9*u,paint);
-            paint.setStyle(Paint.Style.FILL);
-            Path p = new Path();
-            p.moveTo(x+u,y+u); p.lineTo(x+5*u,y+u); p.lineTo(x+3*u,y+2.5f*u); p.close(); canvas.drawPath(p,paint);
-            p.reset(); p.moveTo(x+5.5f*u,y+u); p.lineTo(x+9*u,y+u); p.lineTo(x+7.5f*u,y+2.5f*u); p.lineTo(x+5.5f*u,y+2.5f*u); p.close(); canvas.drawPath(p,paint);
-            p.reset(); p.moveTo(x+3.5f*u,y+4*u); p.lineTo(x+5*u,y+3*u); p.lineTo(x+7*u,y+4.2f*u); p.lineTo(x+5*u,y+5.3f*u); p.close(); canvas.drawPath(p,paint);
-            p.reset(); p.moveTo(x+3.5f*u,y+4*u); p.lineTo(x+5*u,y+5.3f*u); p.lineTo(x+5*u,y+8*u); p.lineTo(x+3.5f*u,y+7*u); p.close(); canvas.drawPath(p,paint);
-            p.reset(); p.moveTo(x+u,y+3.5f*u); p.lineTo(x+2.8f*u,y+4.6f*u); p.lineTo(x+2.8f*u,y+7.3f*u); p.lineTo(x+u,y+8.8f*u); p.close(); canvas.drawPath(p,paint);
-            p.reset(); p.moveTo(x+9*u,y+6*u); p.lineTo(x+6*u,y+7.5f*u); p.lineTo(x+9*u,y+8.8f*u); p.close(); canvas.drawPath(p,paint);
-            p.reset(); p.moveTo(x+u,y+9*u); p.lineTo(x+3*u,y+7.3f*u); p.lineTo(x+7*u,y+7.3f*u); p.lineTo(x+9*u,y+9*u); p.close(); canvas.drawPath(p,paint);
         }
     }
 
