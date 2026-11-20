@@ -404,6 +404,7 @@ export default {
         if (!Number.isFinite(duration) || duration < 2 || duration > 15) return json({ error: "Zdrojové video musí mať 2 až 15 sekúnd." }, 400, origin);
         const maxInputBytes = MAX_SOURCE_VIDEO_BYTES;
         const declaredLength = Number(request.headers.get("Content-Length") || 0);
+        if (!Number.isSafeInteger(declaredLength) || declaredLength <= 0) return json({ error: "Nahrávanie neobsahuje platnú veľkosť súboru. Skús obnoviť stránku." }, 411, origin);
         if (declaredLength > maxInputBytes) return json({ error: "Zdrojové video môže mať najviac 90 MB." }, 413, origin);
         const prior = await env.DB.prepare(
           "SELECT id, content_type, byte_size, duration_seconds FROM generation_input_videos WHERE user_id = ? AND client_upload_id = ? AND expires_at > ? LIMIT 1"
@@ -442,10 +443,20 @@ export default {
           }
         }));
         try {
-          await env.MEDIA.put(r2Key, limitedStream, {
-            httpMetadata: { contentType },
-            customMetadata: { ownerId: user.id, inputVideoId: id }
-          });
+          // R2 requires a known-length stream. The validation TransformStream above
+          // intentionally inspects the MP4 signature, so preserve the request's
+          // exact Content-Length through a FixedLengthStream before writing to R2.
+          const fixedLength = new FixedLengthStream(declaredLength);
+          const [storedObject] = await Promise.all([
+            env.MEDIA.put(r2Key, fixedLength.readable, {
+              httpMetadata: { contentType },
+              customMetadata: { ownerId: user.id, inputVideoId: id }
+            }),
+            limitedStream.pipeTo(fixedLength.writable)
+          ]);
+          if (!storedObject || streamedBytes !== declaredLength || Number(storedObject.size) !== declaredLength) {
+            throw new Error("Veľkosť uloženého videa sa nezhoduje s odoslaným súborom.");
+          }
           if (streamedBytes < 1) throw new Error("Súbor je prázdny.");
           const now = Math.floor(Date.now() / 1000);
           try {
