@@ -234,6 +234,13 @@
     }
     #appBottomNav button.active { background:#29251c !important;color:#e2c47e !important; }
     #appBottomNav button span { display:block !important;font-size:24px !important;line-height:1 !important;margin:0 !important; }
+/* Secondary drawer navigation; persistent bottom bar is preserved. */
+header{position:relative;gap:10px}.psai-menu-trigger{flex:0 0 46px;width:46px!important;height:46px!important;min-height:46px!important;margin:0!important;padding:0!important;border:1px solid #354253!important;border-radius:14px!important;background:#151a22!important;color:#f3f5f8!important;display:grid!important;place-items:center!important;font-size:23px!important}.psai-header-brand{flex:1;min-width:0}
+.psai-drawer-backdrop{position:fixed;inset:0;z-index:10020;background:rgba(0,0,0,.62);opacity:0;visibility:hidden;transition:opacity .2s ease,visibility .2s ease}.psai-drawer-backdrop.open{opacity:1;visibility:visible}
+.psai-side-drawer{position:absolute;inset:0 auto 0 0;width:min(86vw,340px);padding:calc(18px + env(safe-area-inset-top,0px)) 16px calc(18px + env(safe-area-inset-bottom,0px));background:#151b24;border-right:1px solid #354253;box-shadow:16px 0 40px rgba(0,0,0,.35);transform:translateX(-102%);transition:transform .22s ease;overflow-y:auto}.psai-drawer-backdrop.open .psai-side-drawer{transform:translateX(0)}
+.psai-drawer-top{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 4px 20px;border-bottom:1px solid #303b49}.psai-drawer-brand{color:#fff;font-weight:850;font-size:16px;letter-spacing:.8px}.psai-drawer-subtitle{color:#8995a6;font-size:12px;margin-top:5px}
+.psai-drawer-close{width:40px!important;min-height:40px!important;height:40px!important;margin:0!important;padding:0!important;background:#252e3a!important;color:#fff!important;font-size:22px!important}.psai-drawer-label{margin:22px 8px 8px;color:#8995a6;font-size:11px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase}
+.psai-drawer-link{width:100%!important;min-height:52px!important;margin:4px 0!important;padding:10px 12px!important;display:flex!important;align-items:center!important;justify-content:flex-start!important;gap:12px!important;text-align:left!important;background:transparent!important;color:#dce3ed!important;border:1px solid transparent!important;border-radius:13px!important;font-size:14px!important}.psai-drawer-link .psai-drawer-icon{width:26px;text-align:center;font-size:19px}.psai-drawer-link.active{background:#29251c!important;color:#e2c47e!important;border-color:#5b4b2b!important}.psai-drawer-hint{margin:20px 8px 0;color:#8995a6;font-size:12px;line-height:1.5}@media(prefers-reduced-motion:reduce){.psai-drawer-backdrop,.psai-side-drawer{transition:none}}
     html,body { overflow-y:auto !important;scrollbar-width:auto;scrollbar-color:#8995a6 #151a22; }
     *::-webkit-scrollbar { width:8px; }
     *::-webkit-scrollbar-thumb { background:#8995a6;border-radius:10px; }
@@ -279,6 +286,35 @@
     });
   });
   document.body.appendChild(nav);
+
+  // Secondary side navigation; keep the bottom navigation bar available.
+  const headerBrand=document.createElement('div');headerBrand.className='psai-header-brand';
+  if(header){
+    const brandContent=header.firstElementChild;if(brandContent)headerBrand.append(brandContent);
+    const menuButton=document.createElement('button');menuButton.type='button';menuButton.className='psai-menu-trigger';
+    menuButton.setAttribute('aria-label','Otvoriť bočný panel');menuButton.setAttribute('aria-expanded','false');menuButton.textContent='☰';
+    header.prepend(menuButton);header.insertBefore(headerBrand,menuButton.nextSibling);
+    const backdrop=document.createElement('div');backdrop.className='psai-drawer-backdrop';backdrop.hidden=true;
+    backdrop.innerHTML='<aside class="psai-side-drawer" role="dialog" aria-modal="true" aria-label="Hlavná ponuka"><div class="psai-drawer-top"><div><div class="psai-drawer-brand">PRODUCT STUDIO AI</div><div class="psai-drawer-subtitle">Pracovný priestor</div></div><button type="button" class="psai-drawer-close" aria-label="Zavrieť ponuku">×</button></div><div class="psai-drawer-label">Navigácia</div><button class="psai-drawer-link active" data-screen="screenStudio"><span class="psai-drawer-icon">✦</span>Štúdio</button><button class="psai-drawer-link" data-screen="screenProjects"><span class="psai-drawer-icon">▣</span>Moje projekty</button><button class="psai-drawer-link" data-screen="screenSettings"><span class="psai-drawer-icon">⚙</span>Účet a nastavenia</button><div class="psai-drawer-label">Knižnica</div><button class="psai-drawer-link" data-action="cloud-library"><span class="psai-drawer-icon">☁</span>Cloudová knižnica</button><button class="psai-drawer-link" data-action="history"><span class="psai-drawer-icon">◷</span>História generovaní</button><p class="psai-drawer-hint">Spodná navigácia zostáva dostupná na každej obrazovke.</p></aside>';
+    document.body.appendChild(backdrop);
+    const closeDrawer=()=>{backdrop.classList.remove('open');menuButton.setAttribute('aria-expanded','false');setTimeout(()=>{if(!backdrop.classList.contains('open'))backdrop.hidden=true;},220);};
+    menuButton.addEventListener('click',()=>{backdrop.hidden=false;requestAnimationFrame(()=>backdrop.classList.add('open'));menuButton.setAttribute('aria-expanded','true');});
+    backdrop.querySelector('.psai-drawer-close').addEventListener('click',closeDrawer);
+    backdrop.addEventListener('click',event=>{if(event.target===backdrop)closeDrawer();});
+    document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!backdrop.hidden)closeDrawer();});
+    backdrop.querySelectorAll('[data-screen]').forEach(button=>button.addEventListener('click',()=>{
+      const target=button.dataset.screen;nav.querySelector('[data-screen="'+target+'"]')?.click();
+      backdrop.querySelectorAll('[data-screen]').forEach(item=>item.classList.toggle('active',item===button));closeDrawer();
+    }));
+    backdrop.querySelector('[data-action="cloud-library"]').addEventListener('click',()=>{
+      nav.querySelector('[data-screen="screenProjects"]')?.click();closeDrawer();
+      setTimeout(()=>document.getElementById('commercialCloudPanel')?.scrollIntoView({behavior:'smooth',block:'start'}),240);
+    });
+    backdrop.querySelector('[data-action="history"]').addEventListener('click',()=>{
+      nav.querySelector('[data-screen="screenProjects"]')?.click();closeDrawer();
+      setTimeout(()=>document.getElementById('history')?.scrollIntoView({behavior:'smooth',block:'start'}),240);
+    });
+  }
 
   // Local project library backed by IndexedDB (project metadata + original image files).
   const projectDbName='product-studio-ai-projects', projectStoreName='projects';
