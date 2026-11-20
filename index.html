@@ -674,7 +674,7 @@ async function pollTask(id, outputId='videoWrap', statusId='status'){
 }
 
 // Voliteľné zdrojové video: súkromné nahratie do R2 a časovo obmedzený odkaz pre ModelArk.
-let selectedSourceVideo=null, selectedSourceVideoDuration=null, selectedSourceVideoUploadId=null, selectedSourceVideoContentType=null, selectedSourceVideoUploaded=null, sourceVideoObjectUrl=null;
+let selectedSourceVideo=null, selectedSourceVideoDuration=null, selectedSourceVideoUploadId=null, selectedSourceVideoContentType=null, selectedSourceVideoUploaded=null, selectedSourceVideoUploading=false, sourceVideoObjectUrl=null;
 const sourceVideo=$('sourceVideo'), sourceVideoPreview=$('sourceVideoPreview');
 function clearSelectedSourceVideo(message='Môžeš pridať krátke video produktu spolu s fotografiami.'){
  selectedSourceVideo=null;selectedSourceVideoDuration=null;selectedSourceVideoUploadId=null;selectedSourceVideoContentType=null;selectedSourceVideoUploaded=null;sourceVideo.value='';
@@ -688,6 +688,7 @@ sourceVideo.addEventListener('change',()=>{
  sourceVideoPreview.pause();sourceVideoPreview.removeAttribute('src');sourceVideoPreview.load();
  if(sourceVideoObjectUrl){URL.revokeObjectURL(sourceVideoObjectUrl);sourceVideoObjectUrl=null;}
  selectedSourceVideo=file;selectedSourceVideoDuration=null;selectedSourceVideoUploadId=file?crypto.randomUUID():null;
+ const testUploadButton=$('sourceVideoTestUpload');if(testUploadButton){testUploadButton.disabled=true;testUploadButton.textContent='Otestovať nahratie videa do cloudu';}
  selectedSourceVideoContentType=file&&['video/mp4','video/quicktime'].includes(file.type)?file.type:file?.name?.toLowerCase().endsWith('.mov')?'video/quicktime':file?.name?.toLowerCase().endsWith('.mp4')?'video/mp4':null;
  if(!file){clearSelectedSourceVideo();return;}
  if(file.size>MAX_SOURCE_VIDEO_BYTES){clearSelectedSourceVideo('Video je väčšie než 90 MB. Vyber menší súbor.');$('sourceVideoInfo').className='status err';return;}
@@ -715,11 +716,13 @@ sourceVideo.addEventListener('change',()=>{
 async function ensureSelectedSourceVideoUploaded(){
  if(!selectedSourceVideo||!selectedSourceVideoDuration||!selectedSourceVideoUploadId)throw new Error('Vyber platné zdrojové video s dĺžkou 2 až 15 sekúnd.');
  if(selectedSourceVideoUploaded?.uploadId===selectedSourceVideoUploadId)return selectedSourceVideoUploaded;
+ if(selectedSourceVideoUploading)throw new Error('Nahrávanie zdrojového videa už prebieha. Počkaj na jeho dokončenie.');
  const bridge=window.PSAICloudLibrary;
  if(!bridge?.upload)throw new Error('Najskôr sa prihlás do Cloudovej knižnice. Nahrávanie potrebuje overený účet.');
  const uploadId=selectedSourceVideoUploadId;
  const progress=$('sourceVideoUploadProgress'),progressLabel=$('sourceVideoUploadProgressLabel');
  progress.value=0;progress.hidden=false;progressLabel.hidden=false;
+ selectedSourceVideoUploading=true;sourceVideo.disabled=true;$('sourceVideoTestUpload').disabled=true;
  progressLabel.textContent='Nahrávam zdrojové video: 0%';
  try{
   const uploaded=await bridge.upload('/api/generation-input-video',selectedSourceVideo,{
@@ -736,6 +739,9 @@ async function ensureSelectedSourceVideoUploaded(){
  }catch(error){
   progressLabel.textContent='Nahrávanie sa nepodarilo dokončiť. Pôvodný súbor zostal vybraný; môžeš bezpečne skúsiť znova.';
   throw error;
+ }finally{
+  selectedSourceVideoUploading=false;sourceVideo.disabled=false;
+  const testButton=$('sourceVideoTestUpload');if(testButton)testButton.disabled=!!selectedSourceVideoUploaded||!selectedSourceVideoDuration;
  }
 }
 $('sourceVideoTestUpload').addEventListener('click',async()=>{
