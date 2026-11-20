@@ -198,6 +198,7 @@ const MAX_PRODUCT_IMAGES = 9;
       const requestEpoch = accountEpoch;
       if (!requestToken || !requestAccountId) return reject(new Error("Najskôr sa prihlás do cloudovej knižnice."));
       const xhr = new XMLHttpRequest();
+      xhr.timeout = 15 * 60 * 1000;
       xhr.open("POST", API + path, true);
       xhr.setRequestHeader("Authorization", "Bearer " + requestToken);
       for (const [name, value] of Object.entries(headers)) xhr.setRequestHeader(name, value);
@@ -226,6 +227,7 @@ const MAX_PRODUCT_IMAGES = 9;
       };
       xhr.onerror = () => reject(new Error("Spojenie sa prerušilo počas nahrávania. Pôvodný súbor zostal zachovaný; môžeš bezpečne skúsiť pokračovať."));
       xhr.onabort = () => reject(new Error("Nahrávanie bolo prerušené. Pôvodný súbor zostal zachovaný; môžeš ho nahrať znova."));
+      xhr.ontimeout = () => reject(new Error("Nahrávanie prekročilo bezpečný časový limit 15 minút. Skontroluj pripojenie a skús to znova; pôvodný súbor zostal zachovaný."));
       xhr.send(body);
     });
   }
