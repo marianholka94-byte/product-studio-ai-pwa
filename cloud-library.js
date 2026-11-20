@@ -191,6 +191,44 @@ const MAX_PRODUCT_IMAGES = 9;
     }
     return data;
   }
+  function uploadWithProgress(path, body, headers = {}, onProgress = () => {}) {
+    return new Promise((resolve, reject) => {
+      const requestToken = token;
+      const requestAccountId = user?.id;
+      const requestEpoch = accountEpoch;
+      if (!requestToken || !requestAccountId) return reject(new Error("Najskôr sa prihlás do cloudovej knižnice."));
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", API + path, true);
+      xhr.setRequestHeader("Authorization", "Bearer " + requestToken);
+      for (const [name, value] of Object.entries(headers)) xhr.setRequestHeader(name, value);
+      xhr.upload.addEventListener("progress", event => {
+        if (!event.lengthComputable) return;
+        try { onProgress({ loaded: event.loaded, total: event.total, percent: Math.min(100, Math.round(event.loaded / event.total * 100)) }); } catch {}
+      });
+      xhr.onload = () => {
+        let data = null;
+        try { data = xhr.responseText ? JSON.parse(xhr.responseText) : null; } catch {}
+        if (xhr.status === 401 && token === requestToken) {
+          token = ""; user = null; sessionStorage.removeItem(TOKEN_KEY);
+          resetAccountWorkspace(); renderAuth(); notifyCloudAccountChange();
+        }
+        if (xhr.status < 200 || xhr.status >= 300) {
+          const error = new Error(data?.error || "Nahrávanie zlyhalo (" + xhr.status + ").");
+          error.status = xhr.status;
+          reject(error);
+          return;
+        }
+        if (!token || token !== requestToken || accountEpoch !== requestEpoch || user?.id !== requestAccountId) {
+          reject(new Error("Cloudový účet sa počas nahrávania zmenil. Súbor nebol priradený k inému účtu."));
+          return;
+        }
+        resolve(data);
+      };
+      xhr.onerror = () => reject(new Error("Spojenie sa prerušilo počas nahrávania. Pôvodný súbor zostal zachovaný; môžeš bezpečne skúsiť pokračovať."));
+      xhr.onabort = () => reject(new Error("Nahrávanie bolo prerušené. Pôvodný súbor zostal zachovaný; môžeš ho nahrať znova."));
+      xhr.send(body);
+    });
+  }
   function renderAuth() {
     auth.hidden = false;
     workspace.hidden = true;
@@ -660,6 +698,9 @@ const MAX_PRODUCT_IMAGES = 9;
       }
       return result;
     },
+    async upload(path, body, headers = {}, onProgress = () => {}) {
+      return uploadWithProgress(path, body, headers, onProgress);
+    },
     async download(path) {
       const accountId = user?.id;
       const requestEpoch = accountEpoch;
@@ -685,7 +726,7 @@ const MAX_PRODUCT_IMAGES = 9;
       if (!user?.id || !record) return null;
       return record.cloudSyncByAccount?.[user.id] || (record.cloudSync?.accountId === user.id ? record.cloudSync : null);
     },
-    async saveLocalProject(record, onProgress = () => {}) {
+    async saveLocalProject(record, onProgress = () => {}, onTransferProgress = () => {}) {
       if (!token || !user?.id) throw new Error("Najskôr sa prihlás do cloudovej knižnice.");
       const accountId = user.id;
       const startEpoch = accountEpoch;
@@ -719,6 +760,13 @@ const MAX_PRODUCT_IMAGES = 9;
         if (!token || accountEpoch !== startEpoch || user?.id !== accountId) return Promise.reject(new Error("Cloudový účet sa počas ukladania zmenil. Prihlás sa späť do pôvodného účtu a pokračuj v ukladaní."));
         return api(path, options).then(data => {
           if (!token || accountEpoch !== startEpoch || user?.id !== accountId) throw new Error("Cloudový účet sa počas ukladania zmenil. Prihlás sa späť do pôvodného účtu a pokračuj v ukladaní.");
+          return data;
+        });
+      };
+      const accountUpload = (path, blob, contentType, onUploadProgress) => {
+        if (!token || accountEpoch !== startEpoch || user?.id !== accountId) return Promise.reject(new Error("Cloudový účet sa počas ukladania zmenil. Prihlás sa späť do pôvodného účtu."));
+        return uploadWithProgress(path, blob, { "Content-Type": contentType }, onUploadProgress).then(data => {
+          if (!token || accountEpoch !== startEpoch || user?.id !== accountId) throw new Error("Cloudový účet sa počas nahrávania zmenil. Súbor nebol priradený k inému účtu.");
           return data;
         });
       };
@@ -790,8 +838,8 @@ const MAX_PRODUCT_IMAGES = 9;
       await onProgress({ ...sync });
       for (let index = uploaded; index < images.length; index++) {
         const image = images[index];
-        await accountApi("/api/products/" + encodeURIComponent(sync.productId) + "/images", {
-          method: "POST", headers: { "Content-Type": image.type }, body: image.blob
+        await accountUpload("/api/products/" + encodeURIComponent(sync.productId) + "/images", image.blob, image.type, progress => {
+          try { onTransferProgress({ imageIndex: index + 1, imageCount: images.length, ...progress }); } catch {}
         });
         sync.uploadedImages = index + 1;
         await onProgress({ ...sync });
