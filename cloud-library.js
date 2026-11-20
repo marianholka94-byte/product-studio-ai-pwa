@@ -272,7 +272,9 @@ const MAX_PRODUCT_IMAGES = 9;
         const requestEpoch = accountEpoch;
         uploadButton.disabled = true;
         try {
-          await api("/api/products/" + encodeURIComponent(product.id) + "/images", { method: "POST", headers: { "Content-Type": file.type }, body: file });
+          await uploadWithProgress("/api/products/" + encodeURIComponent(product.id) + "/images", file, { "Content-Type": file.type }, progress => {
+            if (requestEpoch === accountEpoch && accountId === user?.id) setStatus("Nahrávam fotografiu produktu: " + progress.percent + "%");
+          });
           if (requestEpoch !== accountEpoch || accountId !== user?.id) return;
           setStatus("Fotografia bola bezpečne uložená.");
           await refresh();
