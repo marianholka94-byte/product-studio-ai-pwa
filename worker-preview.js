@@ -324,17 +324,57 @@ export default {
         if (!input) return new Response("Not found", { status: 404, headers: { "Cache-Control": "no-store" } });
         const expectedExtension = input.content_type === "video/quicktime" ? "mov" : "mp4";
         if (providerInputMatch[2].toLowerCase() !== expectedExtension) return new Response("Not found", { status: 404, headers: { "Cache-Control": "no-store" } });
-        const object = await env.MEDIA.get(input.r2_key);
-        if (!object || Number(object.size) !== Number(input.byte_size)) return new Response("Not found", { status: 404, headers: { "Cache-Control": "no-store" } });
-        return new Response(request.method === "HEAD" ? null : object.body, {
-          status: 200,
-          headers: {
-            "Content-Type": input.content_type,
-            "Content-Length": String(object.size),
-            "Content-Disposition": 'inline; filename="reference-video.' + expectedExtension + '"',
-            "Cache-Control": "private, no-store, max-age=0",
-            "X-Content-Type-Options": "nosniff",
+        const totalSize = Number(input.byte_size);
+        if (!Number.isSafeInteger(totalSize) || totalSize <= 0) return new Response("Not found", { status: 404, headers: { "Cache-Control": "no-store" } });
+        const rangeHeader = request.headers.get("Range");
+        let object;
+        let responseStatus = 200;
+        let responseLength = totalSize;
+        let contentRange = "";
+        if (rangeHeader) {
+          // BytePlus may request only part of a reference video. Support one
+          // RFC 7233 byte range and reject malformed/multipart ranges safely.
+          const match = /^bytes=(\\d*)-(\\d*)$/i.exec(rangeHeader.trim());
+          if (!match || (!match[1] && !match[2])) {
+            return new Response(null, { status: 416, headers: { "Accept-Ranges": "bytes", "Content-Range": "bytes */" + totalSize, "Cache-Control": "no-store" } });
           }
+          let start;
+          let end;
+          if (!match[1]) {
+            const suffixLength = Number(match[2]);
+            if (!Number.isSafeInteger(suffixLength) || suffixLength <= 0) {
+              return new Response(null, { status: 416, headers: { "Accept-Ranges": "bytes", "Content-Range": "bytes */" + totalSize, "Cache-Control": "no-store" } });
+            }
+            start = Math.max(totalSize - suffixLength, 0);
+            end = totalSize - 1;
+          } else {
+            start = Number(match[1]);
+            end = match[2] ? Number(match[2]) : totalSize - 1;
+            if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start < 0 || start >= totalSize || end < start) {
+              return new Response(null, { status: 416, headers: { "Accept-Ranges": "bytes", "Content-Range": "bytes */" + totalSize, "Cache-Control": "no-store" } });
+            }
+            end = Math.min(end, totalSize - 1);
+          }
+          responseLength = end - start + 1;
+          object = await env.MEDIA.get(input.r2_key, { range: { offset: start, length: responseLength } });
+          responseStatus = 206;
+          contentRange = "bytes " + start + "-" + end + "/" + totalSize;
+        } else {
+          object = await env.MEDIA.get(input.r2_key);
+        }
+        if (!object || Number(object.size) !== totalSize) return new Response("Not found", { status: 404, headers: { "Cache-Control": "no-store" } });
+        const headers = {
+          "Content-Type": input.content_type,
+          "Content-Length": String(responseLength),
+          "Accept-Ranges": "bytes",
+          "Content-Disposition": 'inline; filename="reference-video.' + expectedExtension + '"',
+          "Cache-Control": "private, no-store, max-age=0",
+          "X-Content-Type-Options": "nosniff",
+        };
+        if (contentRange) headers["Content-Range"] = contentRange;
+        return new Response(request.method === "HEAD" ? null : object.body, {
+          status: responseStatus,
+          headers
         });
       }
 
