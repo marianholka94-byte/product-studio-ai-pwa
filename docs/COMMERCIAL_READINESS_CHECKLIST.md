@@ -22,7 +22,7 @@ This document tracks readiness work on the isolated commercial preview. It is no
 - [x] Cloud library ignores stale refresh/save responses after account changes, prevents an old 401 response from clearing a newer session, serializes sign-in attempts, and revokes temporary image preview URLs.
 - [x] Cloud uploads capture the initiating account before asynchronous image hashing; an account switch during hashing stops the upload instead of silently saving into the newly signed-in account. Overlapping refreshes are sequenced and temporary previews are released on refresh.
 - [x] Commercial preview generation API requires a D1 customer session, stores generation requests per owner, prevents duplicate submissions with a per-account idempotency key and payload fingerprint, and enforces a three-generation UTC-day preview quota at the database layer.
-- [x] Generation status and download endpoints resolve the local generation ID through the authenticated owner; provider task IDs are never accepted as authorization. A separate `RUNWAY_API_KEY_PREVIEW` repository secret can configure the isolated preview Worker without reusing production credentials.
+- [x] Generation status and download endpoints resolve the local generation ID through the authenticated owner; provider task IDs are never accepted as authorization. A dedicated `BYTEPLUS_MODELARK_API_KEY_PREVIEW` repository secret can configure the isolated preview Worker without reusing production credentials. Paid generation remains disabled unless `BYTEPLUS_MODELARK_ENABLED=true` is explicitly configured separately.
 - [x] Persistent generation history is available through an authenticated, owner-scoped API with a bounded result count; the Studio UI loads the signed-in account’s latest 20 jobs and refreshes after generation.
 - [x] Completed history entries can download their MP4 through the authenticated owner-scoped endpoint; queued or processing entries can resume polling the existing task after a page reload without submitting a duplicate generation.
 - [x] The live two-account acceptance script checks generation-history isolation in addition to product, project, private media, and session isolation.
@@ -57,16 +57,20 @@ This document tracks readiness work on the isolated commercial preview. It is no
 
 Configure these under **Repository → Settings → Secrets and variables → Actions**. Never commit their values or paste them into chat.
 
-- `RUNWAY_API_KEY_PREVIEW`: dedicated Runway API key for the isolated preview Worker.
+- `BYTEPLUS_MODELARK_API_KEY_PREVIEW`: dedicated BytePlus ModelArk API key for the isolated preview Worker. Paid generation is not enabled by supplying this key alone.
+- `APP_OWNER_EMAIL_PREVIEW`: owner email used only for the preview-only manual credit-grant endpoint; configured as a Cloudflare Worker secret, never as a committed Wrangler variable.
 - `PREVIEW_ACCOUNT_A_EMAIL` and `PREVIEW_ACCOUNT_A_PASSWORD`: credentials for test account A.
 - `PREVIEW_ACCOUNT_B_EMAIL` and `PREVIEW_ACCOUNT_B_PASSWORD`: credentials for test account B.
 
-The deploy workflow automatically configures the preview provider key and runs the live two-account tenant-isolation acceptance script when all five secrets are present. A normal push to `feature/commercial-worker-preview` triggers the deployment workflow; the workflow remains isolated from production.
+The deploy workflow configures the preview owner email and BytePlus provider key only when their respective GitHub Actions secrets are supplied. The BytePlus key alone does not enable paid generation. The live two-account tenant-isolation acceptance script runs when all four account-test secrets are present. A normal push to `feature/commercial-worker-preview` triggers the deployment workflow; the workflow remains isolated from production.
 
 ## Commercial model
 
-- [x] Credit ledger design documented: account-scoped integer units, append-only audit ledger, idempotent reservation/capture/release, ambiguous-provider reconciliation, and rollout gates. Design only; no deductions or payment integration are enabled.
-- [x] Preview D1 credit-ledger foundation migration added: account balances, immutable ledger entries, generation reservations, owner-scoped idempotency constraints, and non-negative integer checks. No accounts are funded and no generation route reads or mutates these tables; deployment health reports the schema as disabled until transaction logic and tests are complete.
+- [x] Preview credit foundation implemented: account-scoped integer balances, append-only ledger, idempotent owner-only manual grants, reservation records, and server-side reserve/settle helper routines.
+- [x] Deployment health verifies credit tables and append-only protection. This reports schema readiness, not that customer billing is active.
+- [x] BytePlus generation remains provider-billed; it deliberately does not reserve or debit the internal wallet (estimatedCredits = 0).
+- [ ] Connect internal wallet reservations and settlement to a future credit-priced generation provider only after the pricing and provider billing model are approved.
+- [ ] Implement payment checkout, signature-verified payment webhooks, refunds, invoices, and subscription lifecycle before accepting customer payments.
 
 - [ ] Define free and paid plan limits, credit pricing, and generation cost assumptions.
 - [ ] Implement server-authoritative credit reservation, settlement, and refund flows.
