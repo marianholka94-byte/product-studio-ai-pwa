@@ -232,10 +232,10 @@ assert.ok(cloud.includes("const remoteProduct = await accountApi(\"/api/products
 assert.ok(nav.includes("latest.cloudSyncByAccount={...(latest.cloudSyncByAccount||{}),[sync.accountId]:sync}"), "Cloud save checkpoints must be persisted under their owning account.");
 assert.ok(nav.includes("[result.accountId]:result"), "Completed cloud saves must remain associated with the account that owns them.");
 assert.ok(nav.includes("psai-cloud-account-change"), "Switching cloud accounts must refresh local project cloud-status labels.");
-assert.ok(html.includes("cloud-library.js?v=upload-engine-3-20261120c") && html.includes("app-navigation.js?v=upload-engine-3-20261120c"), "PWA HTML must request the account-scoped cloud-sync asset versions.");
+assert.ok(html.includes("cloud-library.js?v=upload-engine-3-20261120c") && /app-navigation\\.js\\?v=always-visible-bottom-nav-20261120/.test(html), "PWA HTML must request the account-scoped cloud-sync and persistent-navigation asset versions.");
 assert.ok(html.includes("registration.update()") && html.includes("navigator.serviceWorker.addEventListener('controllerchange'") && html.includes("window.location.reload()"), "Installed PWA clients must check for updates and reload once when a new service worker takes control.");
-assert.ok(serviceWorker.includes("product-studio-ai-v59-video-upload-test-20261120"), "PWA service worker cache must be versioned for the account-scoped cloud-sync release.");
-assert.ok(serviceWorker.includes("/cloud-library.js?v=upload-engine-3-20261120c") && serviceWorker.includes("/app-navigation.js?v=upload-engine-3-20261120c"), "Offline precache must include the exact project-conflict-recovery asset URLs.");
+assert.ok(serviceWorker.includes("product-studio-ai-v60-always-visible-bottom-nav-20261120"), "PWA service worker cache must be versioned for the persistent-navigation release.");
+assert.ok(serviceWorker.includes("/cloud-library.js?v=upload-engine-3-20261120c") && serviceWorker.includes("/app-navigation.js?v=always-visible-bottom-nav-20261120"), "Offline precache must include the exact project-conflict-recovery asset URLs.");
 assert.ok(serviceWorker.includes('url.pathname.startsWith("/api/")') && !serviceWorker.includes("cache.put(event.request"), "The PWA service worker must never cache authenticated API responses.");
 assert.ok(serviceWorker.includes('request.mode === "navigate"') && serviceWorker.includes("cache.put(\"/index.html\""), "The PWA service worker must refresh the app shell and keep an offline navigation fallback.");
 assert.ok(worker.includes("const expectedUpdatedAt = body.expectedUpdatedAt"), "Cloud project edits must accept the version the user originally opened.");
