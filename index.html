@@ -715,10 +715,13 @@ sourceVideo.addEventListener('change',()=>{
 });
 async function ensureSelectedSourceVideoUploaded(){
  if(!selectedSourceVideo||!selectedSourceVideoDuration||!selectedSourceVideoUploadId)throw new Error('Vyber platné zdrojové video s dĺžkou 2 až 15 sekúnd.');
- if(selectedSourceVideoUploaded?.uploadId===selectedSourceVideoUploadId)return selectedSourceVideoUploaded;
  if(selectedSourceVideoUploading)throw new Error('Nahrávanie zdrojového videa už prebieha. Počkaj na jeho dokončenie.');
  const bridge=window.PSAICloudLibrary;
- if(!bridge?.upload)throw new Error('Najskôr sa prihlás do Cloudovej knižnice. Nahrávanie potrebuje overený účet.');
+ if(!bridge?.upload||!bridge?.getCurrentUser)throw new Error('Najskôr sa prihlás do Cloudovej knižnice. Nahrávanie potrebuje overený účet.');
+ const account=bridge.getCurrentUser();
+ if(!account?.id)throw new Error('Cloudový účet už nie je prihlásený. Prihlás sa a skús to znova.');
+ if(selectedSourceVideoUploaded?.uploadId===selectedSourceVideoUploadId&&selectedSourceVideoUploaded.accountId===account.id)return selectedSourceVideoUploaded;
+ if(selectedSourceVideoUploaded?.accountId!==account.id)selectedSourceVideoUploaded=null;
  const uploadId=selectedSourceVideoUploadId;
  const progress=$('sourceVideoUploadProgress'),progressLabel=$('sourceVideoUploadProgressLabel');
  progress.value=0;progress.hidden=false;progressLabel.hidden=false;
@@ -732,7 +735,7 @@ async function ensureSelectedSourceVideoUploaded(){
    progressLabel.textContent='Nahrávam zdrojové video: '+value.percent+'% ('+(value.loaded/1024/1024).toFixed(1)+' / '+(value.total/1024/1024).toFixed(1)+' MB)';
   });
   if(selectedSourceVideoUploadId!==uploadId)throw new Error('Výber videa sa počas nahrávania zmenil. Výsledok nebol priradený k novému súboru.');
-  selectedSourceVideoUploaded={uploadId,videoId:uploaded.videoId,byteSize:uploaded.byteSize};
+  selectedSourceVideoUploaded={uploadId,accountId:account.id,videoId:uploaded.videoId,byteSize:uploaded.byteSize};
   progress.value=100;
   progressLabel.textContent='Upload dokončený: '+(uploaded.byteSize/1024/1024).toFixed(1)+' MB bezpečne uložených v cloude.';
   return selectedSourceVideoUploaded;
