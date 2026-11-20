@@ -255,7 +255,7 @@ assert.ok(html.includes("pending.units!==units||pending.note!==note"), "A pendin
 assert.ok(worker.includes("reference_type, reference_id, note, created_at FROM credit_ledger"), "Credit wallet history must include the source reference and administrator note.");
 assert.ok(html.includes("if(entry.note){const note=document.createElement('small')"), "Credit wallet history must render ledger notes as text, not HTML.");
 assert.ok(html.includes("PSAICloudLibrary.request('/api/credits/admin-grant'") && html.includes("wallet.isAdmin"), "Only an owner account identified by the server may see and invoke manual preview credit grants.");
-assert.ok(!html.includes("Kreditový systém je odložený; žiadne kredity sa neúčtujú."), "The account overview must not claim that credits are disabled while generation billing is active.");
+assert.ok(html.includes("TESTOVACIE KREDITY") && html.includes("Testovacia kreditová peňaženka") && html.includes("Testovacie kredity zatiaľ nie sú prepojené s generovaním"), "The account overview must clearly label preview credits as test-only and not connected to generation.");
 assert.ok(!/zákazníck(?:y|eho) účet|komerčný generátor/i.test(html + cloud), "The daily workspace UI must not expose retired customer/commercial wording.");
 const androidWrapper = readFileSync("android/app/src/main/java/com/marianholka/productstudioai/MainActivity.java", "utf8");
 assert.ok(androidWrapper.includes("webView.saveState(outState)") && androidWrapper.includes("webView.restoreState(savedInstanceState)"), "Android WebView must preserve page state across Activity recreation instead of always restarting the app.");
