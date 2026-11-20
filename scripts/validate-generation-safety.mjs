@@ -49,6 +49,8 @@ assert.match(inputMigration, /byte_size INTEGER NOT NULL CHECK \(byte_size BETWE
 assert.match(inputLimitMigration, /byte_size INTEGER NOT NULL CHECK \(byte_size BETWEEN 12 AND 94371840\)/);
 assert.match(inputLimitMigration, /INSERT INTO generation_input_videos_new[\s\S]*?FROM generation_input_videos/);
 assert.match(inputLimitMigration, /ALTER TABLE generation_input_videos_new RENAME TO generation_input_videos/);
+assert.match(inputLimitMigration, /trg_generation_input_videos_daily_limit/);
+assert.match(inputLimitMigration, /generation input video daily limit reached/);
 assert.ok(worker.includes("const MAX_SOURCE_VIDEO_BYTES = 90 * 1024 * 1024") && videoUploadRoute.includes("MAX_SOURCE_VIDEO_BYTES") && videoUploadRoute.includes("new TransformStream") && videoUploadRoute.includes('"ftyp"') && videoUploadRoute.includes("90 MB"), "Reference video uploads must stream to R2 with the 90 MB hard size cap and MP4/MOV signature validation.");
 assert.ok(videoUploadRoute.includes('throw new Error("Zdrojové video môže mať najviac 90 MB.")'), "The streamed source video byte counter must report the same 90 MB limit as the upload header check.");
 const providerInputRoute = worker.slice(worker.indexOf("const providerInputMatch"), videoUploadStart);
