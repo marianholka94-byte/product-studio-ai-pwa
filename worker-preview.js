@@ -395,7 +395,7 @@ export default {
       if (request.method === "POST" && url.pathname === "/api/generation-input-video") {
         const user = await currentUser(request, env);
         if (!user) return json({ error: "Na nahratie zdrojového videa sa najskôr prihlás." }, 401, origin);
-        if (!byteplusReady(env)) return json({ error: "Seedance API zatiaľ nie je aktivované. Nahrávanie pre platené generovanie zostáva vypnuté." }, 503, origin);
+        // Private upload testing is safe without enabling paid generation; /api/generate remains separately gated.
         const contentType = String(request.headers.get("Content-Type") || "").split(";")[0].trim().toLowerCase();
         if (!["video/mp4", "video/quicktime"].includes(contentType)) return json({ error: "Použi video vo formáte MP4 alebo MOV." }, 415, origin);
         const uploadId = String(request.headers.get("X-Upload-Id") || "");
@@ -448,9 +448,21 @@ export default {
           });
           if (streamedBytes < 1) throw new Error("Súbor je prázdny.");
           const now = Math.floor(Date.now() / 1000);
-          await env.DB.prepare(
-            "INSERT INTO generation_input_videos (id, user_id, client_upload_id, r2_key, content_type, byte_size, duration_seconds, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
-          ).bind(id, user.id, uploadId, r2Key, contentType, streamedBytes, duration, now, now + 7 * 24 * 60 * 60).run();
+          try {
+            await env.DB.prepare(
+              "INSERT INTO generation_input_videos (id, user_id, client_upload_id, r2_key, content_type, byte_size, duration_seconds, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            ).bind(id, user.id, uploadId, r2Key, contentType, streamedBytes, duration, now, now + 7 * 24 * 60 * 60).run();
+          } catch (insertError) {
+            const raced = await env.DB.prepare(
+              "SELECT id, content_type, byte_size, duration_seconds FROM generation_input_videos WHERE user_id = ? AND client_upload_id = ? AND expires_at > ? LIMIT 1"
+            ).bind(user.id, uploadId, now).first();
+            if (!raced) throw insertError;
+            await env.MEDIA.delete(r2Key).catch(() => {});
+            if (raced.content_type !== contentType || Number(raced.duration_seconds) !== duration || Number(raced.byte_size) !== streamedBytes) {
+              return json({ error: "Identifikátor nahrávania už bol použitý pre iné video." }, 409, origin);
+            }
+            return json({ videoId: raced.id, byteSize: Number(raced.byte_size), replayed: true }, 200, origin);
+          }
           return json({ videoId: id, byteSize: streamedBytes, replayed: false }, 201, origin);
         } catch (error) {
           await env.MEDIA.delete(r2Key).catch(() => {});
