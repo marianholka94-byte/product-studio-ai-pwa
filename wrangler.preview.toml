@@ -4,7 +4,6 @@ compatibility_date = "2026-11-19"
 workers_dev = true
 
 [vars]
-APP_OWNER_EMAIL = "18laky81@gmail.com"
 
 [[d1_databases]]
 binding = "DB"
