@@ -282,6 +282,16 @@
   const init = () => {
     addSettings();
     renderLanguage();
+    // Delegated handler also works when app-navigation.js creates the Settings screen later.
+    document.addEventListener("change",event => {
+      if (event.target?.id !== "psaiLanguageSelect") return;
+      const value = event.target.value;
+      if (value !== "sk" && value !== "en") return;
+      localStorage.setItem(KEY,value);
+      renderLanguage();
+      const heading = document.querySelector("#psaiLanguagePanel h2");
+      if (heading) heading.textContent = value === "en" ? "App language" : "Jazyk aplikácie";
+    });
     const observer = new MutationObserver(records => {
       let structureChanged = false;
       for (const record of records) {
