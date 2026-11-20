@@ -94,7 +94,7 @@ a{color:#174ea6;overflow-wrap:anywhere}
 
 <section class="panel">
 <h2>2. Produkt</h2>
-<label for="photo">Nahraj 1 až 5 fotografií produktu</label>
+<label for="photo">Nahraj 1 až 9 fotografií produktu</label>
 <div class="psai-file-picker"><input id="photo" class="psai-native-file" type="file" accept="image/jpeg,image/png,image/webp" multiple><button id="photoChooseButton" type="button" class="secondary">Vybrať fotografie</button><span id="photoFileName" class="psai-file-name">Nie je vybratý žiadny súbor</span></div>
 <p class="note">Pridaj rôzne uhly alebo detaily toho istého produktu. Čím lepšie fotografie, tým presnejší výsledok.</p>
 <div id="previewGallery" class="preview-gallery" aria-live="polite"></div>
@@ -411,8 +411,8 @@ photo.addEventListener('change',()=>{
  const tooLarge=incoming.find(file=>file.size>20*1024*1024);
  if(invalid){setStatus('Podporované sú iba JPG, PNG a WebP fotografie.','err');photo.value='';return;}
  if(tooLarge){setStatus('Jedna z fotografií má viac ako 20 MB. Vyber menší súbor.','err');photo.value='';return;}
- selectedFiles=incoming.slice(0,5);
- if(incoming.length>5)setStatus('Môžeš nahrať najviac 5 fotografií. Vybral som prvých 5.','err');
+ selectedFiles=incoming.slice(0,9);
+ if(incoming.length>9)setStatus('Môžeš nahrať najviac 9 fotografií. Vybral som prvých 9.','err');
  renderSelectedPhotos();updateReadyStatus();
 });
 async function imageToDataUri(file){
@@ -422,8 +422,8 @@ async function imageToDataUri(file){
  const canvas=document.createElement('canvas');canvas.width=Math.round(image.width*scale);canvas.height=Math.round(image.height*scale);
  canvas.getContext('2d').drawImage(image,0,0,canvas.width,canvas.height);
  let data=canvas.toDataURL('image/jpeg',0.82);
- if(data.length>4.5*1024*1024)data=canvas.toDataURL('image/jpeg',0.65);
- if(data.length>5*1024*1024)throw new Error('Jedna fotografia je príliš veľká. Vyber menší obrázok.');
+ if(data.length>1.1*1024*1024)data=canvas.toDataURL('image/jpeg',0.58);
+ if(data.length>1.2*1024*1024)throw new Error('Fotografia je príliš veľká aj po kompresii.');
  return data;
 }
 async function api(path,body){
@@ -539,9 +539,9 @@ sourceVideo.addEventListener('change',()=>{
  selectedSourceVideo=sourceVideo.files?.[0]||null;
  sourceVideoPreview.pause();sourceVideoPreview.removeAttribute('src');sourceVideoPreview.load();
  if(!selectedSourceVideo){sourceVideoPreview.style.display='none';$('sourceVideoInfo').textContent='Môžeš pridať video spolu s fotografiami. Ak video nepridáš, reklama sa vytvorí iba z fotografií.';return;}
- if(selectedSourceVideo.size>50*1024*1024){
+ if(selectedSourceVideo.size>90*1024*1024){
   selectedSourceVideo=null;sourceVideo.value='';
-  $('sourceVideoInfo').textContent='Video je väčšie než 50 MB. Exportuj menší súbor.';
+  $('sourceVideoInfo').textContent='Video je väčšie než 90 MB. Exportuj menší súbor.';
   $('sourceVideoInfo').className='status err';return;
  }
  if(!['video/mp4','video/quicktime','video/webm'].includes(selectedSourceVideo.type)){
@@ -562,9 +562,8 @@ sourceVideo.addEventListener('change',()=>{
   $('sourceVideoInfo').className='note';
  };
  });
-async function uploadFormApi(){throw new Error('Generovanie z vlastného vstupného videa bude pridané v ďalšej etape. Zatiaľ môžeš generovať reklamu z fotografií produktu.');}
+async function uploadFormApi(path,form){if(!window.PSAICloudLibrary?.getCurrentUser())throw new Error('Najskôr sa prihlás do svojho cloudového účtu.');return window.PSAICloudLibrary.request(path,{method:'POST',body:form});}
 async function generateFromCombinedInputs(){
- throw new Error('Generovanie z vlastného vstupného videa bude pridané v ďalšej etape. Zatiaľ spusti generovanie z fotografií produktu.');
  const prompt=buildPrompt();
  if(!selectedSourceVideo)return false;
  if(!selectedFiles.length)throw new Error('Pri generovaní z videa pridaj aspoň jednu fotografiu produktu ako referenciu.');
@@ -574,6 +573,7 @@ async function generateFromCombinedInputs(){
  const references=await Promise.all(selectedFiles.map(imageToDataUri));
  const form=new FormData();
  form.append('video',selectedSourceVideo,selectedSourceVideo.name);
+ const referenceBytes=references.reduce((sum,value)=>sum+value.length,0);if(referenceBytes>8*1024*1024)throw new Error('Referenčné fotografie spolu prekračujú limit 8 MB po kompresii.');
  form.append('references',JSON.stringify(references));
  form.append('prompt',prompt+' Strongly enhance the original footage into a premium cinematic product advertisement. Use the uploaded product photos as visual references to preserve the exact product identity, shape, packaging, label, logo, lettering and brand colors. Preserve the main action and camera movement from the source video while upgrading lighting, atmosphere, color grade and production value. Do not invent or distort branding.');
  const ratios={
@@ -584,6 +584,7 @@ async function generateFromCombinedInputs(){
  form.append('ratio',ratio);
  form.append('model',$('model').value);
  form.append('duration',$('duration').value);
+ form.append('resolution',$('resolution').value);form.append('requestId',crypto.randomUUID());
  const created=await uploadFormApi('/api/generate-video',form);
  currentTask=created.id;
  $('history').textContent=`Kombinovaná reklama: ${created.id} · Video + ${selectedFiles.length} fotografií · Stav: ${created.status||'odoslané'}`;
