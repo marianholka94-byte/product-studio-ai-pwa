@@ -235,26 +235,22 @@
     }
     #appBottomNav button.active { background:#29251c !important;color:#e2c47e !important; }
     #appBottomNav button span { display:block !important;font-size:24px !important;line-height:1 !important;margin:0 !important; }
-/* Studio-only alignment: match the three Android system-button centers.
-   Keep Projects and Settings layout unchanged. */
-    body:has(#screenStudio.active) #appBottomNav {
-      display:flex !important;
-      justify-content:space-between !important;
+/* Studio-only alignment: activate from the selected first nav button,
+   avoiding assumptions about the screen container's active class. */
+    #appBottomNav:has(> button:first-child.active) {
+      display:grid !important;
+      grid-template-columns:repeat(3,minmax(0,1fr)) !important;
       align-items:stretch !important;
+      gap:4px !important;
+      padding:8px 18.5% calc(8px + env(safe-area-inset-bottom, 0px)) !important;
       box-sizing:border-box !important;
       width:100% !important;
-      padding:8px 0 calc(8px + env(safe-area-inset-bottom, 0px)) !important;
     }
-    body:has(#screenStudio.active) #appBottomNav button {
-      flex:1 1 0 !important;
-      width:auto !important;
+    #appBottomNav:has(> button:first-child.active) > button {
+      width:100% !important;
       min-width:0 !important;
-    }
-    body:has(#screenStudio.active) #appBottomNav button:first-child {
-      margin-left:18.5% !important;
-    }
-    body:has(#screenStudio.active) #appBottomNav button:last-child {
-      margin-right:18.5% !important;
+      margin:0 !important;
+      flex:initial !important;
     }
     /* Secondary drawer navigation; persistent bottom bar is preserved. */
 header{position:relative;gap:10px}.psai-menu-trigger{flex:0 0 46px;width:46px!important;height:46px!important;min-height:46px!important;margin:0!important;padding:0!important;border:1px solid #354253!important;border-radius:14px!important;background:#151a22!important;color:#f3f5f8!important;display:grid!important;place-items:center!important;font-size:23px!important}.psai-header-brand{flex:1;min-width:0}
