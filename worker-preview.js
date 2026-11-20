@@ -59,11 +59,22 @@ async function passwordHash(password, salt = randomToken(16)) {
   );
   return `pbkdf2-sha256$${PASSWORD_ITERATIONS}$${salt}$${b64url(new Uint8Array(bits))}`;
 }
+function constantTimeEqual(leftValue, rightValue) {
+  const left = encoder.encode(String(leftValue));
+  const right = encoder.encode(String(rightValue));
+  let difference = left.length ^ right.length;
+  const length = Math.max(left.length, right.length);
+  for (let index = 0; index < length; index++) {
+    difference |= (left[index] || 0) ^ (right[index] || 0);
+  }
+  return difference === 0;
+}
 async function verifyPassword(password, stored) {
   try {
     const [algorithm, iterationsText, salt, expected] = stored.split("$");
     if (algorithm !== "pbkdf2-sha256" || Number(iterationsText) !== PASSWORD_ITERATIONS || !salt || !expected) return false;
-    return (await passwordHash(password, salt)).split("$")[3] === expected;
+    const actual = (await passwordHash(password, salt)).split("$")[3];
+    return constantTimeEqual(actual, expected);
   } catch { return false; }
 }
 function bearerToken(request) {
