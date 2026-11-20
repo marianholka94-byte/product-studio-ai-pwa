@@ -15,6 +15,8 @@
       "Cloudový účet a pripojenie generátora spravuješ v časti Projekty → Cloudová knižnica.":"Manage your cloud account and generator connection under Projects → Cloud library.",
       "Odhlásenie z cloudovej knižnice zruší cloudovú reláciu. Lokálne projekty a produkty v tomto zariadení zostanú zachované.":"Signing out of the cloud library ends the cloud session. Local projects and products on this device will remain available.",
       "Táto aplikácia už nepoužíva staré prihlásenie spoločným aplikačným heslom.":"This app no longer uses the old shared application-password login.",
+      "Vymazať natrvalo":"Delete permanently",
+      "Obnoviť produkt":"Restore product",
       "Jazyk aplikácie":"App language","Vyber jazyk rozhrania aplikácie. Zmena sa uloží automaticky.":"Choose the language used throughout the app. Your choice is saved automatically.",
       "Slovenčina":"Slovak","Angličtina":"English","Jazyk bol zmenený.":"Language changed.",
       "Môj účet a prehľad":"My account & overview","NEPRIHLÁSENÝ":"NOT SIGNED IN","Tvoj osobný prehľad používania PRODUCT STUDIO AI.":"Your personal PRODUCT STUDIO AI usage overview.",
@@ -255,6 +257,12 @@
         [/^Odhad: (.+)$/, "Estimate: $1"],
         [/^Model: (.+)$/, "Model: $1"],
         [/^Úloha: (.+) · Model: (.+) · Stav: (.+)$/, "Task: $1 · Model: $2 · Status: $3"],
+        [/^Naozaj NAVŽDY vymazať produkt „(.+)“ a všetky jeho fotografie z cloudu\? Túto akciu nemožno vrátiť späť\.$/, 'Permanently delete product "$1" and all its photos from the cloud? This action cannot be undone.'],
+        [/^Naozaj NAVŽDY vymazať archivovaný produkt „(.+)“ aj všetky fotografie\? Túto akciu nemožno vrátiť späť\.$/, 'Permanently delete archived product "$1" and all its photos? This action cannot be undone.'],
+        [/^Naozaj NAVŽDY vymazať reklamný projekt „(.+)“ a jeho uložené súbory z cloudu\? História generovania zostane zachovaná\. Túto akciu nemožno vrátiť späť\.$/, 'Permanently delete advertising project "$1" and its stored cloud files? Generation history will be preserved. This action cannot be undone.'],
+        [/^Produkt bol natrvalo vymazaný\. Odstránených súborov: (\d+)\.$/, 'Product permanently deleted. Files removed: $1.'],
+        [/^Archivovaný produkt bol natrvalo vymazaný\. Odstránených súborov: (\d+)\.$/, 'Archived product permanently deleted. Files removed: $1.'],
+        [/^Projekt bol natrvalo vymazaný\. Odstránených súborov: (\d+)\.$/, 'Project permanently deleted. Files removed: $1.'],
         [/^Produkt musí mať aspoň jednu fotografiu\.$/, "The product must have at least one photo."]
       );
       for (const [pattern,replacement] of patterns) if (pattern.test(core)) return leading + core.replace(pattern,replacement) + trailing;
