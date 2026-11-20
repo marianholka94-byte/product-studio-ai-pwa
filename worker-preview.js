@@ -364,6 +364,41 @@ export default {
       }
 
 
+      if (url.pathname === "/api/generate-video" && request.method === "POST") {
+        const user=await currentUser(request,env);
+        if(!user)return json({error:"Na generovanie sa najskôr prihlás do svojho zákazníckeho účtu."},401,origin);
+        if(!env.RUNWAY_API_KEY)return json({error:"Generátor zatiaľ nie je nakonfigurovaný."},503,origin);
+        const contentLength=Number(request.headers.get("Content-Length")||0);
+        if(contentLength>99*1024*1024)return json({error:"Video a referenčné fotografie spolu prekračujú limit požiadavky 99 MB."},413,origin);
+        let form;try{form=await request.formData();}catch{return json({error:"Nepodarilo sa načítať video a fotografie."},400,origin);}
+        const video=form.get("video");
+        if(!(video instanceof File)||video.size<512||video.size>90*1024*1024)return json({error:"Vstupné video musí mať najviac 90 MB."},413,origin);
+        if(!new Set(["video/mp4","video/quicktime","video/webm"]).has(video.type))return json({error:"Podporované video formáty sú MP4, MOV a WebM."},400,origin);
+        let images;try{images=JSON.parse(String(form.get("references")||"[]"));}catch{return json({error:"Referenčné fotografie nie sú v platnom formáte."},400,origin);}
+        if(!Array.isArray(images)||images.length<1||images.length>9)return json({error:"Pridaj 1 až 9 referenčných fotografií produktu."},400,origin);
+        if(images.some(x=>typeof x!=="string"||!/^data:image\/(jpeg|jpg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(x)||x.length>1.2*1024*1024)||images.reduce((s,x)=>s+x.length,0)>8*1024*1024)return json({error:"Referenčné fotografie sú neplatné alebo prekračujú limit 8 MB po kompresii."},413,origin);
+        const model=String(form.get("model")||"seedance2_mini"),resolution=String(form.get("resolution")||(model==="seedance2"?"1080p":"720p")),ratio=String(form.get("ratio")||""),duration=Number(form.get("duration")),prompt=String(form.get("prompt")||"").trim();
+        const allowed=model==="seedance2"?FULL_RATIOS:model==="seedance2_mini"?MINI_RATIOS:null,estimated=estimatedGenerationCredits(model,resolution,duration);
+        if(!allowed||!allowed.has(ratio)||estimated===null||!Number.isInteger(duration)||duration<4||duration>15||!prompt||prompt.length>1000)return json({error:"Nepodporovaná kombinácia nastavení alebo neplatné zadanie."},400,origin);
+        const requestId=String(form.get("requestId")||"");if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestId))return json({error:"Neplatný identifikátor požiadavky."},400,origin);
+        const fingerprint=await sha256(JSON.stringify({videoName:video.name,videoSize:video.size,videoType:video.type,references:images,prompt,model,resolution,ratio,duration}));
+        const prior=await env.DB.prepare("SELECT id,request_fingerprint,provider_task_id,status,estimated_credits FROM generations WHERE user_id=? AND client_request_id=? LIMIT 1").bind(user.id,requestId).first();
+        if(prior){if(prior.request_fingerprint!==fingerprint)return json({error:"Identifikátor už bol použitý pre iné zadanie."},409,origin);if(!prior.provider_task_id)return json({error:"Požiadavka sa už spracúva. Neposielaj ju znova."},409,origin);return json({id:prior.id,status:prior.status,replayed:true,estimatedCredits:prior.estimated_credits},200,origin);}
+        const now=Math.floor(Date.now()/1000),dayStart=Math.floor(now/86400)*86400,usage=await env.DB.prepare("SELECT COUNT(*) AS count FROM generations WHERE user_id=? AND created_at>=?").bind(user.id,dayStart).first();
+        if(Number(usage?.count||0)>=PREVIEW_DAILY_GENERATION_LIMIT)return json({error:"Dosiahol si denný limit "+PREVIEW_DAILY_GENERATION_LIMIT+" skúšobných generovaní."},429,origin);
+        const id=crypto.randomUUID();
+        await env.DB.prepare("INSERT INTO generations (id,user_id,provider,model,resolution,aspect_ratio,duration_seconds,status,prompt_snapshot,estimated_credits,client_request_id,request_fingerprint,created_at,updated_at) VALUES (?,?,'runway',?,?,?,?,'queued',?,?,?,?,?,?)").bind(id,user.id,model,resolution,ratio,duration,prompt,estimated,requestId,fingerprint,now,now).run();
+        const init=await fetch("https://api.dev.runwayml.com/v1/uploads",{method:"POST",headers:runwayHeaders(env),body:JSON.stringify({filename:video.name||"product-source.mp4",type:"ephemeral"})}),info=await init.json().catch(()=>({}));
+        if(!init.ok||!info.uploadUrl||!info.runwayUri||!info.fields){const msg=info.error?.message||info.error||"Runway upload zlyhal.";await env.DB.prepare("UPDATE generations SET status='failed',error_code='video_upload_failed',error_message=?,updated_at=?,completed_at=? WHERE id=? AND user_id=?").bind(String(msg).slice(0,500),now,now,id,user.id).run();return json({error:String(msg)},502,origin);}
+        const upload=new FormData();for(const [k,v] of Object.entries(info.fields))upload.append(k,String(v));upload.append("file",video,video.name||"product-source.mp4");
+        const sent=await fetch(info.uploadUrl,{method:"POST",body:upload});
+        if(!sent.ok){await env.DB.prepare("UPDATE generations SET status='failed',error_code='video_upload_failed',error_message='Nahratie videa do Runway zlyhalo.',updated_at=?,completed_at=? WHERE id=? AND user_id=?").bind(now,now,id,user.id).run();return json({error:"Nahratie videa do Runway zlyhalo."},502,origin);}
+        const upstream=await fetch("https://api.dev.runwayml.com/v1/video_to_video",{method:"POST",headers:runwayHeaders(env),body:JSON.stringify({model,promptVideo:info.runwayUri,promptText:prompt,references:images.map(uri=>({uri})),ratio,duration,audio:false,bitrate:"high"})}),result=await upstream.json().catch(()=>({}));
+        if(!upstream.ok||!result.id){const msg=result.error?.message||result.error||"Runway požiadavku neprijal.";await env.DB.prepare("UPDATE generations SET status='failed',error_code='provider_rejected',error_message=?,updated_at=?,completed_at=? WHERE id=? AND user_id=?").bind(String(msg).slice(0,500),now,now,id,user.id).run();return json({error:String(msg)},502,origin);}
+        const status=generationStatus(result.status||"PENDING");await env.DB.prepare("UPDATE generations SET provider_task_id=?,status=?,updated_at=? WHERE id=? AND user_id=?").bind(String(result.id),status,Math.floor(Date.now()/1000),id,user.id).run();
+        return json({id,status:result.status||"PENDING",estimatedCredits:estimated,dailyLimit:PREVIEW_DAILY_GENERATION_LIMIT,usedToday:Number(usage?.count||0)+1},201,origin);
+      }
+
       // Commercial generation always resolves the owner from the D1 session.
       if (url.pathname === "/api/generate" && request.method === "POST") {
         const user = await currentUser(request, env);
@@ -377,14 +412,14 @@ export default {
           return json({ error: "Požiadavka nemá platný identifikátor. Obnov stránku a skús to znova." }, 400, origin);
         }
         const images = Array.isArray(body.images) ? body.images : (typeof body.image === "string" ? [body.image] : []);
-        if (images.length < 1 || images.length > 5) return json({ error: "Nahraj 1 až 5 fotografií produktu." }, 400, origin);
+        if (images.length < 1 || images.length > 9) return json({ error: "Nahraj 1 až 9 fotografií produktu." }, 400, origin);
         for (const image of images) {
           if (typeof image !== "string" || !/^data:image\/(jpeg|jpg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(image)) {
             return json({ error: "Jedna z fotografií nemá podporovaný formát. Použi JPG, PNG alebo WebP." }, 400, origin);
           }
           if (image.length > 5 * 1024 * 1024) return json({ error: "Každá fotografia musí mať menej než 5 MB." }, 413, origin);
         }
-        if (images.reduce((total, image) => total + image.length, 0) > 20 * 1024 * 1024) return json({ error: "Súhrnná veľkosť fotografií prekračuje 20 MB." }, 413, origin);
+        if (images.reduce((total, image) => total + image.length, 0) > 8 * 1024 * 1024) return json({ error: "Súhrnná veľkosť fotografií prekračuje 20 MB." }, 413, origin);
         if (typeof body.prompt !== "string" || !body.prompt.trim() || body.prompt.length > 1000) return json({ error: "Text zadania musí mať 1 až 1 000 znakov." }, 400, origin);
         const duration = Number(body.duration);
         const model = String(body.model || "seedance2_mini");
