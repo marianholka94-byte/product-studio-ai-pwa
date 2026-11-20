@@ -60,6 +60,8 @@ assert.ok(worker.includes('role: "reference_video"') && worker.includes('type: "
 assert.ok(worker.includes("access_expires_at") && worker.includes("cleanupExpiredGenerationInputs"), "Temporary provider access must expire and old source videos must be cleaned up.");
 assert.ok(html.includes('accept="video/mp4,video/quicktime,.mp4,.mov"') && !html.includes('id="sourceVideo" type="file" accept="video/mp4,video/quicktime,video/webm" disabled'), "The UI must enable only supported MP4/MOV source video formats.");
 assert.ok(html.includes("selectedSourceVideoDuration") && html.includes("X-Video-Duration") && html.includes("generation-input-video"), "The UI must validate source video duration and upload it through the authenticated cloud bridge.");
+assert.ok(html.includes("sourceVideoTestUpload") && html.includes("AI generovanie sa nespustilo"), "The Studio must expose a safe source-video upload test without starting paid generation.");
+assert.ok(worker.includes("generation_input_videos WHERE user_id = ? AND client_upload_id = ?"), "Source-video retries must use account-scoped idempotency.");
 assert.ok(worker.includes("const user = await currentUser(request, env)") && worker.includes("WHERE id = ? AND user_id = ? LIMIT 1"), "Generation endpoints must resolve identity from D1 sessions and scope task lookups to the owner.");
 assert.ok(worker.includes("client_request_id") && worker.includes("request_fingerprint"), "Generation submissions must persist account-scoped idempotency keys and payload fingerprints.");
 assert.ok(worker.includes("PREVIEW_DAILY_GENERATION_LIMIT = 3") && worker.includes("generation_daily_limit"), "Preview generation must enforce a daily per-account limit, including concurrent requests.");
@@ -193,6 +195,8 @@ assert.ok(projectCreate.includes("return json({ project: publicProject(prior), r
 assert.ok(projectCreate.includes("if (!samePayload) return json({ error: \"Kľúč operácie už bol použitý pre iný projekt.\" }, 409, origin)"), "A project retry with a changed payload must be rejected.");
 assert.ok(projectCreate.includes("if (operationId && /unique|constraint/i.test(String(error)))"), "Concurrent project retries must recover from the unique operation-key constraint.");
 
+const inputLimitMigration = readFileSync("migrations/0013_generation_input_videos_90mb.sql", "utf8");
+assert.ok(inputLimitMigration.includes("byte_size BETWEEN 12 AND 94371840") && inputLimitMigration.includes("FROM generation_input_videos"), "D1 must migrate existing source videos to the 90 MB constraint without dropping records.");
 const generationMigration = readFileSync("migrations/0007_account_bound_generation.sql", "utf8");
 assert.ok(generationMigration.includes("client_request_id") && generationMigration.includes("request_fingerprint"), "Generation idempotency must be stored in D1.");
 assert.ok(generationMigration.includes("ON generations(user_id, client_request_id)"), "Generation request IDs must be unique per customer account.");
@@ -219,10 +223,10 @@ assert.ok(cloud.includes("const remoteProduct = await accountApi(\"/api/products
 assert.ok(nav.includes("latest.cloudSyncByAccount={...(latest.cloudSyncByAccount||{}),[sync.accountId]:sync}"), "Cloud save checkpoints must be persisted under their owning account.");
 assert.ok(nav.includes("[result.accountId]:result"), "Completed cloud saves must remain associated with the account that owns them.");
 assert.ok(nav.includes("psai-cloud-account-change"), "Switching cloud accounts must refresh local project cloud-status labels.");
-assert.ok(html.includes("cloud-library.js?v=upload-engine-2-20261120b") && html.includes("app-navigation.js?v=upload-engine-2-20261120b"), "PWA HTML must request the account-scoped cloud-sync asset versions.");
+assert.ok(html.includes("cloud-library.js?v=upload-engine-3-20261120c") && html.includes("app-navigation.js?v=upload-engine-3-20261120c"), "PWA HTML must request the account-scoped cloud-sync asset versions.");
 assert.ok(html.includes("registration.update()") && html.includes("navigator.serviceWorker.addEventListener('controllerchange'") && html.includes("window.location.reload()"), "Installed PWA clients must check for updates and reload once when a new service worker takes control.");
-assert.ok(serviceWorker.includes("product-studio-ai-v58-upload-engine-2-20261120"), "PWA service worker cache must be versioned for the account-scoped cloud-sync release.");
-assert.ok(serviceWorker.includes("/cloud-library.js?v=upload-engine-2-20261120b") && serviceWorker.includes("/app-navigation.js?v=upload-engine-2-20261120b"), "Offline precache must include the exact project-conflict-recovery asset URLs.");
+assert.ok(serviceWorker.includes("product-studio-ai-v59-video-upload-test-20261120"), "PWA service worker cache must be versioned for the account-scoped cloud-sync release.");
+assert.ok(serviceWorker.includes("/cloud-library.js?v=upload-engine-3-20261120c") && serviceWorker.includes("/app-navigation.js?v=upload-engine-3-20261120c"), "Offline precache must include the exact project-conflict-recovery asset URLs.");
 assert.ok(serviceWorker.includes('url.pathname.startsWith("/api/")') && !serviceWorker.includes("cache.put(event.request"), "The PWA service worker must never cache authenticated API responses.");
 assert.ok(serviceWorker.includes('request.mode === "navigate"') && serviceWorker.includes("cache.put(\"/index.html\""), "The PWA service worker must refresh the app shell and keep an offline navigation fallback.");
 assert.ok(worker.includes("const expectedUpdatedAt = body.expectedUpdatedAt"), "Cloud project edits must accept the version the user originally opened.");
@@ -279,7 +283,7 @@ assert.ok(androidWrapper.includes("networkErrorView.setVisibility(View.VISIBLE)"
 assert.ok(androidWrapper.includes("params.getAcceptTypes()") && androidWrapper.includes("params.getMode() == WebChromeClient.FileChooserParams.MODE_OPEN_MULTIPLE") && androidWrapper.includes("Intent.ACTION_OPEN_DOCUMENT"), "Android file picker must respect the web input MIME types and multiple-selection mode.");
 assert.ok(html.includes("renderAccountOverview(account,usage,health)") && html.includes("usage.remainingToday"), "The account overview must use server-returned usage values.");
 assert.ok(html.includes('id="historySummary"') && html.includes("Rozpracované") && html.includes("Neúspešné/zrušené"), "The generation history must summarize completed, active, and failed jobs.");
-assert.ok(readFileSync("sw.js", "utf8").includes("product-studio-ai-v58-upload-engine-2-20261120"), "The PWA cache must refresh for the account overview UI.");
+assert.ok(readFileSync("sw.js", "utf8").includes("product-studio-ai-v59-video-upload-test-20261120"), "The PWA cache must refresh for the account overview UI.");
 
 const projectCopyStart = cloud.indexOf('saveProjectAsCopy.addEventListener("click"');
 const projectCopyEnd = cloud.indexOf("\n  });", projectCopyStart);
