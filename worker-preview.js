@@ -467,6 +467,7 @@ export default {
         } catch (error) {
           await env.MEDIA.delete(r2Key).catch(() => {});
           const message = String(error?.message || "");
+          if (message.includes("daily limit")) return json({ error: "Dosiahol si denný limit " + PREVIEW_DAILY_GENERATION_LIMIT + " zdrojových videí. Skús to znova zajtra." }, 429, origin);
           if (message.includes("90 MB")) return json({ error: message }, 413, origin);
           if (message.includes("signatúru")) return json({ error: message }, 415, origin);
           return json({ error: "Zdrojové video sa nepodarilo bezpečne uložiť." }, 502, origin);
