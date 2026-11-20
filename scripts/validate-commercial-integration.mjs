@@ -200,8 +200,9 @@ assert.ok(projectCreate.includes("if (!samePayload) return json({ error: \"Kľú
 assert.ok(projectCreate.includes("if (operationId && /unique|constraint/i.test(String(error)))"), "Concurrent project retries must recover from the unique operation-key constraint.");
 
 const inputLimitMigration = readFileSync("migrations/0013_generation_input_videos_90mb.sql", "utf8");
+const inputQuotaMigration = readFileSync("migrations/0014_generation_input_video_daily_limit.sql", "utf8");
 assert.ok(inputLimitMigration.includes("byte_size BETWEEN 12 AND 94371840") && inputLimitMigration.includes("FROM generation_input_videos"), "D1 must migrate existing source videos to the 90 MB constraint without dropping records.");
-assert.ok(inputLimitMigration.includes("trg_generation_input_videos_daily_limit") && inputLimitMigration.includes("generation input video daily limit reached"), "D1 must enforce the per-account daily source-video upload quota without concurrency races.");
+assert.ok(inputQuotaMigration.includes("trg_generation_input_videos_daily_limit") && inputQuotaMigration.includes("generation input video daily limit reached"), "D1 must enforce the per-account daily source-video upload quota without concurrency races.");
 const generationMigration = readFileSync("migrations/0007_account_bound_generation.sql", "utf8");
 assert.ok(generationMigration.includes("client_request_id") && generationMigration.includes("request_fingerprint"), "Generation idempotency must be stored in D1.");
 assert.ok(generationMigration.includes("ON generations(user_id, client_request_id)"), "Generation request IDs must be unique per customer account.");
