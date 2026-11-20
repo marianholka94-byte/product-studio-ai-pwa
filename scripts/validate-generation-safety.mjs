@@ -7,6 +7,7 @@ const outputMigration = readFileSync("migrations/0010_generation_outputs_r2.sql"
 const inputMigration = readFileSync("migrations/0011_generation_input_videos_r2.sql", "utf8");
 const inputLimitMigration = readFileSync("migrations/0013_generation_input_videos_90mb.sql", "utf8");
 const inputQuotaMigration = readFileSync("migrations/0014_generation_input_video_daily_limit.sql", "utf8");
+const inputQuotaMigration = readFileSync("migrations/0014_generation_input_video_daily_limit.sql", "utf8");
 
 // Provider readiness is deliberately opt-in: an API key alone must never trigger paid calls.
 assert.match(worker, /BYTEPLUS_MODELARK_API_KEY/);
