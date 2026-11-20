@@ -113,6 +113,17 @@ public class MainActivity extends Activity {
             });
             FrameLayout root = new FrameLayout(this);
             root.setBackgroundColor(Color.rgb(11, 14, 19));
+            // Android 15 (targetSdk 35) draws edge-to-edge by default. Reserve the
+            // real system-navigation inset so the WebView's fixed bottom app bar
+            // sits above Android's Back/Home/Recents buttons instead of underneath them.
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                root.setOnApplyWindowInsetsListener((view, insets) -> {
+                    android.graphics.Insets navInsets = insets.getInsets(android.view.WindowInsets.Type.navigationBars());
+                    view.setPadding(0, 0, 0, navInsets.bottom);
+                    return insets;
+                });
+                root.requestApplyInsets();
+            }
             root.addView(webView, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
             networkErrorView = new TextView(this);
             networkErrorView.setText("Nepodarilo sa načítať PRODUCT STUDIO AI\n\nSkontroluj internetové pripojenie a ťukni sem pre opakovanie.");
