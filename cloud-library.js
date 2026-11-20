@@ -752,12 +752,76 @@
       if (!user?.id || !record) return null;
       return record.cloudSyncByAccount?.[user.id] || (record.cloudSync?.accountId === user.id ? record.cloudSync : null);
     },
+    async saveLocalProduct(record, onProgress = () => {}) {
+      if (!token || !user?.id) throw new Error("Najskôr sa prihlás do cloudovej knižnice.");
+      const accountId = user.id;
+      const startEpoch = accountEpoch;
+      if (!record || !record.id || !Array.isArray(record.images) || !record.images.length) throw new Error("Produkt musí obsahovať aspoň jednu fotografiu.");
+      if (record.images.length > 9) throw new Error("Cloudový produkt môže obsahovať najviac 9 fotografií.");
+      const images = record.images.map((item, index) => {
+        const blob = item.blob;
+        const type = item.type || blob?.type || "";
+        if (!(blob instanceof Blob) || !["image/jpeg", "image/png", "image/webp"].includes(type)) throw new Error("Fotografia " + (index + 1) + " nemá podporovaný formát JPG, PNG alebo WebP.");
+        if (!blob.size || blob.size > 10 * 1024 * 1024) throw new Error("Každá fotografia musí mať veľkosť do 10 MB.");
+        return { blob, type, name: item.name || ("produkt-" + (index + 1)) };
+      });
+      const imageDigests = await Promise.all(images.map(async image => {
+        const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", await image.blob.arrayBuffer()));
+        let binary = ""; for (const byte of digest) binary += String.fromCharCode(byte);
+        return btoa(binary).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+      }));
+      const fingerprint = JSON.stringify({
+        name: record.name || "Produkt",
+        images: images.map((x, index) => ({ name: x.name, type: x.type, size: x.blob.size, sha256: imageDigests[index] }))
+      });
+      if (accountEpoch !== startEpoch || user?.id !== accountId || !token) throw new Error("Cloudový účet sa počas prípravy ukladania zmenil. Ukladanie bolo zastavené.");
+      const accountApi = (path, options = {}) => {
+        if (!token || accountEpoch !== startEpoch || user?.id !== accountId) return Promise.reject(new Error("Cloudový účet sa počas ukladania zmenil. Prihlás sa späť do pôvodného účtu a pokračuj v ukladaní."));
+        return api(path, options).then(data => {
+          if (!token || accountEpoch !== startEpoch || user?.id !== accountId) throw new Error("Cloudový účet sa počas ukladania zmenil. Ukladanie bolo zastavené.");
+          return data;
+        });
+      };
+      const savedByAccount = record.cloudSyncByAccount && typeof record.cloudSyncByAccount === "object" ? record.cloudSyncByAccount : {};
+      let sync = savedByAccount[accountId] || (record.cloudSync?.accountId === accountId ? record.cloudSync : null);
+      if (sync && sync.accountId !== accountId) throw new Error("Cloudové uloženie patrí inému účtu. Ukladanie bolo zastavené.");
+      if (sync && sync.fingerprint !== fingerprint) throw new Error("Produkt sa od posledného cloudového uloženia zmenil. Pôvodné cloudové fotografie zostali zachované; upravený produkt ulož ako nový produkt alebo najprv dokonči pôvodné nahrávanie.");
+      if (sync?.productId) return { ...sync, alreadySaved: true };
+      if (!sync) {
+        sync = { accountId, fingerprint, productOperationId: crypto.randomUUID(), productId: null, uploadedImages: 0 };
+        await onProgress({ ...sync });
+      }
+      if (!sync.productId) {
+        if (!sync.productOperationId) { sync.productOperationId = crypto.randomUUID(); await onProgress({ ...sync }); }
+        const created = await accountApi("/api/products", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: (record.name || "Produkt").slice(0, 120), description: "Produkt uložený z lokálnej knižnice PRODUCT STUDIO AI.", idempotencyKey: sync.productOperationId })
+        });
+        sync.productId = created.product.id; await onProgress({ ...sync });
+      }
+      const manifest = await accountApi("/api/products/" + encodeURIComponent(sync.productId) + "/images");
+      const uploaded = (manifest.images || []).length;
+      if (uploaded > images.length) throw new Error("Cloudový produkt obsahuje viac fotografií, než má lokálny produkt. Nahrávanie bolo zastavené kvôli ochrane pred duplicitami.");
+      const remoteDigests = (manifest.images || []).map(image => image.checksumSha256 || "");
+      for (let index = 0; index < uploaded; index++) {
+        if (!remoteDigests[index] || remoteDigests[index] !== imageDigests[index]) throw new Error("Fotografie uložené v cloude sa nezhodujú s lokálnymi súbormi. Obnovenie bolo zastavené.");
+      }
+      sync.uploadedImages = uploaded; await onProgress({ ...sync });
+      for (let index = uploaded; index < images.length; index++) {
+        const image = images[index];
+        await accountApi("/api/products/" + encodeURIComponent(sync.productId) + "/images", { method: "POST", headers: { "Content-Type": image.type }, body: image.blob });
+        sync.uploadedImages = index + 1; await onProgress({ ...sync });
+      }
+      setStatus("Produkt „" + (record.name || "Produkt") + "“ a " + images.length + " fotografií boli uložené do cloudu.");
+      await refresh();
+      return { ...sync, alreadySaved: false };
+    },
     async saveLocalProject(record, onProgress = () => {}) {
       if (!token || !user?.id) throw new Error("Najskôr sa prihlás do cloudovej knižnice.");
       const accountId = user.id;
       const startEpoch = accountEpoch;
       if (!record || !record.id || !Array.isArray(record.images) || !record.images.length) throw new Error("Projekt musí obsahovať aspoň jednu fotografiu.");
-      if (record.images.length > 5) throw new Error("Cloudový produkt môže obsahovať najviac 5 fotografií.");
+      if (record.images.length > 9) throw new Error("Cloudový produkt môže obsahovať najviac 9 fotografií.");
       const images = record.images.map((item, index) => {
         const blob = item.blob;
         const type = item.type || blob?.type || "";
