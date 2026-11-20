@@ -786,7 +786,6 @@
       let sync = savedByAccount[accountId] || (record.cloudSync?.accountId === accountId ? record.cloudSync : null);
       if (sync && sync.accountId !== accountId) throw new Error("Cloudové uloženie patrí inému účtu. Ukladanie bolo zastavené.");
       if (sync && sync.fingerprint !== fingerprint) throw new Error("Produkt sa od posledného cloudového uloženia zmenil. Pôvodné cloudové fotografie zostali zachované; upravený produkt ulož ako nový produkt alebo najprv dokonči pôvodné nahrávanie.");
-      if (sync?.productId) return { ...sync, alreadySaved: true };
       if (!sync) {
         sync = { accountId, fingerprint, productOperationId: crypto.randomUUID(), productId: null, uploadedImages: 0 };
         await onProgress({ ...sync });
@@ -807,6 +806,11 @@
         if (!remoteDigests[index] || remoteDigests[index] !== imageDigests[index]) throw new Error("Fotografie uložené v cloude sa nezhodujú s lokálnymi súbormi. Obnovenie bolo zastavené.");
       }
       sync.uploadedImages = uploaded; await onProgress({ ...sync });
+      if (uploaded === images.length) {
+        setStatus("Produkt „" + (record.name || "Produkt") + "“ a všetkých " + images.length + " fotografií už je uložených v cloude.");
+        await refresh();
+        return { ...sync, alreadySaved: true };
+      }
       for (let index = uploaded; index < images.length; index++) {
         const image = images[index];
         await accountApi("/api/products/" + encodeURIComponent(sync.productId) + "/images", { method: "POST", headers: { "Content-Type": image.type }, body: image.blob });
