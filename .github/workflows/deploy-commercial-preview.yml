@@ -57,6 +57,18 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      - name: Configure owner-only credit grant access as a Worker secret when explicitly supplied
+        run: |
+          if [ -n "$APP_OWNER_EMAIL_PREVIEW" ]; then
+            printf '%s' "$APP_OWNER_EMAIL_PREVIEW" | npx --yes wrangler@4 secret put APP_OWNER_EMAIL --config wrangler.preview.toml
+            echo "Owner-only manual credit grants configured through a Worker secret."
+          else
+            echo "SKIP: Owner-only manual credit grants remain disabled until APP_OWNER_EMAIL_PREVIEW is configured."
+          fi
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          APP_OWNER_EMAIL_PREVIEW: ${{ secrets.APP_OWNER_EMAIL_PREVIEW }}
       - name: Configure BytePlus ModelArk API key when explicitly supplied
         run: |
           if [ -n "$BYTEPLUS_MODELARK_API_KEY_PREVIEW" ]; then
