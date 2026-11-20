@@ -1,4 +1,4 @@
-const CACHE = "product-studio-ai-v66-language-settings-native-mount-20261120";
+const CACHE = "product-studio-ai-v67-direct-language-change-20261120";
 const FILES = ["/", "/index.html", "/manifest.webmanifest", "/icon.svg?v=brand-icon-20261120", "/cloud-library.js?v=cloud-button-state-20261120a", "/app-navigation.js?v=prompt-accordion-20261120a", "/i18n.js?v=sk-en-1"];
 
 self.addEventListener("install", event => event.waitUntil(
