@@ -36,6 +36,7 @@ public class MainActivity extends Activity {
         // Navigation item centers are aligned to the three Android system navigation controls.
         // CSS box sizing keeps the full-width navigation background and centered item track.
         // Studio-only bottom navigation uses fixed side gutters for Android button alignment.
+        // Studio navigation alignment is keyed to its selected first navigation button.
         Window w = getWindow();
         w.setStatusBarColor(Color.rgb(8, 8, 14));
         w.setNavigationBarColor(Color.rgb(8, 8, 14));
