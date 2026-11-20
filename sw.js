@@ -1,4 +1,4 @@
-const CACHE = "product-studio-ai-v55-project-tabs-a11y-20261120";
+const CACHE = "product-studio-ai-v56-auto-pwa-update-20261120";
 const FILES = ["/", "/index.html", "/manifest.webmanifest", "/icon.svg", "/cloud-library.js?v=project-sidebar-20261120a", "/app-navigation.js?v=project-tabs-a11y-20261120a"];
 
 self.addEventListener("install", event => event.waitUntil(
