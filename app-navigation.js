@@ -37,11 +37,11 @@
     body {
       display:block !important;
       width:100% !important;
-      max-width:none !important;
+      max-width:100% !important;
       min-height:100%;
       height:auto !important;
-      margin:0 auto;
-      padding:16px 12px calc(88px + env(safe-area-inset-bottom, 0px)) !important;
+      margin:0;
+      padding:16px 12px calc(104px + env(safe-area-inset-bottom, 0px)) !important;
       overflow-y:auto !important;
       background:#0b0e13 !important;
       color:#f3f5f8 !important;
@@ -67,7 +67,7 @@
       margin-top:5px;
     }
     header>span { color:#d6b66e !important;font-weight:700; }
-    #appViews { display:block !important;width:100% !important;max-width:none !important;margin:0 auto !important; }
+    #appViews { display:block !important;width:100% !important;max-width:100% !important;min-width:0 !important;margin:0 !important;box-sizing:border-box !important; }
     .app-screen { display:none; }
     .app-screen.active { display:block !important;animation:screenIn .22s ease; }
     @keyframes screenIn { from{opacity:0;transform:translateY(7px)} to{opacity:1;transform:translateY(0)} }
@@ -142,8 +142,9 @@
     .studio-welcome p { color:#aeb8c7;font-size:14px;line-height:1.55;margin:0; }
 
     /* Mobile workspace polish. Navigation controls and Android system bars are intentionally untouched. */
-    .app-screen { min-width:0; }
-    .panel, .app-placeholder, .studio-welcome { min-width:0; }
+    .app-screen { display:none;min-width:0;width:100%;max-width:100%; }
+    .app-screen.active { display:block !important; }
+    .panel, .app-placeholder, .studio-welcome { display:block;min-width:0;width:100%;max-width:100%;margin-inline:0 !important;box-sizing:border-box !important; }
     .panel { padding:clamp(14px,4vw,22px) !important; }
     .panel label { margin-top:16px !important; }
     .panel input:not([type="file"]), .panel select, .panel textarea {
