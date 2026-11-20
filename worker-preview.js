@@ -1155,7 +1155,7 @@ export default {
             const restored = await ownedProduct(env, user.id, productId);
             return json({ product: publicProduct(restored), restored: true }, 200, origin);
           }
-          if (productId && request.method === "DELETE") {
+          if (productId && request.method === "DELETE" && url.pathname === `/api/products/${productId}`) {
             const existing = await ownedProduct(env, user.id, productId);
             if (!existing) return json({ error: "Produkt sa nenašiel." }, 404, origin);
             await env.DB.prepare("UPDATE products SET archived_at = ?, updated_at = ? WHERE id = ? AND user_id = ?")
@@ -1266,7 +1266,7 @@ export default {
             const updated = await ownedProject(env, user.id, projectId);
             return json({ project: publicProject(updated) }, 200, origin);
           }
-          if (projectId && request.method === "DELETE") {
+          if (projectId && request.method === "DELETE" && url.pathname === `/api/projects/${projectId}`) {
             const existing = await ownedProject(env, user.id, projectId);
             if (!existing) return json({ error: "Projekt sa nenašiel." }, 404, origin);
             await env.DB.prepare("UPDATE projects SET status = 'archived', archived_at = ?, updated_at = ? WHERE id = ? AND user_id = ?")
