@@ -132,7 +132,7 @@ assert.ok(cloud.includes("async upload(path, body, headers = {}, onProgress = ()
 assert.ok(cloud.includes("onTransferProgress({ imageIndex: index + 1, imageCount: images.length, ...progress })"), "Cloud project image uploads must report per-image transfer progress.");
 assert.ok(html.includes("sourceVideoUploadProgress") && html.includes("bridge.upload(\'/api/generation-input-video\'"), "Reference video upload must show real transfer progress.");
 assert.ok(cloud.includes('accountApi("/api/products", {'), "Cloud save must create an account-scoped product before uploading media");
-assert.ok(cloud.includes('accountApi("/api/products/" + encodeURIComponent(sync.productId) + "/images"'), "Cloud save must upload images through the authenticated product media API");
+assert.ok(cloud.includes('accountUpload("/api/products/" + encodeURIComponent(sync.productId) + "/images"'), "Cloud save must upload images through the authenticated progress-aware product media API");
 assert.ok(cloud.includes("await onProgress({ ...sync })"), "Cloud save must persist every upload checkpoint before continuing");
 
 assert.ok(cloud.includes("if (!sync.idempotencyKey)"), "Cloud save must create a stable idempotency key before project creation.");
