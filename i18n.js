@@ -27,6 +27,8 @@
       "Nahraj 1 až 9 fotografií produktu":"Upload 1 to 9 product photos",
       "Vlastné produktové video (voliteľné · max. 90 MB)":"Your own product video (optional · max. 90 MB)",
       "Vybrať video":"Choose video",
+      "Pridaj video spolu s 1 až 9 fotografiami produktu. Podporované sú MP4, MOV a WebM do 90 MB a dĺžky najviac 15 sekúnd. Video môžeš vynechať a vytvoriť reklamu iba z fotografií.":"Add a video together with 1 to 9 product photos. MP4, MOV and WebM videos up to 90 MB and 15 seconds are supported. You can skip the video and create an advertisement using product photos only.",
+      "Môžeš pridať video spolu s fotografiami. Ak video nepridáš, reklama sa vytvorí iba z fotografií.":"You can add a video together with your photos. If you do not add a video, the advertisement will be created using photos only.",
       "Pridaj rôzne uhly alebo detaily toho istého produktu. Čím lepšie fotografie, tým presnejší výsledok.":"Add different angles or details of the same product. Better photos produce more accurate results.",
       "Vlastné produktové video (zatiaľ nedostupné v Preview)":"Your own product video (not yet available in Preview)",
       "Generovanie z vlastného zdrojového videa pripravujeme. Aktuálne funguje generovanie z fotografií produktu.":"Generation from your own source video is in development. Currently, generation from product photos is available.",
