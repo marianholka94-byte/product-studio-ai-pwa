@@ -61,6 +61,9 @@ assert.ok(worker.includes("access_expires_at") && worker.includes("cleanupExpire
 assert.ok(html.includes('accept="video/mp4,video/quicktime,.mp4,.mov"') && !html.includes('id="sourceVideo" type="file" accept="video/mp4,video/quicktime,video/webm" disabled'), "The UI must enable only supported MP4/MOV source video formats.");
 assert.ok(html.includes("selectedSourceVideoDuration") && html.includes("X-Video-Duration") && html.includes("generation-input-video"), "The UI must validate source video duration and upload it through the authenticated cloud bridge.");
 assert.ok(html.includes("sourceVideoTestUpload") && html.includes("AI generovanie sa nespustilo"), "The Studio must expose a safe source-video upload test without starting paid generation.");
+const videoTestHandler = html.slice(html.indexOf("sourceVideoTestUpload').addEventListener"), html.indexOf("async function uploadFormApi"));
+assert.ok(videoTestHandler.includes("ensureSelectedSourceVideoUploaded") && !videoTestHandler.includes("/api/generate"), "The standalone video upload test must store the source file without submitting a generation request.");
+assert.ok(html.includes("selectedSourceVideoUploading=true;sourceVideo.disabled=true"), "Changing the selected source file must be blocked while a large upload is in progress.");
 assert.ok(worker.includes("generation_input_videos WHERE user_id = ? AND client_upload_id = ?"), "Source-video retries must use account-scoped idempotency.");
 assert.ok(worker.includes("const user = await currentUser(request, env)") && worker.includes("WHERE id = ? AND user_id = ? LIMIT 1"), "Generation endpoints must resolve identity from D1 sessions and scope task lookups to the owner.");
 assert.ok(worker.includes("client_request_id") && worker.includes("request_fingerprint"), "Generation submissions must persist account-scoped idempotency keys and payload fingerprints.");
