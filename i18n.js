@@ -204,10 +204,10 @@
         [/^Vyber aspoň jednu fotografiu/,"Select at least one photo"]
       ];
       patterns.push(
+        [/^Odhad: (\d+[,.]\d+ USD) \((\d+) kreditov\)$/, "Estimate: $1 ($2 credits)"],
         [/^Odhad: (.+)$/, "Estimate: $1"],
         [/^Model: (.+)$/, "Model: $1"],
         [/^Úloha: (.+) · Model: (.+) · Stav: (.+)$/, "Task: $1 · Model: $2 · Status: $3"],
-        [/^Odhad: (\\d+[,.]\\d+ USD) \\((\\d+) kreditov\\)$/, "Estimate: $1 ($2 credits)"],
         [/^Produkt musí mať aspoň jednu fotografiu\\.$/, "The product must have at least one photo."]
       );
       for (const [pattern,replacement] of patterns) if (pattern.test(source)) return source.replace(pattern,replacement);
