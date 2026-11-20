@@ -1,6 +1,8 @@
 # Credit Ledger Design (Preview)
 
-Status: design only. This document does not enable credit deductions, billing, subscriptions, or payment-provider calls.
+Status: preview foundation implemented; customer charging and payment integration are not enabled.
+
+The preview currently has D1 credit-account, append-only ledger, and reservation tables; account-scoped wallet reads; an owner-only idempotent manual-grant endpoint; and server-side reservation/settlement helper routines. These are foundation capabilities only. BytePlus ModelArk generation is provider-billed and deliberately uses no internal wallet reservation or debit (estimatedCredits = 0). There is no checkout, payment webhook, subscription, invoice, or customer charge path.
 
 ## Goals
 
@@ -35,7 +37,7 @@ One row per generation, unique by generation ID and user ID. Stores reserved uni
 9. Refunds and manual corrections are compensating ledger entries with an operator reason and audit metadata.
 10. All SQL transitions use D1 transactional batches/conditional updates and are covered by concurrency and retry tests.
 
-## Generation lifecycle
+## Target generation lifecycle (not yet connected to provider-billed generation)
 
 1. Validate request and calculate the maximum reservation from a server-owned pricing table.
 2. Reserve credits idempotently before provider submission.
@@ -57,5 +59,7 @@ One row per generation, unique by generation ID and user ID. Stores reserved uni
 ## Explicitly out of scope for this design
 
 - No real payment provider or webhook integration.
-- No customer charge, debit, subscription, or automatic credit grant.
+- No customer charge, debit, subscription, or automatic purchased-credit grant.
+- BytePlus provider-billed generation does not reserve or debit this internal wallet.
+- Manual grants are restricted to the configured owner identity and are not a payment flow.
 - No claim that estimated UI credits equal actual provider cost.
