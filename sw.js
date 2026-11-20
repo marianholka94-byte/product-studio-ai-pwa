@@ -1,5 +1,5 @@
-const CACHE = "product-studio-ai-v70-no-horizontal-pan-20261120";
-const FILES = ["/", "/index.html", "/manifest.webmanifest", "/icon.svg?v=brand-icon-20261120", "/cloud-library.js?v=mobile-login-width-20261120", "/app-navigation.js?v=prevent-horizontal-pan-20261120", "/i18n.js?v=mobile-upload-labels-20261120"];
+const CACHE = "product-studio-ai-v71-login-touch-i18n-20261120";
+const FILES = ["/", "/index.html", "/manifest.webmanifest", "/icon.svg?v=brand-icon-20261120", "/cloud-library.js?v=mobile-login-width-20261120", "/app-navigation.js?v=lock-horizontal-touch-20261120", "/i18n.js?v=translate-source-video-note-20261120"];
 
 self.addEventListener("install", event => event.waitUntil(
   caches.open(CACHE)
