@@ -85,8 +85,7 @@
     header>span { color:#d6b66e !important;font-weight:700; }
     #appViews { display:block !important;width:100% !important;max-width:100% !important;min-width:0 !important;margin:0 !important;box-sizing:border-box !important; }
     .app-screen { display:none; }
-    .app-screen.active { display:block !important;animation:screenIn .22s ease; }
-    @keyframes screenIn { from{opacity:0;transform:translateY(7px)} to{opacity:1;transform:translateY(0)} }
+    .app-screen.active { display:block !important;animation:none !important;transform:none !important; }
     .panel,.app-placeholder {
       background:#151a22 !important;
       border:1px solid #27303c !important;
@@ -314,7 +313,7 @@ header{position:relative;gap:10px}.psai-menu-trigger{flex:0 0 46px;width:46px!im
         renderProjects().catch(error=>{projectsList.textContent='Knižnicu projektov sa nepodarilo načítať: '+error.message;});
         renderProducts().catch(error=>{productsList.textContent='Knižnicu produktov sa nepodarilo načítať: '+error.message;});
       }
-      window.scrollTo({top:0,behavior:'smooth'});
+      window.scrollTo({top:0,behavior:'auto'});
     });
   });
   document.body.appendChild(nav);
@@ -340,7 +339,7 @@ header{position:relative;gap:10px}.psai-menu-trigger{flex:0 0 46px;width:46px!im
     }));
     backdrop.querySelector('[data-action="cloud-library"]').addEventListener('click',()=>{
       nav.querySelector('[data-screen="screenProjects"]')?.click();closeDrawer();
-      setTimeout(()=>document.getElementById('commercialCloudPanel')?.scrollIntoView({behavior:'smooth',block:'start'}),240);
+      setTimeout(()=>document.getElementById('commercialCloudPanel')?.scrollIntoView({behavior:'auto',block:'start'}),240);
     });
     backdrop.querySelector('[data-action="history"]').addEventListener('click',()=>{
       nav.querySelector('[data-screen="screenProjects"]')?.click();closeDrawer();
