@@ -226,7 +226,7 @@
     const headers = { ...(options.headers || {}) };
     const requestToken = token;
     if (requestToken) headers.Authorization = "Bearer " + requestToken;
-    const response = await fetch(API + path, { ...options, headers });
+    const response = await fetch(API + path, { ...options, headers, cache: "no-store" });
     const data = (response.headers.get("content-type") || "").includes("application/json") ? await response.json() : null;
     if (!response.ok) {
       if (response.status === 401 && token === requestToken) { token = ""; user = null; sessionStorage.removeItem(TOKEN_KEY); resetAccountWorkspace(); renderAuth(); openLogin.hidden = false; updateCloudLoginButton(); showLoginGate(false); notifyCloudAccountChange(); }
