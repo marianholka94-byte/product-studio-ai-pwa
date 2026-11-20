@@ -101,7 +101,7 @@ a{color:#174ea6;overflow-wrap:anywhere}
  <div class="account-metric"><span class="account-metric-label">API KREDITY</span><strong id="creditState" class="account-metric-value">Pripravujeme</strong><div id="creditMetricNote" class="account-metric-note">Zostatok sa načíta po prihlásení.</div></div>
 </div>
 <div class="credit-wallet" id="creditWallet">
- <div class="credit-wallet-heading"><strong>Kreditová peňaženka</strong><button id="refreshCredits" type="button" class="secondary">Obnoviť</button></div>
+ <div class="credit-wallet-heading"><strong>Testovacia kreditová peňaženka</strong><button id="refreshCredits" type="button" class="secondary">Obnoviť</button></div>
  <div class="credit-wallet-balances">
   <div class="credit-wallet-balance"><span>Dostupné kredity</span><strong id="availableCredits">—</strong></div>
   <div class="credit-wallet-balance"><span>Rezervované kredity</span><strong id="reservedCredits">—</strong></div>
@@ -243,7 +243,7 @@ function renderAccountOverview(account,usage=null,health=null){
   $('dailyUsageMeta').textContent='Zostáva '+remaining+' generovaní dnes';
   $('dailyUsageBar').style.width=Math.min(100,used/limit*100)+'%';
  }
- $('creditState').textContent=health?.creditSchema?.enabled?'Aktívny':'Pripravujeme';
+ $('creditState').textContent=health?.creditSchema?.enabled?'Testovacia peňaženka':'Pripravujeme';
 }
 let creditWalletSequence=0;
 const creditTypeLabels={grant:"Dobitie",reserve:"Rezervácia",capture:"Spotrebované",release:"Uvoľnená rezervácia",refund:"Vrátenie",adjustment:"Úprava",expiry:"Exspirácia"};
@@ -253,8 +253,8 @@ function renderCreditWallet(wallet,accountId){
  $('availableCredits').textContent=formatCreditNumber(wallet.available);
  $('reservedCredits').textContent=formatCreditNumber(wallet.reserved);
  $('creditState').textContent=formatCreditNumber(wallet.available);
- $('creditMetricNote').textContent='kreditov k dispozícii';
- $('creditWalletNote').textContent='Zostatok sa aktualizuje po každom generovaní. 1 kredit = 0,01 USD.';
+ $('creditMetricNote').textContent='testovacích jednotiek (bez peňažnej hodnoty)';
+ $('creditWalletNote').textContent='Testovacie kredity zatiaľ nie sú prepojené s generovaním a nemajú peňažnú hodnotu.';
  $('creditAdminPanel').hidden=!wallet.isAdmin;
  const history=$('creditHistory');history.replaceChildren();
  const entries=Array.isArray(wallet.history)?wallet.history:[];
