@@ -125,20 +125,30 @@ public class MainActivity extends Activity {
             networkErrorView.setOnClickListener(v -> webView.reload());
             root.addView(networkErrorView, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
 
-            // Show the pre-cropped PRODUCT STUDIO AI lockup for exactly two seconds.
-            // The source asset contains only the large mark and title; no secondary app icon.
+            // Keep WebView hidden until the 2-second brand intro has been displayed.
+            webView.setVisibility(View.INVISIBLE);
             ImageView brandLockup = new ImageView(this);
             brandLockup.setImageResource(R.drawable.splash_brand_lockup);
             brandLockup.setScaleType(ImageView.ScaleType.FIT_CENTER);
-            brandLockup.setAdjustViewBounds(true);
             brandLockup.setBackgroundColor(Color.rgb(6, 20, 49));
+            android.graphics.drawable.Drawable splashDrawable = brandLockup.getDrawable();
+            if (splashDrawable == null || splashDrawable.getIntrinsicWidth() <= 0 || splashDrawable.getIntrinsicHeight() <= 0) {
+                throw new IllegalStateException("PRODUCT STUDIO AI splash artwork could not be loaded");
+            }
+            int screenWidth = getResources().getDisplayMetrics().widthPixels;
+            int splashHeight = Math.round(screenWidth * (splashDrawable.getIntrinsicHeight() / (float) splashDrawable.getIntrinsicWidth()));
             FrameLayout.LayoutParams splashParams = new FrameLayout.LayoutParams(
-                    FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.CENTER);
+                    FrameLayout.LayoutParams.MATCH_PARENT, splashHeight, Gravity.CENTER);
             root.addView(brandLockup, splashParams);
+            brandLockup.bringToFront();
 
             setContentView(root);
+            brandLockup.post(() -> {
+                if (brandLockup.getParent() == root) brandLockup.bringToFront();
+            });
             new Handler(Looper.getMainLooper()).postDelayed(() -> {
                 if (brandLockup.getParent() == root) root.removeView(brandLockup);
+                if (webView != null) webView.setVisibility(View.VISIBLE);
             }, 2000);
             if (savedInstanceState == null || webView.restoreState(savedInstanceState) == null) {
                 webView.loadUrl(BuildConfig.WEB_APP_URL);
