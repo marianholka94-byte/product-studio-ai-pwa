@@ -40,6 +40,16 @@ Lists are capped at 100 records. Product names are capped at 120 characters, des
 
 Passwords are stored as PBKDF2-SHA256 hashes (100,000 iterations, the current Cloudflare Workers Web Crypto limit); session bearer tokens are stored only as SHA-256 hashes. This is preview authentication only; production should use a managed identity provider and a separately reviewed password policy. Login attempts are throttled per hashed IP/email pair: five failed attempts trigger a 15-minute block. Request JSON is size-limited while streaming, even when the client omits Content-Length. This is an initial preview authentication layer, not yet production-ready: email verification, abuse/rate limiting, password reset, account deletion, and a full privacy/security review remain required before public launch.
 
+## Manual upload acceptance test
+
+1. Sign in to the PWA's Cloud Library.
+2. Create or open a local Studio project with nine JPG, PNG or WebP product photos (each at most 10 MB), then use **Uložiť do cloudu** in Projects. The progress message should advance through photos 1/9 to 9/9 and finish with the cloud-save confirmation. The local project remains intact.
+3. In Studio, select an MP4 or MOV source video between 2 and 15 seconds and at most 90 MB. Press **Otestovať nahratie videa do cloudu**. The progress indicator should reach 100% and confirm the stored byte size.
+4. This test only writes private media to preview R2. It does not call BytePlus or create a generation task. The source video consumes one of the three daily upload slots and is automatically cleaned up after seven days.
+5. If a video upload loses its response after the server has committed it, press the test button again without changing the selected file. The same upload ID replays the stored object. If the transfer was interrupted before commit, the full byte transfer starts again. Project-photo sync instead resumes by checking the remote manifest and image checksums.
+
+Do not enable paid generation just to run this storage test.
+
 ## Database migrations
 
 The preview migration workflow applies pending files in `migrations/` to the preview D1 database only. It requires GitHub repository secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`. Preview registration is closed by default and requires the Worker secret `PREVIEW_SIGNUP_CODE`; clients must send it as `inviteCode` during registration. Configure a long random value in the preview Worker only. Never commit API tokens, invite codes or passwords.
