@@ -61,7 +61,7 @@ Status: active working plan for the owner's private day-to-day PRODUCT STUDIO AI
 ## Confirmed gaps and limitations
 
 - [ ] Source-video-to-video generation is not implemented. The current UI input is disabled; the client function intentionally throws an explanatory error, and the preview Worker has no matching route. Do not treat this as a working feature.
-- [ ] Preview generation is limited to 3 requests per account per UTC day. This is a safety limit, not a paid subscription/credit system.
+- [x] Preview generation is limited to 3 requests per account per UTC day; the deployed Worker health endpoint and live acceptance checks confirm the configured safety limit. This is not a paid subscription/credit system.
 - [x] Preview wallet balance/history and owner-only idempotent manual-grant endpoint are implemented. Manual grants remain disabled until the owner email is configured as a Worker secret.
 - [x] Preview credits are not connected to BytePlus generation or a payment provider and have no cash value; no customer charges, purchases, or subscriptions are enabled.
 - [ ] Public registration remains invite-gated. This is acceptable for the private-workspace phase.
