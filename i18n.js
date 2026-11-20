@@ -201,25 +201,25 @@
         [/^Vybrané: /,"Selected: "],
         [/^Knižnicu projektov sa nepodarilo načítať: /,"Could not load project library: "],
         [/^Knižnicu produktov sa nepodarilo načítať: /,"Could not load product library: "],
-        [/^Projekt „(.+)“ a (\d+) fotografií boli uložené v cloude\\.$/,"Project \"$1\" and $2 photos were saved to the cloud."],
-        [/^Produkt „(.+)“ a (\d+) fotografií boli uložené do cloudu\\.$/,"Product \"$1\" and $2 photos were saved to the cloud."],
-        [/^Pripravené: cloudový účet je prihlásený a vybraných je (\d+) fotografií produktu\\.$/,"Ready: cloud account is signed in and $1 product photos are selected."],
-        [/^Cloudový účet je prihlásený\\. Teraz vyber fotografiu produktu\\.$/,"Cloud account is signed in. Now select a product photo."],
+        [/^Projekt „(.+)“ a (\d+) fotografií boli uložené v cloude\.$/,"Project \"$1\" and $2 photos were saved to the cloud."],
+        [/^Produkt „(.+)“ a (\d+) fotografií boli uložené do cloudu\.$/,"Product \"$1\" and $2 photos were saved to the cloud."],
+        [/^Pripravené: cloudový účet je prihlásený a vybraných je (\d+) fotografií produktu\.$/,"Ready: cloud account is signed in and $1 product photos are selected."],
+        [/^Cloudový účet je prihlásený\. Teraz vyber fotografiu produktu\.$/,"Cloud account is signed in. Now select a product photo."],
         [/^Najskôr sa prihlás do cloudového účtu/,"Please sign in to your cloud account first"],
-        [/^Cloudová knižnica je synchronizovaná\\.$/,"Cloud library is synchronized."],
+        [/^Cloudová knižnica je synchronizovaná\.$/,"Cloud library is synchronized."],
         [/^Dostupné kredity: /,"Available credits: "],
         [/^Rezervované: /,"Reserved: "],
-        [/^Požiadavka zlyhala \\((\\d+)\\)\\.$/,"Request failed ($1)."],
+        [/^Požiadavka zlyhala \((\d+)\)\.$/,"Request failed ($1)."],
         [/^Generovanie bolo dokončené/,"Generation completed"],
         [/^Vyber aspoň jednu fotografiu/,"Select at least one photo"]
       ];
       patterns.push(
-        [/^Spolu (\\d+) · Hotové (\\d+) · Rozpracované (\\d+) · Neúspešné\\/zrušené (\\d+)$/, "Total $1 · Completed $2 · In progress $3 · Failed/cancelled $4"],
+        [/^Spolu (\d+) · Hotové (\d+) · Rozpracované (\d+) · Neúspešné\/zrušené (\d+)$/, "Total $1 · Completed $2 · In progress $3 · Failed/cancelled $4"],
         [/^Odhad: (\d+[,.]\d+ USD) \((\d+) kreditov\)$/, "Estimate: $1 ($2 credits)"],
         [/^Odhad: (.+)$/, "Estimate: $1"],
         [/^Model: (.+)$/, "Model: $1"],
         [/^Úloha: (.+) · Model: (.+) · Stav: (.+)$/, "Task: $1 · Model: $2 · Status: $3"],
-        [/^Produkt musí mať aspoň jednu fotografiu\\.$/, "The product must have at least one photo."]
+        [/^Produkt musí mať aspoň jednu fotografiu\.$/, "The product must have at least one photo."]
       );
       for (const [pattern,replacement] of patterns) if (pattern.test(source)) return source.replace(pattern,replacement);
     }
