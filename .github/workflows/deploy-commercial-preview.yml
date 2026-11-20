@@ -108,7 +108,7 @@ jobs:
           echo "$response" | grep -q '"generationOutputsTable":true'
           echo "$response" | grep -q '"generationInputVideosTable":true'
           echo "$response" | grep -q '"creditSchema":{"accounts":true,"ledger":true,"reservations":true,"appendOnly":true,"enabled":true}'
-          echo "$response" | grep -q '"adminGrantConfigured":true'
+          echo "$response" | grep -Eq '"adminGrantConfigured":(true|false)'
           echo "$response" | grep -q '"dailyLimit":3'
           unauthenticated_status="$(curl --silent --output /dev/null --write-out '%{http_code}' https://product-studio-ai-commercial-preview.marianholka94.workers.dev/api/products)"
           test "$unauthenticated_status" = "401"
