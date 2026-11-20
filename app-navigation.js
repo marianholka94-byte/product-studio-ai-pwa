@@ -605,6 +605,8 @@
           const latest=await getProject(record.id);if(!latest)throw new Error('Lokálny projekt sa už nenašiel.');
           const result=await window.PSAICloudLibrary.saveLocalProject(latest,async sync=>{
             latest.cloudSyncByAccount={...(latest.cloudSyncByAccount||{}),[sync.accountId]:sync};latest.updatedAt=Date.now();await putProject(latest);
+          },progress=>{
+            setProjectMessage('Nahrávam fotografiu '+progress.imageIndex+' z '+progress.imageCount+' · '+progress.percent+'%');
           });
           latest.cloudSyncByAccount={...(latest.cloudSyncByAccount||{}),[result.accountId]:result};latest.updatedAt=Date.now();await putProject(latest);
           saveCloud.textContent='Uložené v cloude';saveCloud.disabled=true;
