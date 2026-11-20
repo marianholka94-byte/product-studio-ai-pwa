@@ -202,6 +202,7 @@ assert.ok(projectCreate.includes("if (operationId && /unique|constraint/i.test(S
 
 const inputLimitMigration = readFileSync("migrations/0013_generation_input_videos_90mb.sql", "utf8");
 const inputQuotaMigration = readFileSync("migrations/0014_generation_input_video_daily_limit.sql", "utf8");
+const inputQuotaMigration = readFileSync("migrations/0014_generation_input_video_daily_limit.sql", "utf8");
 assert.ok(inputLimitMigration.includes("byte_size BETWEEN 12 AND 94371840") && inputLimitMigration.includes("FROM generation_input_videos"), "D1 must migrate existing source videos to the 90 MB constraint without dropping records.");
 assert.ok(inputQuotaMigration.includes("trg_generation_input_videos_daily_limit") && inputQuotaMigration.includes("generation input video daily limit reached"), "D1 must enforce the per-account daily source-video upload quota without concurrency races.");
 const generationMigration = readFileSync("migrations/0007_account_bound_generation.sql", "utf8");
