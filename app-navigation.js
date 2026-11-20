@@ -632,8 +632,11 @@
         catch(error){alert(error.message||'Produkt sa nepodarilo vymazať.');}
       });
       const cloudSync=window.PSAICloudLibrary?.getSyncState(record)||null;
+      const cloudImagesTotal=record.images?.length||0;
+      const cloudSaved=!!cloudSync?.productId&&Number(cloudSync.uploadedImages||0)>=cloudImagesTotal;
+      const cloudPending=!!cloudSync?.productId&&!cloudSaved;
       const saveCloud=document.createElement('button');saveCloud.type='button';saveCloud.className='secondary';
-      saveCloud.textContent=cloudSync?.productId?'Uložené v cloude':'☁ Uložiť do Cloudu';saveCloud.disabled=!!cloudSync?.productId;
+      saveCloud.textContent=cloudSaved?'Uložené v cloude':cloudPending?'Pokračovať v ukladaní':'☁ Uložiť do Cloudu';saveCloud.disabled=cloudSaved;
       saveCloud.addEventListener('click',async()=>{
         if(!window.PSAICloudLibrary?.saveLocalProduct){setProjectMessage('Cloudová knižnica ešte nie je pripravená. Obnov stránku a skús to znova.',true);return;}
         if(!window.PSAICloudLibrary.getCurrentUser()){setProjectMessage('Najskôr sa prihlás do Cloudovej knižnice.',true);return;}
