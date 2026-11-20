@@ -20,8 +20,27 @@
   const auth = $("div");
   const workspace = $("div");
   workspace.hidden = true;
+  const loginGate = $("div", { class: "psai-login-gate", role: "dialog", "aria-modal": "true", "aria-labelledby": "psaiLoginTitle" });
+  const loginCard = $("section", { class: "psai-login-card" });
+  const loginTitle = $("h1", { id: "psaiLoginTitle" }, "PRODUCT STUDIO AI");
+  const loginSubtitle = $("p", { class: "psai-login-subtitle" }, "Prihlás sa do svojho cloudového účtu");
+  const loginLocal = $("button", { class: "secondary psai-login-local", type: "button" }, "Pokračovať bez prihlásenia");
+  const openLogin = $("button", { class: "secondary psai-open-login", type: "button" }, "Prihlásiť sa do Cloudu");
+  openLogin.hidden = true;
+  loginCard.append(loginTitle, loginSubtitle, status, auth, loginLocal);
+  loginGate.append(loginCard);
+  document.body.append(loginGate);
+  panel.append(openLogin);
+  const showLoginGate = (checking = false) => {
+    loginGate.hidden = false;
+    loginLocal.hidden = checking;
+    if (checking) setStatus("Overujem tvoje prihlásenie…");
+  };
+  const hideLoginGate = () => { loginGate.hidden = true; };
+  loginLocal.addEventListener("click", () => { hideLoginGate(); openLogin.hidden = false; });
+  openLogin.addEventListener("click", () => { showLoginGate(false); auth.hidden = false; });
   const style = $("style");
-  style.textContent = "#commercialCloudPanel input,#commercialCloudPanel textarea,#commercialCloudPanel select{width:100%;margin:5px 0 10px;padding:11px;border-radius:9px;border:1px solid #39495d;background:#0d141d;color:#fff}#commercialCloudPanel button{width:auto;margin:4px 6px 8px 0;padding:10px 14px;border-radius:9px;background:#d9bd7d;color:#17130b;font-weight:700;border:0}#commercialCloudPanel button.secondary{background:#293647;color:#eef2f7}#commercialCloudPanel .cloud-item{border:1px solid #39495d;border-radius:12px;padding:12px;margin:10px 0;background:#101720}#commercialCloudPanel .cloud-thumb{width:76px;height:76px;object-fit:cover;border-radius:8px;margin:5px 7px 0 0}#commercialCloudPanel label{display:block;color:#aebaca;font-size:13px;margin-top:8px}";
+  style.textContent = "#commercialCloudPanel input,#commercialCloudPanel textarea,#commercialCloudPanel select{width:100%;margin:5px 0 10px;padding:11px;border-radius:9px;border:1px solid #39495d;background:#0d141d;color:#fff}#commercialCloudPanel button{width:auto;margin:4px 6px 8px 0;padding:10px 14px;border-radius:9px;background:#d9bd7d;color:#17130b;font-weight:700;border:0}#commercialCloudPanel button.secondary{background:#293647;color:#eef2f7}#commercialCloudPanel .cloud-item{border:1px solid #39495d;border-radius:12px;padding:12px;margin:10px 0;background:#101720}#commercialCloudPanel .cloud-thumb{width:76px;height:76px;object-fit:cover;border-radius:8px;margin:5px 7px 0 0}#commercialCloudPanel label{display:block;color:#aebaca;font-size:13px;margin-top:8px}#commercialCloudPanel .psai-open-login{display:block;margin:10px 0;background:#d9bd7d;color:#17130b}.psai-login-gate{position:fixed;inset:0;z-index:10050;display:flex;align-items:center;justify-content:center;padding:24px 18px calc(24px + env(safe-area-inset-bottom,0px));background:rgba(7,10,15,.97);overflow-y:auto}.psai-login-gate[hidden]{display:none}.psai-login-card{width:min(100%,440px);padding:24px 20px;border:1px solid #39495d;border-radius:22px;background:#151b24;color:#f3f5f8;box-shadow:0 24px 80px rgba(0,0,0,.45)}.psai-login-card h1{margin:0;color:#fff;font-size:25px;letter-spacing:.5px}.psai-login-subtitle{margin:8px 0 20px;color:#aebaca;font-size:14px}.psai-login-card #commercialCloudPanel input,#commercialCloudPanel textarea,#commercialCloudPanel select{width:100%;margin:5px 0 10px;padding:11px;border-radius:9px;border:1px solid #39495d;background:#0d141d;color:#fff}#commercialCloudPanel button{width:auto;margin:4px 6px 8px 0;padding:10px 14px;border-radius:9px;background:#d9bd7d;color:#17130b;font-weight:700;border:0}#commercialCloudPanel button.secondary{background:#293647;color:#eef2f7}#commercialCloudPanel .cloud-item{border:1px solid #39495d;border-radius:12px;padding:12px;margin:10px 0;background:#101720}#commercialCloudPanel .cloud-thumb{width:76px;height:76px;object-fit:cover;border-radius:8px;margin:5px 7px 0 0}#commercialCloudPanel label{display:block;color:#aebaca;font-size:13px;margin-top:8px}";
   panel.append(style, heading, intro, status, auth, workspace);
   const first = document.querySelector("main") || document.body;
   const appHeader = first.querySelector(":scope > header");
@@ -196,7 +215,7 @@
     const response = await fetch(API + path, { ...options, headers });
     const data = (response.headers.get("content-type") || "").includes("application/json") ? await response.json() : null;
     if (!response.ok) {
-      if (response.status === 401 && token === requestToken) { token = ""; user = null; sessionStorage.removeItem(TOKEN_KEY); resetAccountWorkspace(); renderAuth(); notifyCloudAccountChange(); }
+      if (response.status === 401 && token === requestToken) { token = ""; user = null; sessionStorage.removeItem(TOKEN_KEY); resetAccountWorkspace(); renderAuth(); openLogin.hidden = false; showLoginGate(false); notifyCloudAccountChange(); }
       const error = new Error(data?.error || "Požiadavka zlyhala (" + response.status + ").");
       if (data?.currentProject) error.currentProject = data.currentProject;
       if (data?.currentProduct) error.currentProduct = data.currentProduct;
@@ -547,6 +566,8 @@
       notifyCloudAccountChange();
       auth.hidden = true;
       workspace.hidden = false;
+      openLogin.hidden = true;
+      hideLoginGate();
       accountLine.textContent = "Prihlásený účet: " + user.email;
       setStatus("Cloudový účet je prihlásený.");
       await refresh();
@@ -563,7 +584,7 @@
     login.disabled = false;
     register.disabled = false;
     try { await api("/api/auth/logout", { method: "POST" }); } catch {}
-    token = ""; user = null; sessionStorage.removeItem(TOKEN_KEY); resetAccountWorkspace(); renderAuth(); notifyCloudAccountChange();
+    token = ""; user = null; sessionStorage.removeItem(TOKEN_KEY); resetAccountWorkspace(); renderAuth(); openLogin.hidden = false; showLoginGate(false); notifyCloudAccountChange();
   });
   addProduct.addEventListener("click", async () => {
     if (addProduct.disabled) return;
@@ -953,6 +974,8 @@
   panel.appendChild(auth);
   panel.appendChild(workspace);
   renderAuth();
+  openLogin.hidden = false;
+  showLoginGate(!!token);
   if (token) {
     // A restored session may resolve after the user has already signed in or out.
     // Never let this older bootstrap request overwrite a newer account session.
@@ -961,7 +984,7 @@
     const isCurrentBootstrap = () => token === bootstrapToken && accountEpoch === bootstrapEpoch;
     api("/api/auth/me").then(data => {
       if (!isCurrentBootstrap()) return;
-      user = data.user; notifyCloudAccountChange(); auth.hidden = true; workspace.hidden = false;
+      user = data.user; notifyCloudAccountChange(); auth.hidden = true; workspace.hidden = false; openLogin.hidden = true; hideLoginGate();
       accountLine.textContent = "Prihlásený účet: " + user.email;
       return refresh();
     }).then(() => {
