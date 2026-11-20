@@ -265,7 +265,7 @@ header{position:relative;gap:10px}.psai-menu-trigger{flex:0 0 46px;width:46px!im
 
 
   connection.remove();
-  settings.innerHTML='<section class="app-placeholder"><h2>Účet a bezpečnosť</h2><p>Cloudový účet a pripojenie generátora spravuješ v časti Projekty → Cloudová knižnica.</p><p>Odhlásenie z cloudovej knižnice zruší cloudovú reláciu. Lokálne projekty a produkty v tomto zariadení zostanú zachované.</p><p>Táto aplikácia už nepoužíva staré prihlásenie spoločným aplikačným heslom.</p></section>';
+  settings.innerHTML='<section class="app-placeholder" id="psaiLanguagePanel"><h2>Jazyk aplikácie</h2><p>Vyber jazyk rozhrania aplikácie. Zmena sa uloží automaticky.</p><label for="psaiLanguageSelect">Jazyk</label><select id="psaiLanguageSelect"><option value="sk">🇸🇰 Slovenčina</option><option value="en">🇬🇧 English</option></select><p id="psaiLanguageNote" class="muted"></p></section><section class="app-placeholder"><h2>Účet a bezpečnosť</h2><p>Cloudový účet a pripojenie generátora spravuješ v časti Projekty → Cloudová knižnica.</p><p>Odhlásenie z cloudovej knižnice zruší cloudovú reláciu. Lokálne projekty a produkty v tomto zariadení zostanú zachované.</p><p>Táto aplikácia už nepoužíva staré prihlásenie spoločným aplikačným heslom.</p></section>';
 
   views.append(studio,projects,settings);
   const header=document.querySelector('header');
