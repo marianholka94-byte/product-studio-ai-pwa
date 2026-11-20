@@ -545,9 +545,15 @@ sourceVideo.addEventListener('change',()=>{
   $('sourceVideoInfo').className='status err';return;
  }
  if(!['video/mp4','video/quicktime','video/webm'].includes(selectedSourceVideo.type)){
-  selectedSourceVideo=null;sourceVideo.value='';
-  $('sourceVideoInfo').textContent='Použi MP4, MOV alebo WebM.';
-  $('sourceVideoInfo').className='status err';return;
+  const extension=(selectedSourceVideo.name.split('.').pop()||'').toLowerCase();
+  const extensionMime={mp4:'video/mp4',mov:'video/quicktime',webm:'video/webm'}[extension];
+  if(extensionMime){
+   selectedSourceVideo=new File([selectedSourceVideo],selectedSourceVideo.name,{type:extensionMime,lastModified:selectedSourceVideo.lastModified});
+  }else{
+   selectedSourceVideo=null;sourceVideo.value='';
+   $('sourceVideoInfo').textContent='Použi MP4, MOV alebo WebM.';
+   $('sourceVideoInfo').className='status err';return;
+  }
  }
  sourceVideoPreview.src=URL.createObjectURL(selectedSourceVideo);
  sourceVideoPreview.style.display='block';
