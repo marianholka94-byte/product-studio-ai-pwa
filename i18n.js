@@ -222,8 +222,8 @@
   let language = "sk";
   const translate = value => {
     const source = String(value ?? "");
-    const leading = source.match(/^\\s*/)?.[0] || "";
-    const trailing = source.match(/\\s*$/)?.[0] || "";
+    const leading = source.match(/^\s*/)?.[0] || "";
+    const trailing = source.match(/\s*$/)?.[0] || "";
     const core = source.slice(leading.length, source.length - trailing.length || undefined);
     if (!core) return source;
     const dict = language === "en" ? dictionaries.en : reverse;
