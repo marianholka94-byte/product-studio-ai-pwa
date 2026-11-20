@@ -829,6 +829,14 @@ header{position:relative;gap:10px}.psai-menu-trigger{flex:0 0 46px;width:46px!im
     .prompt-save-hint{margin:2px 0 0;color:#8995a6;font-size:12px;line-height:1.5}
   `;
   document.head.appendChild(promptStyle);
+  const promptEditorToggle=document.getElementById('promptEditorToggle');
+  const promptEditorContent=document.getElementById('promptEditorContent');
+  promptEditorToggle.addEventListener('click',()=>{
+    const opening=promptEditorContent.hidden;
+    promptEditorContent.hidden=!opening;
+    promptEditorToggle.setAttribute('aria-expanded',String(opening));
+    promptEditorToggle.querySelector('.prompt-editor-toggle-icon').textContent=opening?'−':'＋';
+  });
   const promptDraft=document.getElementById('promptDraftText');
   const promptStatus=document.getElementById('promptEditorStatus');
   const promptLength=document.getElementById('promptLength');
