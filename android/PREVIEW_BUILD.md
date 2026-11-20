@@ -14,3 +14,8 @@ gradle --no-daemon assemblePreviewDebug
 The preview APK is a test build only. It is not signed for store release and is not published automatically. It can be installed alongside the existing production app.
 
 Web UI changes can be delivered by the preview Pages deployment without rebuilding the APK. Changes to the Android wrapper itself require a new preview APK.
+
+
+## Archived stable backup
+
+This branch preserves the PRODUCT STUDIO AI Android 1.4.6 backup from 20 November 2026. Rebuilds from this branch must keep the archived Android wrapper and application configuration unchanged.
