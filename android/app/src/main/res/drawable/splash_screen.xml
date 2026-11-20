@@ -5,8 +5,8 @@
         </shape>
     </item>
     <item
-        android:drawable="@drawable/ic_launcher_foreground"
-        android:width="180dp"
-        android:height="180dp"
+        android:drawable="@drawable/splash_brand_lockup"
+        android:width="340dp"
+        android:height="168dp"
         android:gravity="center" />
 </layer-list>
