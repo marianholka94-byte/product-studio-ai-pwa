@@ -618,7 +618,7 @@ window.PSAIProjectBridge = {
       model: $('model').value,
       lighting: $('lighting').value,
       extra: $('extra').value,
-      prompt: promptText || $('prompt').textContent || '',
+      prompt: promptText || '',
       images: selectedFiles.map(file => ({ name:file.name, type:file.type, blob:file }))
     };
   },
@@ -659,7 +659,7 @@ if ('serviceWorker' in navigator && new URLSearchParams(location.search).get('na
   });
 }
   </script>
-  <script src="/cloud-library.js?v=cloud-file-picker-english-20261120"></script>
+  <script src="/cloud-library.js?v=projects-card-spacing-fix-20261120"></script>
 <script src="/app-navigation.js?v=lock-horizontal-touch-20261120"></script>
 <script src="/i18n.js?v=fix-whitespace-regex-20261120"></script>
 </body></html>
