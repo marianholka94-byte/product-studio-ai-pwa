@@ -462,7 +462,10 @@
     if (!productList.childElementCount) addText(productList, "p", "Zatiaľ nemáš uložené aktívne produkty.");
     if (archivedProducts.length) {
       const archive = $("details", { class: "cloud-item" });
-      archive.append($("summary", {}, "Archív produktov (" + archivedProducts.length + ")"));
+      archive.style.cssText = "margin:14px 0 20px;padding:12px 14px;display:block;clear:both";
+      const archiveSummary = $("summary", {}, "Archív produktov (" + archivedProducts.length + ")");
+      archiveSummary.style.cssText = "display:block;min-height:42px;line-height:1.5;padding:4px 2px;cursor:pointer;overflow-wrap:anywhere";
+      archive.append(archiveSummary);
       for (const product of archivedProducts) {
         const item = $("div", { class: "cloud-item" });
         addText(item, "strong", product.name);
@@ -491,9 +494,16 @@
     for (const project of (pr.projects || []).filter(x => !x.archivedAt)) {
       const card = $("div", { class: "cloud-item" });
       card.dataset.searchText = [project.name, project.prompt, project.status].filter(Boolean).join(" ").toLocaleLowerCase("sk");
-      addText(card, "strong", project.name);
-      addText(card, "small", (project.status || "draft") + (project.productId ? " · Prepojený produkt" : ""));
-      addText(card, "p", project.prompt || "");
+      const projectTitle = $("strong", {}, project.name || "Nepomenovaný projekt");
+      projectTitle.style.cssText = "display:block;line-height:1.4;margin:0 0 5px;overflow-wrap:anywhere";
+      const projectMeta = $("small", {}, (project.status || "draft") + (project.productId ? " · Prepojený produkt" : ""));
+      projectMeta.style.cssText = "display:block;line-height:1.45;margin:0 0 10px;color:#aeb8c7;overflow-wrap:anywhere";
+      const savedPrompt = String(project.prompt || "").trim();
+      const placeholderPrompts = ["Prompt ešte nebol vytvorený.", "Po výbere produktu sa tu zobrazí reklamný prompt."];
+      const projectPromptText = savedPrompt && !placeholderPrompts.includes(savedPrompt) ? savedPrompt : "Prompt ešte nebol vytvorený.";
+      const projectPrompt = $("p", {}, projectPromptText);
+      projectPrompt.style.cssText = "display:block;line-height:1.55;margin:0 0 12px;overflow-wrap:anywhere;color:" + (projectPromptText === "Prompt ešte nebol vytvorený." ? "#aeb8c7" : "inherit");
+      card.append(projectTitle, projectMeta, projectPrompt);
       const actions = $("div");
       const openInStudio = $("button", { class: "secondary" }, "Otvoriť v štúdiu");
       openInStudio.addEventListener("click", async () => {
