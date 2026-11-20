@@ -218,6 +218,7 @@
       white-space:normal;
     }
     .project-side-tab .project-tab-icon {font-size:23px;line-height:1;color:#c2cad5;}
+    .project-side-tab:focus-visible {outline:2px solid #e2c47e;outline-offset:2px;}
     .project-side-tab.active {
       color:#f0d99f!important;background:#302919!important;
       border-color:#705a31!important;box-shadow:inset 3px 0 #d9bd7d;
@@ -415,18 +416,20 @@
   projectWorkspace.className='project-workspace';
   const projectTabs=document.createElement('nav');
   projectTabs.className='project-side-tabs';
+  projectTabs.setAttribute('role','tablist');
   projectTabs.setAttribute('aria-label','Navigácia projektov');
+  projectTabs.setAttribute('aria-orientation','vertical');
   projectTabs.innerHTML=
-    '<button type="button" class="project-side-tab active" data-project-tab="saved" aria-current="page"><span class="project-tab-icon">▣</span><span>Projekty</span></button>'+
-    '<button type="button" class="project-side-tab" data-project-tab="products"><span class="project-tab-icon">▧</span><span>Produkty</span></button>'+
-    '<button type="button" class="project-side-tab" data-project-tab="history"><span class="project-tab-icon">◷</span><span>História</span></button>'+
-    '<button type="button" class="project-side-tab" data-project-tab="cloud"><span class="project-tab-icon">☁</span><span>Cloud</span></button>';
+    '<button type="button" class="project-side-tab active" data-project-tab="saved" role="tab" id="project-tab-saved" aria-controls="project-panel-saved" aria-selected="true" tabindex="0"><span class="project-tab-icon">▣</span><span>Projekty</span></button>'+
+    '<button type="button" class="project-side-tab" data-project-tab="products" role="tab" id="project-tab-products" aria-controls="project-panel-products" aria-selected="false" tabindex="-1"><span class="project-tab-icon">▧</span><span>Produkty</span></button>'+
+    '<button type="button" class="project-side-tab" data-project-tab="history" role="tab" id="project-tab-history" aria-controls="project-panel-history" aria-selected="false" tabindex="-1"><span class="project-tab-icon">◷</span><span>História</span></button>'+
+    '<button type="button" class="project-side-tab" data-project-tab="cloud" role="tab" id="project-tab-cloud" aria-controls="project-panel-cloud" aria-selected="false" tabindex="-1"><span class="project-tab-icon">☁</span><span>Cloud</span></button>';
   const projectTabContent=document.createElement('div');
   projectTabContent.className='project-tab-content';
-  const savedTab=document.createElement('section');savedTab.className='project-tab-panel active';savedTab.dataset.projectPanel='saved';
-  const productsTab=document.createElement('section');productsTab.className='project-tab-panel';productsTab.dataset.projectPanel='products';productsTab.hidden=true;
-  const historyTab=document.createElement('section');historyTab.className='project-tab-panel';historyTab.dataset.projectPanel='history';historyTab.hidden=true;
-  const cloudTab=document.createElement('section');cloudTab.className='project-tab-panel';cloudTab.dataset.projectPanel='cloud';cloudTab.hidden=true;
+  const savedTab=document.createElement('section');savedTab.className='project-tab-panel active';savedTab.id='project-panel-saved';savedTab.dataset.projectPanel='saved';savedTab.setAttribute('role','tabpanel');savedTab.setAttribute('aria-labelledby','project-tab-saved');savedTab.tabIndex=0;
+  const productsTab=document.createElement('section');productsTab.className='project-tab-panel';productsTab.id='project-panel-products';productsTab.dataset.projectPanel='products';productsTab.setAttribute('role','tabpanel');productsTab.setAttribute('aria-labelledby','project-tab-products');productsTab.tabIndex=0;productsTab.hidden=true;
+  const historyTab=document.createElement('section');historyTab.className='project-tab-panel';historyTab.id='project-panel-history';historyTab.dataset.projectPanel='history';historyTab.setAttribute('role','tabpanel');historyTab.setAttribute('aria-labelledby','project-tab-history');historyTab.tabIndex=0;historyTab.hidden=true;
+  const cloudTab=document.createElement('section');cloudTab.className='project-tab-panel';cloudTab.id='project-panel-cloud';cloudTab.dataset.projectPanel='cloud';cloudTab.setAttribute('role','tabpanel');cloudTab.setAttribute('aria-labelledby','project-tab-cloud');cloudTab.tabIndex=0;cloudTab.hidden=true;
   savedTab.append(projectsIntro,projectsList);
   productsTab.append(productsIntro,productsList);
   historyTab.append(history);
@@ -441,7 +444,8 @@
       projectTabs.querySelectorAll('[data-project-tab]').forEach(item=>{
         const active=item===tab;
         item.classList.toggle('active',active);
-        if(active)item.setAttribute('aria-current','page');else item.removeAttribute('aria-current');
+        item.setAttribute('aria-selected',String(active));
+        item.tabIndex=active?0:-1;
       });
       projectTabContent.querySelectorAll('[data-project-panel]').forEach(panel=>{
         const active=panel.dataset.projectPanel===selected;
@@ -452,6 +456,20 @@
       if(selected==='products')renderProducts().catch(error=>{productsList.textContent='Knižnicu produktov sa nepodarilo načítať: '+error.message;});
       if(selected==='history'&&typeof refreshGenerationHistory==='function')refreshGenerationHistory().catch(()=>{});
     });
+  });
+  projectTabs.addEventListener('keydown',event=>{
+    const tabs=Array.from(projectTabs.querySelectorAll('[data-project-tab]'));
+    const current=tabs.indexOf(document.activeElement);
+    if(current<0)return;
+    let next=-1;
+    if(event.key==='ArrowDown'||event.key==='ArrowRight')next=(current+1)%tabs.length;
+    else if(event.key==='ArrowUp'||event.key==='ArrowLeft')next=(current-1+tabs.length)%tabs.length;
+    else if(event.key==='Home')next=0;
+    else if(event.key==='End')next=tabs.length-1;
+    if(next<0)return;
+    event.preventDefault();
+    tabs[next].focus();
+    tabs[next].click();
   });
   productsIntro.querySelector('#productLibraryInfoButton').addEventListener('click',()=>{
     const button=productsIntro.querySelector('#productLibraryInfoButton');
