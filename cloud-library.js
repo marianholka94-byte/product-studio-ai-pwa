@@ -462,7 +462,7 @@
     if (!productList.childElementCount) addText(productList, "p", "Zatiaľ nemáš uložené aktívne produkty.");
     if (archivedProducts.length) {
       const archive = $("details", { class: "cloud-item" });
-      archive.append($("summary", {}, "Archív produktov (" + archivedProducts.length + ")"));
+      archive.append($("summary", {}, (window.PSAII18n?.t("Archív produktov") || "Archív produktov") + " (" + archivedProducts.length + ")"));
       for (const product of archivedProducts) {
         const item = $("div", { class: "cloud-item" });
         addText(item, "strong", product.name);
@@ -492,7 +492,10 @@
       const card = $("div", { class: "cloud-item" });
       card.dataset.searchText = [project.name, project.prompt, project.status].filter(Boolean).join(" ").toLocaleLowerCase("sk");
       addText(card, "strong", project.name);
-      addText(card, "small", (project.status || "draft") + (project.productId ? " · Prepojený produkt" : ""));
+      const projectStatus = $("small", {}, (project.status || "draft") + (project.productId ? " · " + (window.PSAII18n?.t("Prepojený produkt") || "Prepojený produkt") : ""));
+      projectStatus.style.display = "block";
+      projectStatus.style.marginTop = "5px";
+      card.append(projectStatus);
       addText(card, "p", project.prompt || "");
       const actions = $("div");
       const openInStudio = $("button", { class: "secondary" }, "Otvoriť v štúdiu");
