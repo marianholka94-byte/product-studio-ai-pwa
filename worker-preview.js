@@ -334,7 +334,7 @@ export default {
         if (rangeHeader) {
           // BytePlus may request only part of a reference video. Support one
           // RFC 7233 byte range and reject malformed/multipart ranges safely.
-          const match = /^bytes=(\\d*)-(\\d*)$/i.exec(rangeHeader.trim());
+          const match = /^bytes=(\d*)-(\d*)$/i.exec(rangeHeader.trim());
           if (!match || (!match[1] && !match[2])) {
             return new Response(null, { status: 416, headers: { "Accept-Ranges": "bytes", "Content-Range": "bytes */" + totalSize, "Cache-Control": "no-store" } });
           }
