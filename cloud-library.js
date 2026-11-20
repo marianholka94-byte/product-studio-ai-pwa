@@ -38,10 +38,10 @@
     if (checking) setStatus("Overujem tvoje prihlásenie…");
   };
   const hideLoginGate = () => { loginGate.hidden = true; };
-  loginLocal.addEventListener("click", () => { hideLoginGate(); openLogin.hidden = false; });
-  openLogin.addEventListener("click", () => { showLoginGate(false); auth.hidden = false; });
+  loginLocal.addEventListener("click", () => { hideLoginGate(); openLogin.hidden = false; updateCloudLoginButton(); });
+  openLogin.addEventListener("click", () => { if (user) return; showLoginGate(false); auth.hidden = false; });
   const style = $("style");
-  style.textContent = "#commercialCloudPanel input,#commercialCloudPanel textarea,#commercialCloudPanel select,.psai-login-card input,.psai-login-card textarea,.psai-login-card select{width:100%;margin:5px 0 10px;padding:11px;border-radius:9px;border:1px solid #39495d;background:#0d141d;color:#fff;box-sizing:border-box}#commercialCloudPanel button,.psai-login-card button{width:auto;min-height:44px;margin:4px 6px 8px 0;padding:10px 14px;border-radius:9px;background:#d9bd7d;color:#17130b;font-weight:700;border:0}#commercialCloudPanel button.secondary,.psai-login-card button.secondary{background:#293647;color:#eef2f7}#commercialCloudPanel .cloud-item{border:1px solid #39495d;border-radius:12px;padding:12px;margin:10px 0;background:#101720}#commercialCloudPanel .cloud-thumb{width:76px;height:76px;object-fit:cover;border-radius:8px;margin:5px 7px 0 0}#commercialCloudPanel label,.psai-login-card label{display:block;color:#aebaca;font-size:13px;margin-top:8px}.psai-login-gate{position:fixed;inset:0;z-index:10050;display:flex;align-items:center;justify-content:center;padding:24px 18px calc(24px + env(safe-area-inset-bottom,0px));background:rgba(7,10,15,.97);overflow-y:auto}.psai-login-gate[hidden]{display:none}.psai-login-card{width:min(100%,440px);padding:24px 20px;border:1px solid #39495d;border-radius:22px;background:#151b24;color:#f3f5f8;box-shadow:0 24px 80px rgba(0,0,0,.45)}.psai-login-card h1{margin:0;color:#fff;font-size:25px;letter-spacing:.5px}.psai-login-subtitle{margin:8px 0 20px;color:#aebaca;font-size:14px}.psai-login-card #loginLocal{width:100%}.psai-login-card .status{margin:10px 0 14px}.psai-login-card button:not(.secondary){width:100%}.psai-login-card .psai-login-local{width:100%;margin:10px 0 0}.psai-login-card .psai-register-toggle{display:block;width:100%;margin:10px 0 0}#commercialCloudPanel .psai-open-login{display:block;margin:10px 0;background:#d9bd7d;color:#17130b}";
+  style.textContent = "#commercialCloudPanel input,#commercialCloudPanel textarea,#commercialCloudPanel select,.psai-login-card input,.psai-login-card textarea,.psai-login-card select{width:100%;margin:5px 0 10px;padding:11px;border-radius:9px;border:1px solid #39495d;background:#0d141d;color:#fff;box-sizing:border-box}#commercialCloudPanel button,.psai-login-card button{width:auto;min-height:44px;margin:4px 6px 8px 0;padding:10px 14px;border-radius:9px;background:#d9bd7d;color:#17130b;font-weight:700;border:0}#commercialCloudPanel button.secondary,.psai-login-card button.secondary{background:#293647;color:#eef2f7}#commercialCloudPanel .cloud-item{border:1px solid #39495d;border-radius:12px;padding:12px;margin:10px 0;background:#101720}#commercialCloudPanel .cloud-thumb{width:76px;height:76px;object-fit:cover;border-radius:8px;margin:5px 7px 0 0}#commercialCloudPanel label,.psai-login-card label{display:block;color:#aebaca;font-size:13px;margin-top:8px}.psai-login-gate{position:fixed;inset:0;z-index:10050;display:flex;align-items:center;justify-content:center;padding:24px 18px calc(24px + env(safe-area-inset-bottom,0px));background:rgba(7,10,15,.97);overflow-y:auto}.psai-login-gate[hidden]{display:none}.psai-login-card{width:min(100%,440px);padding:24px 20px;border:1px solid #39495d;border-radius:22px;background:#151b24;color:#f3f5f8;box-shadow:0 24px 80px rgba(0,0,0,.45)}.psai-login-card h1{margin:0;color:#fff;font-size:25px;letter-spacing:.5px}.psai-login-subtitle{margin:8px 0 20px;color:#aebaca;font-size:14px}.psai-login-card #loginLocal{width:100%}.psai-login-card .status{margin:10px 0 14px}.psai-login-card button:not(.secondary){width:100%}.psai-login-card .psai-login-local{width:100%;margin:10px 0 0}.psai-login-card .psai-register-toggle{display:block;width:100%;margin:10px 0 0}#commercialCloudPanel .psai-open-login{display:block;margin:10px 0;background:#d9bd7d;color:#17130b}#commercialCloudPanel .psai-open-login.is-connected{background:#173a2c;color:#b8e7c9;border:1px solid #32684c;opacity:1;cursor:default}#commercialCloudPanel .psai-open-login:disabled{opacity:1}";
   panel.append(style, heading, intro, workspace);
   const first = document.querySelector("main") || document.body;
   const appHeader = first.querySelector(":scope > header");
@@ -50,6 +50,13 @@
   let token = sessionStorage.getItem(TOKEN_KEY) || "";
   let products = [];
   let user = null;
+  const updateCloudLoginButton = () => {
+    const connected = !!user;
+    openLogin.textContent = connected ? "Prihlásené do cloudu" : "Prihlásiť sa do Cloudu";
+    openLogin.disabled = connected;
+    openLogin.classList.toggle("is-connected", connected);
+    openLogin.setAttribute("aria-label", connected ? "Prihlásené do cloudu" : "Prihlásiť sa do Cloudu");
+  };
   let editingProductId = null;
   let editingProductRecord = null;
   let editingProjectId = null;
@@ -216,7 +223,7 @@
     const response = await fetch(API + path, { ...options, headers });
     const data = (response.headers.get("content-type") || "").includes("application/json") ? await response.json() : null;
     if (!response.ok) {
-      if (response.status === 401 && token === requestToken) { token = ""; user = null; sessionStorage.removeItem(TOKEN_KEY); resetAccountWorkspace(); renderAuth(); openLogin.hidden = false; showLoginGate(false); notifyCloudAccountChange(); }
+      if (response.status === 401 && token === requestToken) { token = ""; user = null; sessionStorage.removeItem(TOKEN_KEY); resetAccountWorkspace(); renderAuth(); openLogin.hidden = false; updateCloudLoginButton(); showLoginGate(false); notifyCloudAccountChange(); }
       const error = new Error(data?.error || "Požiadavka zlyhala (" + response.status + ").");
       if (data?.currentProject) error.currentProject = data.currentProject;
       if (data?.currentProduct) error.currentProduct = data.currentProduct;
@@ -567,7 +574,8 @@
       notifyCloudAccountChange();
       auth.hidden = true;
       workspace.hidden = false;
-      openLogin.hidden = true;
+      openLogin.hidden = false;
+      updateCloudLoginButton();
       hideLoginGate();
       accountLine.textContent = "Prihlásený účet: " + user.email;
       setStatus("Cloudový účet je prihlásený.");
@@ -585,7 +593,7 @@
     login.disabled = false;
     register.disabled = false;
     try { await api("/api/auth/logout", { method: "POST" }); } catch {}
-    token = ""; user = null; sessionStorage.removeItem(TOKEN_KEY); resetAccountWorkspace(); renderAuth(); openLogin.hidden = false; showLoginGate(false); notifyCloudAccountChange();
+    token = ""; user = null; sessionStorage.removeItem(TOKEN_KEY); resetAccountWorkspace(); renderAuth(); openLogin.hidden = false; updateCloudLoginButton(); showLoginGate(false); notifyCloudAccountChange();
   });
   addProduct.addEventListener("click", async () => {
     if (addProduct.disabled) return;
@@ -759,7 +767,7 @@
         const data = await response.json().catch(() => ({}));
         if (response.status === 401 && token === requestToken) {
           token = ""; user = null; sessionStorage.removeItem(TOKEN_KEY);
-          resetAccountWorkspace(); renderAuth(); notifyCloudAccountChange();
+          resetAccountWorkspace(); renderAuth(); updateCloudLoginButton(); notifyCloudAccountChange();
         }
         const error = new Error(data?.error || "Video sa nepodarilo stiahnuť (" + response.status + ").");
         error.status = response.status;
@@ -975,6 +983,7 @@
   panel.appendChild(workspace);
   renderAuth();
   openLogin.hidden = false;
+  updateCloudLoginButton();
   showLoginGate(!!token);
   if (token) {
     // A restored session may resolve after the user has already signed in or out.
@@ -984,14 +993,14 @@
     const isCurrentBootstrap = () => token === bootstrapToken && accountEpoch === bootstrapEpoch;
     api("/api/auth/me").then(data => {
       if (!isCurrentBootstrap()) return;
-      user = data.user; notifyCloudAccountChange(); auth.hidden = true; workspace.hidden = false; openLogin.hidden = true; hideLoginGate();
+      user = data.user; notifyCloudAccountChange(); auth.hidden = true; workspace.hidden = false; openLogin.hidden = false; updateCloudLoginButton(); hideLoginGate();
       accountLine.textContent = "Prihlásený účet: " + user.email;
       return refresh();
     }).then(() => {
       if (isCurrentBootstrap()) setStatus("Cloudová knižnica je synchronizovaná.");
     }).catch(() => {
       if (!isCurrentBootstrap()) return;
-      token = ""; user = null; sessionStorage.removeItem(TOKEN_KEY); resetAccountWorkspace(); renderAuth(); notifyCloudAccountChange();
+      token = ""; user = null; sessionStorage.removeItem(TOKEN_KEY); resetAccountWorkspace(); renderAuth(); updateCloudLoginButton(); notifyCloudAccountChange();
     });
   }
 })();
