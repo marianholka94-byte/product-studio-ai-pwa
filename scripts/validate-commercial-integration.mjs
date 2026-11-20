@@ -292,7 +292,7 @@ assert.ok(androidWrapper.includes("networkErrorView.setVisibility(View.VISIBLE)"
 assert.ok(androidWrapper.includes("params.getAcceptTypes()") && androidWrapper.includes("params.getMode() == WebChromeClient.FileChooserParams.MODE_OPEN_MULTIPLE") && androidWrapper.includes("Intent.ACTION_OPEN_DOCUMENT"), "Android file picker must respect the web input MIME types and multiple-selection mode.");
 assert.ok(html.includes("renderAccountOverview(account,usage,health)") && html.includes("usage.remainingToday"), "The account overview must use server-returned usage values.");
 assert.ok(html.includes('id="historySummary"') && html.includes("Rozpracované") && html.includes("Neúspešné/zrušené"), "The generation history must summarize completed, active, and failed jobs.");
-assert.ok(readFileSync("sw.js", "utf8").includes("product-studio-ai-v59-video-upload-test-20261120"), "The PWA cache must refresh for the account overview UI.");
+assert.ok(readFileSync("sw.js", "utf8").includes("product-studio-ai-v60-always-visible-bottom-nav-20261120"), "The PWA cache must refresh for the persistent bottom navigation UI.");
 
 const projectCopyStart = cloud.indexOf('saveProjectAsCopy.addEventListener("click"');
 const projectCopyEnd = cloud.indexOf("\n  });", projectCopyStart);
