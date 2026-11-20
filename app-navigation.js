@@ -254,7 +254,13 @@
       bottom:0 !important;
       inset-inline:0 !important;
       z-index:9999 !important;
-      transform:none !important;
+      transform:translate3d(0,0,0) !important;
+      -webkit-transform:translate3d(0,0,0) !important;
+      will-change:transform !important;
+      backface-visibility:hidden !important;
+      -webkit-backface-visibility:hidden !important;
+      visibility:visible !important;
+      opacity:1 !important;
       width:100% !important;
       margin:0 !important;
       display:grid !important;
@@ -323,6 +329,23 @@
     });
   });
   document.body.appendChild(nav);
+  // Keep the app navigation in its own composited viewport layer on Android WebView.
+  // The native Android navigation buttons remain outside the WebView and stay visible.
+  const keepBottomNavigationVisible=()=>{
+    if(!nav.isConnected)document.body.appendChild(nav);
+    nav.style.setProperty('position','fixed','important');
+    nav.style.setProperty('left','0','important');
+    nav.style.setProperty('right','0','important');
+    nav.style.setProperty('bottom','0','important');
+    nav.style.setProperty('transform','translate3d(0,0,0)','important');
+    nav.style.setProperty('visibility','visible','important');
+    nav.style.setProperty('opacity','1','important');
+    nav.style.setProperty('display','grid','important');
+  };
+  keepBottomNavigationVisible();
+  window.addEventListener('scroll',keepBottomNavigationVisible,{passive:true});
+  window.addEventListener('resize',keepBottomNavigationVisible,{passive:true});
+  window.addEventListener('pageshow',keepBottomNavigationVisible);
 
   // Local project library backed by IndexedDB (project metadata + original image files).
   const projectDbName='product-studio-ai-projects', projectStoreName='projects';
