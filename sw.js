@@ -1,5 +1,5 @@
-const CACHE = "product-studio-ai-v54-project-sidebar-20261120";
-const FILES = ["/", "/index.html", "/manifest.webmanifest", "/icon.svg", "/cloud-library.js?v=project-sidebar-20261120a", "/app-navigation.js?v=project-sidebar-20261120a"];
+const CACHE = "product-studio-ai-v55-project-tabs-a11y-20261120";
+const FILES = ["/", "/index.html", "/manifest.webmanifest", "/icon.svg", "/cloud-library.js?v=project-sidebar-20261120a", "/app-navigation.js?v=project-tabs-a11y-20261120a"];
 
 self.addEventListener("install", event => event.waitUntil(
   caches.open(CACHE)
