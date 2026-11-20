@@ -1,5 +1,5 @@
-const CACHE = "product-studio-ai-v76-fix-i18n-whitespace-regex-20261120";
-const FILES = ["/", "/index.html", "/manifest.webmanifest", "/icon.svg?v=brand-icon-20261120", "/cloud-library.js?v=cloud-file-picker-english-20261120", "/app-navigation.js?v=lock-horizontal-touch-20261120", "/i18n.js?v=fix-whitespace-regex-20261120"];
+const CACHE = "product-studio-ai-v77-cloud-library-labels-20261120";
+const FILES = ["/", "/index.html", "/manifest.webmanifest", "/icon.svg?v=brand-icon-20261120", "/cloud-library.js?v=cloud-library-labels-20261120", "/app-navigation.js?v=lock-horizontal-touch-20261120", "/i18n.js?v=cloud-library-labels-20261120"];
 
 self.addEventListener("install", event => event.waitUntil(
   caches.open(CACHE)
