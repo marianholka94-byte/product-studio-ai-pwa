@@ -133,7 +133,7 @@ assert.ok(cloud.includes('api("/api/products/" + encodeURIComponent(product.id) 
 
 assert.ok(worker.includes("(?:images|restore|permanent)"), "Product route matcher must accept image, restore, and permanent-delete sub-routes.");
 assert.ok(worker.includes("/api/products/") && worker.includes("/permanent"), "Permanent product deletion endpoint must be implemented.");
-assert.ok(worker.includes("/api/projects/") && worker.includes("historyPreserved: true"), "Permanent project deletion must preserve generation history.");
+assert.ok(worker.includes("const projectMatch = /^\\/api\\/projects") && worker.includes("historyPreserved: true"), "Permanent project deletion must preserve generation history.");
 
 assert.ok(cloud.includes("window.PSAICloudLibrary"), "Cloud library must expose the explicit local project save bridge");
 assert.ok(cloud.includes("async saveLocalProject(record, onProgress"), "Cloud save bridge must accept a local project and durable progress callback");
