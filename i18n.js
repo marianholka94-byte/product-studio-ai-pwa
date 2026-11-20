@@ -107,8 +107,7 @@
   const applyText = node => {
     const state = textState.get(node);
     const current = node.data;
-    if (state && current === state.rendered) return;
-    const original = state ? current : current;
+    const original = state && current === state.rendered ? state.original : current;
     const rendered = translate(original);
     textState.set(node,{original,rendered});
     if (current !== rendered) node.data = rendered;
@@ -117,8 +116,7 @@
     const states = attrState.get(el) || new Map();
     const current = el.getAttribute(name);
     const state = states.get(name);
-    if (state && current === state.rendered) return;
-    const original = current;
+    const original = state && current === state.rendered ? state.original : current;
     const rendered = translate(original);
     states.set(name,{original,rendered}); attrState.set(el,states);
     if (current !== rendered) el.setAttribute(name,rendered);
