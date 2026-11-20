@@ -70,6 +70,25 @@
       "Ukladám…":"Saving…","Nahrávam":"Uploading","Odstrániť":"Delete","Hlavná fotografia":"Main photo",
       "Nastaviť ako hlavnú":"Set as main","Pridať do promptu":"Add to prompt","Rozdeliť zadanie do častí":"Split prompt into sections",
       "Zadanie bolo rozdelené do častí a vložené do promptu. Skontroluj a podľa potreby uprav výsledok.":"The prompt has been split into sections and added to the prompt editor. Review and adjust the result if needed.",
+
+      "☁️ Cloudová knižnica":"☁️ Cloud library",
+      "História sa načíta po prihlásení do cloudového účtu.":"History loads after you sign in to your cloud account.",
+      "Formát":"Format","9:16 – Reels":"9:16 – Reels","1:1 – štvorcový":"1:1 – Square","16:9 – široký":"16:9 – Landscape",
+      "720p – vyššia kvalita":"720p – higher quality","720p – vyvážená kvalita":"720p – balanced quality","480p – menší súbor":"480p – smaller file",
+      "1080p – Full HD":"1080p – Full HD","4K – maximálne rozlíšenie":"4K – maximum resolution",
+      "Seedance 2.0 podporuje 480p, 720p, 1080p a 4K. Dostupnosť závisí od API účtu.":"Seedance 2.0 supports 480p, 720p, 1080p and 4K. Availability depends on your API account.",
+      "Seedance 2.0 Mini podporuje maximálne 720p. Pre Full HD a 4K vyber model Quality.":"Seedance 2.0 Mini supports up to 720p. Choose the Quality model for Full HD and 4K.",
+      "Odhad:":"Estimate:","Model:":"Model:","Úloha:":"Task:","Stav:":"Status:",
+      "Odhad podľa cenníka Runway Dev. Cena sa počíta podľa modelu, rozlíšenia a dĺžky. 1 kredit = 0,01 USD. Skutočnú cenu potvrdzuje poskytovateľ pri odoslaní úlohy.":"Estimate based on Runway Dev pricing. The price depends on the model, resolution and duration. 1 credit = USD 0.01. The provider confirms the actual price when the task is submitted.",
+      "Instagram Reels a Stories: vertikálny formát 9:16 vo Full HD.":"Instagram Reels and Stories: vertical 9:16 format in Full HD.",
+      "TikTok: vertikálny formát 9:16 vo Full HD.":"TikTok: vertical 9:16 format in Full HD.",
+      "YouTube Shorts: vertikálny formát 9:16 vo Full HD.":"YouTube Shorts: vertical 9:16 format in Full HD.",
+      "YouTube: širokouhlý formát 16:9 vo Full HD.":"YouTube: widescreen 16:9 format in Full HD.",
+      "YouTube 4K: širokouhlý formát 16:9. Pozor na výrazne vyššiu cenu.":"YouTube 4K: widescreen 16:9 format. Note the significantly higher price.",
+      "Štvorcový príspevok: formát 1:1 vo Full HD.":"Square post: 1:1 format in Full HD.",
+      "Prihlás sa do svojho cloudového účtu v paneli Cloudová knižnica.":"Sign in to your cloud account in the Cloud library panel.",
+      "Vlastné nastavenie":"Custom settings","Vyvážená kvalita":"Balanced quality","vyššia kvalita":"higher quality",
+      "Vybrať súbory":"Choose files","Vybrať súbor":"Choose file","Nie je vybratý žiadny súbor":"No file selected",
       "Tvoj súkromný cloudový pracovný priestor pre produkty, fotografie a reklamné projekty.":"Your private cloud workspace for products, photos and advertising projects.",
       "Nie si prihlásený do cloudovej knižnice.":"You are not signed in to the Cloud library.",
       "Prihlás sa do svojho cloudového účtu":"Sign in to your cloud account",
@@ -184,6 +203,13 @@
         [/^Generovanie bolo dokončené/,"Generation completed"],
         [/^Vyber aspoň jednu fotografiu/,"Select at least one photo"]
       ];
+      patterns.push(
+        [/^Odhad: (.+)$/, "Estimate: $1"],
+        [/^Model: (.+)$/, "Model: $1"],
+        [/^Úloha: (.+) · Model: (.+) · Stav: (.+)$/, "Task: $1 · Model: $2 · Status: $3"],
+        [/^Odhad: (\\d+[,.]\\d+ USD) \\((\\d+) kreditov\\)$/, "Estimate: $1 ($2 credits)"],
+        [/^Produkt musí mať aspoň jednu fotografiu\\.$/, "The product must have at least one photo."]
+      );
       for (const [pattern,replacement] of patterns) if (pattern.test(source)) return source.replace(pattern,replacement);
     }
     return source;
