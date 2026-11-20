@@ -62,7 +62,8 @@ Status: active working plan for the owner's private day-to-day PRODUCT STUDIO AI
 
 - [ ] Source-video-to-video generation is not implemented. The current UI input is disabled; the client function intentionally throws an explanatory error, and the preview Worker has no matching route. Do not treat this as a working feature.
 - [ ] Preview generation is limited to 3 requests per account per UTC day. This is a safety limit, not a paid subscription/credit system.
-- [ ] The credit ledger is only a schema/design foundation. No credits are charged or funded.
+- [x] Preview wallet balance/history and owner-only idempotent manual-grant endpoint are implemented. Manual grants remain disabled until the owner email is configured as a Worker secret.
+- [x] Preview credits are not connected to BytePlus generation or a payment provider and have no cash value; no customer charges, purchases, or subscriptions are enabled.
 - [ ] Public registration remains invite-gated. This is acceptable for the private-workspace phase.
 - [ ] The generator's legacy session and cloud-library account session are separate. Do not conflate or silently migrate them.
 - [ ] The current preview Android package uses a feature-branch Pages host. It is a test build, not a permanent production distribution configuration.
