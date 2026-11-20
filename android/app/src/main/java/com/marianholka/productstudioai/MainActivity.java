@@ -18,9 +18,6 @@ import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceError;
 import android.widget.TextView;
 import android.widget.FrameLayout;
-import android.widget.ImageView;
-import android.os.Handler;
-import android.os.Looper;
 
 public class MainActivity extends Activity {
     private static final int FILE_CHOOSER_REQUEST = 4107;
@@ -124,20 +121,7 @@ public class MainActivity extends Activity {
             networkErrorView.setVisibility(View.GONE);
             networkErrorView.setOnClickListener(v -> webView.reload());
             root.addView(networkErrorView, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
-
-            // Restore the original branded startup artwork while the WebView loads.
-            ImageView launchScreen = new ImageView(this);
-            launchScreen.setImageResource(R.drawable.splash_brand_lockup);
-            launchScreen.setScaleType(ImageView.ScaleType.FIT_CENTER);
-            launchScreen.setBackgroundColor(Color.rgb(6, 20, 49));
-            launchScreen.setPadding(24, 0, 24, 0);
-            root.addView(launchScreen, new FrameLayout.LayoutParams(
-                    FrameLayout.LayoutParams.MATCH_PARENT,
-                    FrameLayout.LayoutParams.MATCH_PARENT));
             setContentView(root);
-            new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                if (launchScreen.getParent() == root) root.removeView(launchScreen);
-            }, 2200);
             if (savedInstanceState == null || webView.restoreState(savedInstanceState) == null) {
                 webView.loadUrl(BuildConfig.WEB_APP_URL);
             }
