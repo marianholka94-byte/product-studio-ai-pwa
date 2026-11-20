@@ -805,7 +805,16 @@ refreshCommercialConnection();
   <script>
 if ('serviceWorker' in navigator && new URLSearchParams(location.search).get('native') !== '1') {
   window.addEventListener('load', () => {
+    const hadController = Boolean(navigator.serviceWorker.controller);
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      // Reload an already-installed PWA once when a new worker takes control.
+      // The first installation does not need a reload.
+      if (!hadController || window.__psaiServiceWorkerReloading) return;
+      window.__psaiServiceWorkerReloading = true;
+      window.location.reload();
+    });
     navigator.serviceWorker.register('/sw.js')
+      .then(registration => registration.update())
       .catch(error => console.error('Service Worker:', error));
   });
 }
