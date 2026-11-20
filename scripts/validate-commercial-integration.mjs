@@ -7,6 +7,8 @@ const cloud = readFileSync("cloud-library.js", "utf8");
 const nav = readFileSync("app-navigation.js", "utf8");
 const html = readFileSync("index.html", "utf8");
 const serviceWorker = readFileSync("sw.js", "utf8");
+const appShellSyntaxValidator = readFileSync("scripts/validate-app-shell-syntax.mjs", "utf8");
+assert.ok(appShellSyntaxValidator.includes("new Script(inlineScripts[index]") && appShellSyntaxValidator.includes('"app-navigation.js"') && appShellSyntaxValidator.includes('"sw.js"'), "The deployment workflow must validate inline app scripts, navigation, and the service worker syntax.");
 const productImageLimitMigration = readFileSync("migrations/0012_product_image_limit_nine.sql", "utf8");
 
 assert.ok(nav.includes("Nie sú viazané na cloudový účet"), "The local project screen must explain that device-local projects are independent of the signed-in cloud account.");
