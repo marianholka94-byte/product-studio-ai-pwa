@@ -98,10 +98,10 @@ a{color:#174ea6;overflow-wrap:anywhere}
 <div class="psai-file-picker"><input id="photo" class="psai-native-file" type="file" accept="image/jpeg,image/png,image/webp" multiple><button id="photoChooseButton" type="button" class="secondary">Vybrať fotografie</button><span id="photoFileName" class="psai-file-name">Nie je vybratý žiadny súbor</span></div>
 <p class="note">Pridaj rôzne uhly alebo detaily toho istého produktu. Čím lepšie fotografie, tým presnejší výsledok.</p>
 <div id="previewGallery" class="preview-gallery" aria-live="polite"></div>
-<label for="sourceVideo">Vlastné produktové video (zatiaľ nedostupné v Preview)</label>
-<div class="psai-file-picker"><input id="sourceVideo" class="psai-native-file" type="file" accept="video/mp4,video/quicktime,video/webm" disabled><button id="videoChooseButton" type="button" class="secondary" disabled>Video čoskoro</button><span id="videoFileName" class="psai-file-name">Nahrávanie videa zatiaľ nie je dostupné</span></div>
+<label for="sourceVideo">Vlastné produktové video (voliteľné · max. 90 MB)</label>
+<div class="psai-file-picker"><input id="sourceVideo" class="psai-native-file" type="file" accept="video/mp4,video/quicktime,video/webm"><button id="videoChooseButton" type="button" class="secondary">Vybrať video</button><span id="videoFileName" class="psai-file-name">Nie je vybraté žiadne video</span></div>
 <video id="sourceVideoPreview" controls playsinline style="display:none;max-height:280px"></video>
-<div id="sourceVideoInfo" class="note">Generovanie z vlastného zdrojového videa pripravujeme. Aktuálne funguje generovanie z fotografií produktu.</div>
+<div id="sourceVideoInfo" class="note">Pridaj video spolu s 1 až 9 fotografiami produktu. Podporované sú MP4, MOV a WebM do 90 MB a dĺžky najviac 15 sekúnd. Video môžeš vynechať a vytvoriť reklamu iba z fotografií.</div>
 <label for="product">Názov alebo typ produktu</label>
 <input id="product" type="text" name="product-name" autocomplete="off" autocapitalize="sentences" placeholder="Napr. čierny parfum MUSTANG">
 </section>
