@@ -438,7 +438,7 @@
       const deletePermanentButton = $("button", { class: "secondary" }, "Vymazať natrvalo");
       deletePermanentButton.style.cssText = "border:1px solid #9b4b4b;color:#ffc4c4";
       deletePermanentButton.addEventListener("click", async () => {
-        if (deletePermanentButton.disabled || !confirm("Naozaj NAVŽDY vymazať produkt „" + product.name + "“ a všetky jeho fotografie z cloudu? Túto akciu nemožno vrátiť späť.")) return;
+        if (deletePermanentButton.disabled || !confirm(window.PSAII18n?.t("Naozaj NAVŽDY vymazať produkt „" + product.name + "“ a všetky jeho fotografie z cloudu? Túto akciu nemožno vrátiť späť.") || "Naozaj NAVŽDY vymazať produkt „" + product.name + "“ a všetky jeho fotografie z cloudu? Túto akciu nemožno vrátiť späť.")) return;
         const accountId = user?.id;
         const requestEpoch = accountEpoch;
         deletePermanentButton.disabled = true;
@@ -504,7 +504,7 @@
         const deleteArchived = $("button", { class: "secondary" }, "Vymazať natrvalo");
         deleteArchived.style.cssText = "border:1px solid #9b4b4b;color:#ffc4c4";
         deleteArchived.addEventListener("click", async () => {
-          if (deleteArchived.disabled || !confirm("Naozaj NAVŽDY vymazať archivovaný produkt „" + product.name + "“ aj všetky fotografie? Túto akciu nemožno vrátiť späť.")) return;
+          if (deleteArchived.disabled || !confirm(window.PSAII18n?.t("Naozaj NAVŽDY vymazať archivovaný produkt „" + product.name + "“ aj všetky fotografie? Túto akciu nemožno vrátiť späť.") || "Naozaj NAVŽDY vymazať archivovaný produkt „" + product.name + "“ aj všetky fotografie? Túto akciu nemožno vrátiť späť.")) return;
           const accountId = user?.id;
           const requestEpoch = accountEpoch;
           deleteArchived.disabled = true;
@@ -613,7 +613,7 @@
       const deletePermanentButton = $("button", { class: "secondary" }, "Vymazať natrvalo");
       deletePermanentButton.style.cssText = "border:1px solid #9b4b4b;color:#ffc4c4";
       deletePermanentButton.addEventListener("click", async () => {
-        if (deletePermanentButton.disabled || !confirm("Naozaj NAVŽDY vymazať reklamný projekt „" + project.name + "“ a jeho uložené súbory z cloudu? História generovania zostane zachovaná. Túto akciu nemožno vrátiť späť.")) return;
+        if (deletePermanentButton.disabled || !confirm(window.PSAII18n?.t("Naozaj NAVŽDY vymazať reklamný projekt „" + project.name + "“ a jeho uložené súbory z cloudu? História generovania zostane zachovaná. Túto akciu nemožno vrátiť späť.") || "Naozaj NAVŽDY vymazať reklamný projekt „" + project.name + "“ a jeho uložené súbory z cloudu? História generovania zostane zachovaná. Túto akciu nemožno vrátiť späť.")) return;
         const accountId = user?.id;
         const requestEpoch = accountEpoch;
         deletePermanentButton.disabled = true;
