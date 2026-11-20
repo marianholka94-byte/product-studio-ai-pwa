@@ -48,6 +48,11 @@ assert.ok(videoUploadRoute.includes("50 * 1024 * 1024") && videoUploadRoute.incl
 const providerInputRoute = worker.slice(worker.indexOf("const providerInputMatch"), videoUploadStart);
 assert.ok(providerInputRoute.includes('request.headers.get("Range")') && providerInputRoute.includes('range: { offset: start, length: responseLength }'), "The private provider video endpoint must stream valid byte ranges directly from R2.");
 assert.ok(providerInputRoute.includes('"Accept-Ranges": "bytes"') && providerInputRoute.includes('headers["Content-Range"] = contentRange') && providerInputRoute.includes('status: responseStatus'), "Provider video range responses must include correct 206/416 metadata.");
+assert.ok(providerInputRoute.includes('/^bytes=(\\d*)-(\\d*)$/i') && providerInputRoute.includes('(!match[1] && !match[2])'), "Provider video range parsing must accept only one explicit byte range and reject empty or multipart values.");
+assert.ok(providerInputRoute.includes('if (!match[1])') && providerInputRoute.includes('Math.max(totalSize - suffixLength, 0)'), "Provider video range parsing must support suffix byte ranges.");
+assert.ok(providerInputRoute.includes('end = match[2] ? Number(match[2]) : totalSize - 1') && providerInputRoute.includes('end = Math.min(end, totalSize - 1)'), "Provider video range parsing must support open-ended ranges and clamp end offsets to the object size.");
+assert.ok(providerInputRoute.includes('start >= totalSize') && providerInputRoute.includes('end < start') && providerInputRoute.includes('"Content-Range": "bytes */" + totalSize'), "Unsatisfiable provider video ranges must return 416 with the total object size.");
+assert.ok(providerInputRoute.includes('request.method === "HEAD" ? null : object.body'), "Provider video HEAD requests must return headers without streaming the body.");
 const generationStart = worker.indexOf('if (url.pathname === "/api/generate" && request.method === "POST")');
 assert.notEqual(generationStart, -1, "Generation route must exist.");
 const readinessGuard = worker.indexOf("if (!byteplusReady(env))", generationStart);
