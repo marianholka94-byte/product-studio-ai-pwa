@@ -747,7 +747,9 @@ header{position:relative;gap:10px}.psai-menu-trigger{flex:0 0 46px;width:46px!im
   const promptBox=document.getElementById('prompt');
   const promptEditor=document.createElement('section');promptEditor.id='promptEditor';
   promptEditor.innerHTML=`
-    <div class="prompt-editor-heading"><strong>Editor reklamného promptu</strong><span id="promptLength">0 / 1000</span></div>
+    <button type="button" class="prompt-editor-toggle" id="promptEditorToggle" aria-expanded="false" aria-controls="promptEditorContent"><span><strong>Editor reklamného promptu</strong><small>Rozšírené nastavenie reklamného promptu</small></span><span class="prompt-editor-toggle-icon" aria-hidden="true">＋</span></button>
+    <div id="promptEditorContent" hidden>
+    <div class="prompt-editor-heading"><strong>Uprav si reklamný prompt</strong><span id="promptLength">0 / 1000</span></div>
     <p class="prompt-save-hint">Bezplatný lokálny pomocník. Napíš predstavu po slovensky a aplikácia ju rozdelí do správnych častí promptu podľa tvojich nastavení. Nepoužíva externé AI API.</p>
     <div class="ai-prompt-builder">
       <label class="prompt-label" for="aiPromptIdea">Tvoja predstava o reklame</label>
@@ -790,11 +792,18 @@ header{position:relative;gap:10px}.psai-menu-trigger{flex:0 0 46px;width:46px!im
     </div>
     <div id="promptEditorStatus" role="status"></div>
     <p class="prompt-save-hint">Prompt sa uloží spolu s projektom po stlačení „Uložiť projekt“.</p>
+    </div>
   `;
   advertising.after(promptEditor);
   const promptStyle=document.createElement('style');
   promptStyle.textContent=`
-    #promptEditor{margin:12px 0 18px;padding:14px;background:#10151d;border:1px solid #303b49;border-radius:16px;color:#e8edf5}
+    #promptEditor{margin:12px 0 18px;padding:0;background:transparent;border:0;border-radius:16px;color:#e8edf5}
+    .prompt-editor-toggle{width:100%;min-height:66px!important;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px!important;text-align:left;background:#171e28!important;border:1px solid #303b49!important;border-radius:16px!important;color:#e8edf5!important}
+    .prompt-editor-toggle strong{display:block;font-size:15px;font-weight:750}
+    .prompt-editor-toggle small{display:block;margin-top:4px;color:#8995a6;font-size:12px;font-weight:400}
+    .prompt-editor-toggle-icon{flex:0 0 auto;color:#d6b66e;font-size:26px;line-height:1}
+    #promptEditorContent{margin-top:10px;padding:14px;background:#10151d;border:1px solid #303b49;border-radius:16px}
+    #promptEditorContent[hidden]{display:none}
     .prompt-editor-heading{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:12px}
     .prompt-editor-heading strong{font-size:14px;color:#f2f4f8;font-weight:750}
     #promptLength{font-size:11px;color:#d6b66e}
@@ -820,6 +829,14 @@ header{position:relative;gap:10px}.psai-menu-trigger{flex:0 0 46px;width:46px!im
     .prompt-save-hint{margin:2px 0 0;color:#8995a6;font-size:12px;line-height:1.5}
   `;
   document.head.appendChild(promptStyle);
+  const promptEditorToggle=document.getElementById('promptEditorToggle');
+  const promptEditorContent=document.getElementById('promptEditorContent');
+  promptEditorToggle.addEventListener('click',()=>{
+    const opening=promptEditorContent.hidden;
+    promptEditorContent.hidden=!opening;
+    promptEditorToggle.setAttribute('aria-expanded',String(opening));
+    promptEditorToggle.querySelector('.prompt-editor-toggle-icon').textContent=opening?'−':'＋';
+  });
   const promptDraft=document.getElementById('promptDraftText');
   const promptStatus=document.getElementById('promptEditorStatus');
   const promptLength=document.getElementById('promptLength');
