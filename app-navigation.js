@@ -364,9 +364,50 @@
   productsIntro.innerHTML='<div class="library-title-row"><h2>Moja knižnica produktov</h2><button type="button" class="info-toggle" id="productLibraryInfoButton" aria-expanded="false" aria-controls="productLibraryInfo" aria-label="Zobraziť informáciu">i</button></div><p id="productLibraryInfo" class="collapsible-info" hidden>Ulož produkty raz a použi ich znova v ďalších reklamných projektoch.</p>';
   const productsList=document.createElement('div');productsList.id='savedProductsList';
   productsList.innerHTML='<div class="projects-empty"><span class="empty-icon">▧</span><strong>Zatiaľ nemáš uložené produkty</strong><p>V štúdiu môžeš uložiť produkt spolu s jeho fotografiami.</p></div>';
-  projects.append(projectsIntro,productsIntro,productsList,history,projectsList);
   const cloudLibraryPanel=document.getElementById('commercialCloudPanel');
-  if(cloudLibraryPanel)projects.append(cloudLibraryPanel);
+
+  // Lightroom-inspired project workspace: a compact left-side tab rail keeps
+  // the bottom app navigation intact while separating the four library areas.
+  const projectWorkspace=document.createElement('div');
+  projectWorkspace.className='project-workspace';
+  const projectSideNav=document.createElement('nav');
+  projectSideNav.className='project-side-nav';
+  projectSideNav.setAttribute('aria-label','Sekcie projektov');
+  const projectTabContent=document.createElement('div');
+  projectTabContent.className='project-tab-content';
+  const projectTabs=[
+    {id:'localProjects',label:'Projekty',icon:'▣',nodes:[projectsIntro,projectsList]},
+    {id:'productLibrary',label:'Produkty',icon:'▧',nodes:[productsIntro,productsList]},
+    {id:'generationHistory',label:'História',icon:'◷',nodes:[history]},
+    ...(cloudLibraryPanel?[{id:'cloudLibrary',label:'Cloud',icon:'☁',nodes:[cloudLibraryPanel]}]:[])
+  ];
+  const projectTabPanels=new Map();
+  projectTabs.forEach((tab,index)=>{
+    const button=document.createElement('button');
+    button.type='button';
+    button.className='project-side-tab'+(index===0?' active':'');
+    button.dataset.projectTab=tab.id;
+    button.setAttribute('aria-selected',String(index===0));
+    button.innerHTML='<span class="project-side-icon" aria-hidden="true">'+tab.icon+'</span><span class="project-side-label">'+tab.label+'</span>';
+    button.addEventListener('click',()=>{
+      projectSideNav.querySelectorAll('.project-side-tab').forEach(item=>{
+        const active=item===button;
+        item.classList.toggle('active',active);
+        item.setAttribute('aria-selected',String(active));
+      });
+      projectTabPanels.forEach((panel,id)=>panel.hidden=id!==tab.id);
+    });
+    projectSideNav.append(button);
+    const panel=document.createElement('section');
+    panel.className='project-tab-panel';
+    panel.dataset.projectPanel=tab.id;
+    panel.hidden=index!==0;
+    tab.nodes.forEach(node=>panel.append(node));
+    projectTabPanels.set(tab.id,panel);
+    projectTabContent.append(panel);
+  });
+  projectWorkspace.append(projectSideNav,projectTabContent);
+  projects.append(projectWorkspace);
   productsIntro.querySelector('#productLibraryInfoButton').addEventListener('click',()=>{
     const button=productsIntro.querySelector('#productLibraryInfoButton');
     const info=productsIntro.querySelector('#productLibraryInfo');
@@ -459,6 +500,33 @@
     .product-manager-add{grid-column:1/-1}
     .product-manager-create{grid-column:1/-1;background:#29251c!important;color:#e2c47e!important;border:1px solid #5b4b2b!important}
     .product-manager-count{margin:12px 0 0;color:#8995a6;font-size:12px;text-align:center}
+
+    /* Compact Lightroom-style left tabs for the project/library workspace. */
+    .project-workspace{display:grid;grid-template-columns:82px minmax(0,1fr);gap:10px;align-items:start;min-width:0}
+    .project-side-nav{position:sticky;top:12px;display:flex;flex-direction:column;gap:7px;padding:7px;background:#10151d;border:1px solid #293442;border-radius:16px;min-width:0}
+    .project-side-tab{display:flex!important;flex-direction:column;align-items:center;justify-content:center;gap:6px;width:100%!important;min-width:0;min-height:70px!important;margin:0!important;padding:8px 3px!important;border:1px solid transparent!important;border-radius:12px!important;background:transparent!important;color:#8995a6!important;font-size:10px!important;font-weight:700!important;line-height:1.2!important;letter-spacing:0!important;white-space:normal!important}
+    .project-side-tab.active{background:#29251c!important;border-color:#5b4b2b!important;color:#e2c47e!important}
+    .project-side-icon{display:block;font-size:22px;line-height:1}
+    .project-side-label{display:block;max-width:100%;overflow-wrap:anywhere;text-align:center}
+    .project-tab-content{min-width:0}
+    .project-tab-panel{min-width:0}
+    .project-tab-panel[hidden]{display:none!important}
+    .project-tab-panel>.app-placeholder:first-child{margin-top:0!important}
+    .project-tab-panel>.panel:first-child{margin-top:0!important}
+    .project-tab-panel .library-title-row{justify-content:flex-start}
+    .project-tab-panel .library-section-heading:first-child{margin-top:8px}
+    @media(min-width:600px){
+      .project-workspace{grid-template-columns:168px minmax(0,1fr);gap:16px}
+      .project-side-nav{padding:9px}
+      .project-side-tab{flex-direction:row;justify-content:flex-start;gap:11px;min-height:54px!important;padding:10px 12px!important;font-size:13px!important}
+      .project-side-icon{flex:0 0 25px;font-size:21px}
+      .project-side-label{text-align:left}
+    }
+    @media(max-width:360px){
+      .project-workspace{grid-template-columns:70px minmax(0,1fr);gap:7px}
+      .project-side-nav{padding:5px;gap:5px}
+      .project-side-tab{min-height:64px!important;font-size:9px!important}
+    }
 
   `;
   document.head.appendChild(projectStyle);
