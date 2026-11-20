@@ -640,7 +640,7 @@ window.PSAIProjectBridge = {
       new File([item.blob], item.name || ('produkt-'+(index+1)+'.jpg'), {type:item.type || item.blob.type || 'image/jpeg'})
     );
     renderSelectedPhotos();
-    $('prompt').textContent=project.prompt || 'Prompt ešte nebol vytvorený.';
+    $('prompt').textContent=project.prompt || (window.PSAII18n?.t('Prompt ešte nebol vytvorený.') || 'Prompt ešte nebol vytvorený.');
     promptText=project.prompt || '';
     updateResolutionOptions();
     updateReadyStatus();
@@ -659,7 +659,7 @@ if ('serviceWorker' in navigator && new URLSearchParams(location.search).get('na
   });
 }
   </script>
-  <script src="/cloud-library.js?v=cloud-file-picker-english-20261120"></script>
+  <script src="/cloud-library.js?v=cloud-library-labels-20261120"></script>
 <script src="/app-navigation.js?v=lock-horizontal-touch-20261120"></script>
-<script src="/i18n.js?v=fix-whitespace-regex-20261120"></script>
+<script src="/i18n.js?v=cloud-library-labels-20261120"></script>
 </body></html>
