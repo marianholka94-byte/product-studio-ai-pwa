@@ -435,7 +435,23 @@
         } catch (e) { if (requestEpoch === accountEpoch && accountId === user?.id) setStatus(e.message, true); }
         finally { if (requestEpoch === accountEpoch && accountId === user?.id) archiveButton.disabled = false; }
       });
-      actions.append(useInStudio, editButton, archiveButton);
+      const deletePermanentButton = $("button", { class: "secondary" }, "Vymazať natrvalo");
+      deletePermanentButton.style.cssText = "border:1px solid #9b4b4b;color:#ffc4c4";
+      deletePermanentButton.addEventListener("click", async () => {
+        if (deletePermanentButton.disabled || !confirm("Naozaj NAVŽDY vymazať produkt „" + product.name + "“ a všetky jeho fotografie z cloudu? Túto akciu nemožno vrátiť späť.")) return;
+        const accountId = user?.id;
+        const requestEpoch = accountEpoch;
+        deletePermanentButton.disabled = true;
+        try {
+          const result = await api("/api/products/" + encodeURIComponent(product.id) + "/permanent", { method: "DELETE" });
+          if (requestEpoch !== accountEpoch || accountId !== user?.id) return;
+          if (editingProductId === product.id) { editingProductId = null; editingProductRecord = null; addProduct.textContent = "＋ Vytvoriť produkt"; productConflict.hidden = true; }
+          setStatus("Produkt bol natrvalo vymazaný. Odstránených súborov: " + Number(result.deletedFiles || 0) + ".");
+          await refresh();
+        } catch (e) { if (requestEpoch === accountEpoch && accountId === user?.id) setStatus(e.message, true); }
+        finally { if (requestEpoch === accountEpoch && accountId === user?.id) deletePermanentButton.disabled = false; }
+      });
+      actions.append(useInStudio, editButton, archiveButton, deletePermanentButton);
       card.append(uploadPicker, uploadButton, thumbs, actions);
       productList.append(card);
       applyLibraryFilter(productList, productSearch.el.value);
@@ -485,6 +501,22 @@
           finally { if (requestEpoch === accountEpoch && accountId === user?.id) restore.disabled = false; }
         });
         item.append(restore);
+        const deleteArchived = $("button", { class: "secondary" }, "Vymazať natrvalo");
+        deleteArchived.style.cssText = "border:1px solid #9b4b4b;color:#ffc4c4";
+        deleteArchived.addEventListener("click", async () => {
+          if (deleteArchived.disabled || !confirm("Naozaj NAVŽDY vymazať archivovaný produkt „" + product.name + "“ aj všetky fotografie? Túto akciu nemožno vrátiť späť.")) return;
+          const accountId = user?.id;
+          const requestEpoch = accountEpoch;
+          deleteArchived.disabled = true;
+          try {
+            const result = await api("/api/products/" + encodeURIComponent(product.id) + "/permanent", { method: "DELETE" });
+            if (requestEpoch !== accountEpoch || accountId !== user?.id) return;
+            setStatus("Archivovaný produkt bol natrvalo vymazaný. Odstránených súborov: " + Number(result.deletedFiles || 0) + ".");
+            await refresh();
+          } catch (e) { if (requestEpoch === accountEpoch && accountId === user?.id) setStatus(e.message, true); }
+          finally { if (requestEpoch === accountEpoch && accountId === user?.id) deleteArchived.disabled = false; }
+        });
+        item.append(deleteArchived);
         archive.append(item);
       }
       productList.append(archive);
@@ -578,7 +610,23 @@
           await refresh();
         } catch (e) { setStatus(e.message, true); }
       });
-      actions.append(openInStudio, editButton, archiveButton);
+      const deletePermanentButton = $("button", { class: "secondary" }, "Vymazať natrvalo");
+      deletePermanentButton.style.cssText = "border:1px solid #9b4b4b;color:#ffc4c4";
+      deletePermanentButton.addEventListener("click", async () => {
+        if (deletePermanentButton.disabled || !confirm("Naozaj NAVŽDY vymazať reklamný projekt „" + project.name + "“ a jeho uložené súbory z cloudu? História generovania zostane zachovaná. Túto akciu nemožno vrátiť späť.")) return;
+        const accountId = user?.id;
+        const requestEpoch = accountEpoch;
+        deletePermanentButton.disabled = true;
+        try {
+          const result = await api("/api/projects/" + encodeURIComponent(project.id) + "/permanent", { method: "DELETE" });
+          if (requestEpoch !== accountEpoch || accountId !== user?.id) return;
+          if (editingProjectId === project.id) { editingProjectId = null; editingProjectRecord = null; addProject.textContent = "＋ Vytvoriť projekt"; projectConflict.hidden = true; }
+          setStatus("Projekt bol natrvalo vymazaný. Odstránených súborov: " + Number(result.deletedFiles || 0) + ".");
+          await refresh();
+        } catch (e) { if (requestEpoch === accountEpoch && accountId === user?.id) setStatus(e.message, true); }
+        finally { if (requestEpoch === accountEpoch && accountId === user?.id) deletePermanentButton.disabled = false; }
+      });
+      actions.append(openInStudio, editButton, archiveButton, deletePermanentButton);
       card.append(actions);
       projectList.append(card);
       applyLibraryFilter(projectList, projectSearch.el.value);
