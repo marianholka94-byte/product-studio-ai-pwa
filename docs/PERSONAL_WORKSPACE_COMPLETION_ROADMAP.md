@@ -5,7 +5,8 @@ Status: active working plan for the owner's private day-to-day PRODUCT STUDIO AI
 ## Verified in the current isolated preview branch
 
 ### Studio and generation
-- [x] Product photo input accepts 1–5 JPG, PNG, or WebP images.
+- [x] Product photo input accepts 1–9 JPG, PNG, or WebP images (20 MB combined encoded-reference safety cap).
+- [x] Source-video input accepts MP4/MOV files up to 90 MB (2–15 seconds); the Worker enforces the cap while streaming to private R2.
 - [x] Product image ordering and primary-image selection are available.
 - [x] Advertising controls include platform export presets, aspect ratio, visual style, camera motion, duration, model, resolution, lighting, and additional instructions.
 - [x] Prompt creation and editing are integrated with the Studio project bridge.

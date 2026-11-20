@@ -25,7 +25,7 @@ All library routes require `Authorization: Bearer <session-token>`. The Worker d
 - `GET /api/products` and `GET /api/products/:id`: list or read the signed-in user's products.
 - `POST /api/products`: create a product from `{ "name": "...", "description": "..." }`.
 - `GET /api/products/:id/images`: list the signed-in user's private product image metadata.
-- `POST /api/products/:id/images`: upload one JPG, PNG or WebP image as the raw request body with its matching `Content-Type`; maximum 10 MB per image and five images per product. MIME type and file signature are checked before storage, and D1 independently enforces the five-image limit. The first image becomes primary.
+- `POST /api/products/:id/images`: upload one JPG, PNG or WebP image as the raw request body with its matching `Content-Type`; maximum 10 MB per image and nine images per product. MIME type and file signature are checked before storage, and D1 independently enforces the nine-image limit. The first image becomes primary.
 - `GET /api/assets/:id`: stream an image only after checking that its D1 asset record belongs to the signed-in user.
 - `PATCH /api/products/:id`: update the name and/or description.
 - `DELETE /api/products/:id`: archive the product; it does not physically erase linked history.

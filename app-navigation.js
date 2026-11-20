@@ -625,6 +625,7 @@
     renderProjects().catch(error=>{projectsList.textContent='Knižnicu projektov sa nepodarilo obnoviť: '+error.message;});
   });
 
+  const MAX_PRODUCT_IMAGES=9;
   const productManagerBackdrop=document.createElement('div');
   productManagerBackdrop.className='product-manager-backdrop';
   productManagerBackdrop.hidden=true;
@@ -649,8 +650,8 @@
       remove.addEventListener('click',()=>{if(managingProductImages.length<=1){showProductManagerMessage('Produkt musí mať aspoň jednu fotografiu.');return;}managingProductImages.splice(index,1);renderProductManagerImages();});
       tile.append(img,name,main,remove);grid.append(tile);
     });
-    const count=productManagerBackdrop.querySelector('#productManagerCount');count.textContent=managingProductImages.length+' / 5 fotografií';count.style.color='#8995a6';
-    productManagerBackdrop.querySelector('#addProductPhotos').disabled=managingProductImages.length>=5;
+    const count=productManagerBackdrop.querySelector('#productManagerCount');count.textContent=managingProductImages.length+' / '+MAX_PRODUCT_IMAGES+' fotografií';count.style.color='#8995a6';
+    productManagerBackdrop.querySelector('#addProductPhotos').disabled=managingProductImages.length>=MAX_PRODUCT_IMAGES;
   };
   const openProductManager=async id=>{
     const records=await getAllProducts();
@@ -677,8 +678,8 @@
   });
   productManagerBackdrop.querySelector('#addProductPhotos').addEventListener('click',()=>productManagerBackdrop.querySelector('#productPhotoInput').click());
   productManagerBackdrop.querySelector('#productPhotoInput').addEventListener('change',event=>{
-    const files=[...event.target.files||[]];const remaining=5-managingProductImages.length;
-    if(files.length>remaining)showProductManagerMessage('Môžeš pridať najviac '+remaining+' ďalšie fotografie.');
+    const files=[...event.target.files||[]];const remaining=MAX_PRODUCT_IMAGES-managingProductImages.length;
+    if(files.length>remaining)showProductManagerMessage('Môžeš pridať najviac '+remaining+' ďalšie fotografie (limit '+MAX_PRODUCT_IMAGES+').' );
     files.slice(0,remaining).forEach(file=>{if(file.type.startsWith('image/'))managingProductImages.push({name:file.name,type:file.type,blob:file});});
     event.target.value='';renderProductManagerImages();
   });

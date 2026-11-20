@@ -197,6 +197,9 @@ async function clearLoginFailures(env, key) {
 const MINI_RATIOS = new Set(["864:496","640:640","496:864","1280:720","960:960","720:1280"]);
 const FULL_RATIOS = new Set([...MINI_RATIOS,"1920:1080","1440:1440","1080:1920","3840:2160","3840:3840","2160:3840"]);
 const PREVIEW_DAILY_GENERATION_LIMIT = 3;
+const MAX_PRODUCT_IMAGES = 9;
+const MAX_GENERATION_IMAGES = 9;
+const MAX_SOURCE_VIDEO_BYTES = 90 * 1024 * 1024;
 // Official BytePlus ModelArk model IDs. Paid requests remain disabled unless the
 // owner explicitly sets BYTEPLUS_MODELARK_ENABLED=true and supplies a server secret.
 const BYTEPLUS_MODEL_IDS = Object.freeze({
@@ -399,9 +402,9 @@ export default {
         if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(uploadId)) return json({ error: "Nahrávanie nemá platný identifikátor. Obnov výber videa a skús to znova." }, 400, origin);
         const duration = Number(request.headers.get("X-Video-Duration"));
         if (!Number.isFinite(duration) || duration < 2 || duration > 15) return json({ error: "Zdrojové video musí mať 2 až 15 sekúnd." }, 400, origin);
-        const maxInputBytes = 50 * 1024 * 1024;
+        const maxInputBytes = MAX_SOURCE_VIDEO_BYTES;
         const declaredLength = Number(request.headers.get("Content-Length") || 0);
-        if (declaredLength > maxInputBytes) return json({ error: "Zdrojové video môže mať najviac 50 MB." }, 413, origin);
+        if (declaredLength > maxInputBytes) return json({ error: "Zdrojové video môže mať najviac 90 MB." }, 413, origin);
         const prior = await env.DB.prepare(
           "SELECT id, content_type, byte_size, duration_seconds FROM generation_input_videos WHERE user_id = ? AND client_upload_id = ? AND expires_at > ? LIMIT 1"
         ).bind(user.id, uploadId, Math.floor(Date.now() / 1000)).first();
@@ -452,7 +455,7 @@ export default {
         } catch (error) {
           await env.MEDIA.delete(r2Key).catch(() => {});
           const message = String(error?.message || "");
-          if (message.includes("50 MB")) return json({ error: message }, 413, origin);
+          if (message.includes("90 MB")) return json({ error: message }, 413, origin);
           if (message.includes("signatúru")) return json({ error: message }, 415, origin);
           return json({ error: "Zdrojové video sa nepodarilo bezpečne uložiť." }, 502, origin);
         }
@@ -683,7 +686,7 @@ export default {
         }
         const images = Array.isArray(body.images) ? body.images : (typeof body.image === "string" ? [body.image] : []);
         const inputVideoId = body.videoId == null ? "" : String(body.videoId);
-        if (images.length < 1 || images.length > 5) return json({ error: "Nahraj 1 až 5 fotografií produktu." }, 400, origin);
+        if (images.length < 1 || images.length > MAX_GENERATION_IMAGES) return json({ error: "Nahraj 1 až " + MAX_GENERATION_IMAGES + " fotografií produktu." }, 400, origin);
         if (inputVideoId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(inputVideoId)) return json({ error: "Zdrojové video nemá platný identifikátor." }, 400, origin);
         for (const image of images) {
           if (typeof image !== "string" || !/^data:image\/(jpeg|jpg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(image)) {
@@ -1010,7 +1013,7 @@ export default {
               `SELECT a.id, a.content_type, a.byte_size, a.width, a.height, a.checksum_sha256, pi.sort_order, pi.is_primary, a.created_at
                FROM product_images pi JOIN assets a ON a.id = pi.asset_id
                WHERE pi.product_id = ? AND pi.user_id = ? AND a.deleted_at IS NULL
-               ORDER BY pi.sort_order ASC LIMIT 5`
+               ORDER BY pi.sort_order ASC LIMIT ${MAX_PRODUCT_IMAGES}`
             ).bind(productId, user.id).all();
             return json({ images: (result.results || []).map(row => ({ id: row.id, contentType: row.content_type, byteSize: row.byte_size, width: row.width, height: row.height, checksumSha256: row.checksum_sha256, sortOrder: row.sort_order, isPrimary: !!row.is_primary, createdAt: row.created_at, url: `/api/assets/${row.id}` })) }, 200, origin);
           }
@@ -1023,7 +1026,7 @@ export default {
             const current = await env.DB.prepare(
               "SELECT COUNT(*) AS count FROM product_images WHERE product_id = ? AND user_id = ?"
             ).bind(productId, user.id).first();
-            if (Number(current?.count || 0) >= 5) return json({ error: "Produkt môže obsahovať najviac 5 fotografií." }, 409, origin);
+            if (Number(current?.count || 0) >= MAX_PRODUCT_IMAGES) return json({ error: "Produkt môže obsahovať najviac " + MAX_PRODUCT_IMAGES + " fotografií." }, 409, origin);
             const bytes = await readBytes(request, 10 * 1024 * 1024);
             if (!matchesImageSignature(bytes, contentType)) return json({ error: "Obsah súboru nezodpovedá deklarovanému formátu fotografie." }, 415, origin);
             const assetId = crypto.randomUUID();

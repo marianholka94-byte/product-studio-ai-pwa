@@ -1,5 +1,6 @@
 (() => {
   const API = "https://product-studio-ai-commercial-preview.marianholka94.workers.dev";
+const MAX_PRODUCT_IMAGES = 9;
   const TOKEN_KEY = "psai_commercial_preview_token";
   const $ = (tag, attrs = {}, text = "") => {
     const node = document.createElement(tag);
@@ -689,7 +690,7 @@
       const accountId = user.id;
       const startEpoch = accountEpoch;
       if (!record || !record.id || !Array.isArray(record.images) || !record.images.length) throw new Error("Projekt musí obsahovať aspoň jednu fotografiu.");
-      if (record.images.length > 5) throw new Error("Cloudový produkt môže obsahovať najviac 5 fotografií.");
+      if (record.images.length > MAX_PRODUCT_IMAGES) throw new Error("Cloudový produkt môže obsahovať najviac " + MAX_PRODUCT_IMAGES + " fotografií.");
       const images = record.images.map((item, index) => {
         const blob = item.blob;
         const type = item.type || blob?.type || "";

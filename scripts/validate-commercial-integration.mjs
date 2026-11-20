@@ -7,6 +7,7 @@ const cloud = readFileSync("cloud-library.js", "utf8");
 const nav = readFileSync("app-navigation.js", "utf8");
 const html = readFileSync("index.html", "utf8");
 const serviceWorker = readFileSync("sw.js", "utf8");
+const productImageLimitMigration = readFileSync("migrations/0012_product_image_limit_nine.sql", "utf8");
 
 assert.ok(nav.includes("Nie sú viazané na cloudový účet"), "The local project screen must explain that device-local projects are independent of the signed-in cloud account.");
 
@@ -60,6 +61,13 @@ assert.ok(html.includes("selectedSourceVideoDuration") && html.includes("X-Video
 assert.ok(worker.includes("const user = await currentUser(request, env)") && worker.includes("WHERE id = ? AND user_id = ? LIMIT 1"), "Generation endpoints must resolve identity from D1 sessions and scope task lookups to the owner.");
 assert.ok(worker.includes("client_request_id") && worker.includes("request_fingerprint"), "Generation submissions must persist account-scoped idempotency keys and payload fingerprints.");
 assert.ok(worker.includes("PREVIEW_DAILY_GENERATION_LIMIT = 3") && worker.includes("generation_daily_limit"), "Preview generation must enforce a daily per-account limit, including concurrent requests.");
+assert.ok(worker.includes("const MAX_PRODUCT_IMAGES = 9") && worker.includes("MAX_PRODUCT_IMAGES)"), "The preview cloud product API must enforce and return up to nine images per product.");
+assert.ok(worker.includes("const MAX_GENERATION_IMAGES = 9") && worker.includes("images.length > MAX_GENERATION_IMAGES"), "The preview generation API must accept up to nine reference images.");
+assert.ok(worker.includes("const MAX_SOURCE_VIDEO_BYTES = 90 * 1024 * 1024") && worker.includes("streamedBytes > maxInputBytes") && worker.includes("90 MB"), "The preview Worker must enforce the 90 MB source-video cap while streaming.");
+assert.ok(productImageLimitMigration.includes("DROP TRIGGER IF EXISTS trg_product_images_max_five") && productImageLimitMigration.includes("trg_product_images_max_nine") && productImageLimitMigration.includes(">= 9"), "A forward D1 migration must safely replace the five-image trigger with a nine-image trigger.");
+assert.ok(html.includes("Nahraj 1 až 9 fotografií produktu") && html.includes("selectedFiles=incoming.slice(0,MAX_GENERATION_IMAGES)") && html.includes("MAX_SOURCE_VIDEO_BYTES=90*1024*1024"), "The Studio input UI must expose and enforce the new nine-image and 90 MB source-video limits.");
+assert.ok(nav.includes("const MAX_PRODUCT_IMAGES=9") && nav.includes("MAX_PRODUCT_IMAGES-managingProductImages.length"), "The local product manager must support adding up to nine images.");
+assert.ok(cloud.includes("const MAX_PRODUCT_IMAGES = 9") && cloud.includes("record.images.length > MAX_PRODUCT_IMAGES"), "Cloud project sync must accept and upload up to nine product images.");
 assert.ok(worker.includes("function byteplusReady(env)") && worker.includes("if (!byteplusReady(env))"), "Paid provider requests must fail closed until the BytePlus API secret is present and paid generation is explicitly enabled.");
 assert.ok(cloud.includes("async request(path, options = {})") && cloud.includes("getCurrentUser()"), "The generator integration must use the commercial account session without exposing its token.");
 assert.ok(cloud.includes("Hľadať v cloudovej knižnici produktov") && cloud.includes("Hľadať v cloudových reklamných projektoch"), "Cloud product and project libraries must expose accessible search fields.");

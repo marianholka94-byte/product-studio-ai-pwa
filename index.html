@@ -125,11 +125,11 @@ a{color:#174ea6;overflow-wrap:anywhere}
 
 <section class="panel">
 <h2>2. Produkt</h2>
-<label for="photo">Nahraj 1 až 5 fotografií produktu</label>
+<label for="photo">Nahraj 1 až 9 fotografií produktu</label>
 <input id="photo" type="file" accept="image/jpeg,image/png,image/webp" multiple>
 <p class="note">Pridaj rôzne uhly alebo detaily toho istého produktu. Čím lepšie fotografie, tým presnejší výsledok.</p>
 <div id="previewGallery" class="preview-gallery" aria-live="polite"></div>
-<label for="sourceVideo">Voliteľné zdrojové video (MP4 alebo MOV, 2–15 sekúnd, max. 50 MB)</label>
+<label for="sourceVideo">Voliteľné zdrojové video (MP4 alebo MOV, 2–15 sekúnd, max. 90 MB)</label>
 <input id="sourceVideo" type="file" accept="video/mp4,video/quicktime,.mp4,.mov">
 <video id="sourceVideoPreview" controls playsinline preload="metadata" style="display:none;max-height:280px"></video>
 <div id="sourceVideoInfo" class="note">Po aktivácii Seedance môžeš pridať krátke video produktu spolu s fotografiami. Video sa bezpečne uloží do súkromného úložiska. Priame referenčné videá s rozpoznateľnými ľudskými tvárami model nepodporuje.</div>
@@ -197,6 +197,8 @@ function setGenerationAvailability(ready){
 }
 const API_BASE='https://product-studio-ai-commercial-preview.marianholka94.workers.dev';
 const photo=$('photo'), previewGallery=$('previewGallery');
+const MAX_GENERATION_IMAGES=9;
+const MAX_SOURCE_VIDEO_BYTES=90*1024*1024;
 const selectedPhotoObjectUrls=new Set();
 function releaseSelectedPhotoPreviews(){for(const url of selectedPhotoObjectUrls)URL.revokeObjectURL(url);selectedPhotoObjectUrls.clear();}
 window.addEventListener('pagehide',releaseSelectedPhotoPreviews);
@@ -539,8 +541,8 @@ photo.addEventListener('change',()=>{
  const tooLarge=incoming.find(file=>file.size>20*1024*1024);
  if(invalid){setStatus('Podporované sú iba JPG, PNG a WebP fotografie.','err');photo.value='';return;}
  if(tooLarge){setStatus('Jedna z fotografií má viac ako 20 MB. Vyber menší súbor.','err');photo.value='';return;}
- selectedFiles=incoming.slice(0,5);
- if(incoming.length>5)setStatus('Môžeš nahrať najviac 5 fotografií. Vybral som prvých 5.','err');
+ selectedFiles=incoming.slice(0,MAX_GENERATION_IMAGES);
+ if(incoming.length>MAX_GENERATION_IMAGES)setStatus('Môžeš nahrať najviac '+MAX_GENERATION_IMAGES+' fotografií. Vybral som prvých '+MAX_GENERATION_IMAGES+'.','err');
  renderSelectedPhotos();updateReadyStatus();
 });
 async function imageToDataUri(file){
@@ -683,7 +685,7 @@ sourceVideo.addEventListener('change',()=>{
  selectedSourceVideo=file;selectedSourceVideoDuration=null;selectedSourceVideoUploadId=file?crypto.randomUUID():null;
  selectedSourceVideoContentType=file&&['video/mp4','video/quicktime'].includes(file.type)?file.type:file?.name?.toLowerCase().endsWith('.mov')?'video/quicktime':file?.name?.toLowerCase().endsWith('.mp4')?'video/mp4':null;
  if(!file){clearSelectedSourceVideo();return;}
- if(file.size>50*1024*1024){clearSelectedSourceVideo('Video je väčšie než 50 MB. Vyber menší súbor.');$('sourceVideoInfo').className='status err';return;}
+ if(file.size>MAX_SOURCE_VIDEO_BYTES){clearSelectedSourceVideo('Video je väčšie než 90 MB. Vyber menší súbor.');$('sourceVideoInfo').className='status err';return;}
  if(!selectedSourceVideoContentType){clearSelectedSourceVideo('Použi video MP4 alebo MOV. Formát WebM nie je podporovaný.');$('sourceVideoInfo').className='status err';return;}
  sourceVideoObjectUrl=URL.createObjectURL(file);sourceVideoPreview.src=sourceVideoObjectUrl;sourceVideoPreview.style.display='block';
  sourceVideoPreview.onloadedmetadata=()=>{
