@@ -197,6 +197,9 @@ function setGenerationAvailability(ready){
 }
 const API_BASE='https://product-studio-ai-commercial-preview.marianholka94.workers.dev';
 const photo=$('photo'), previewGallery=$('previewGallery');
+const selectedPhotoObjectUrls=new Set();
+function releaseSelectedPhotoPreviews(){for(const url of selectedPhotoObjectUrls)URL.revokeObjectURL(url);selectedPhotoObjectUrls.clear();}
+window.addEventListener('pagehide',releaseSelectedPhotoPreviews);
 
 function setStatus(message,kind=''){const el=$('status');el.textContent=message;el.className='status '+kind}
 let progressStartedAt=0, progressClock=null;
@@ -508,10 +511,11 @@ $('makePrompt').onclick=buildPrompt;
 $('model').addEventListener('change',updateResolutionOptions);
 ['duration','resolution'].forEach(id=>$(id).addEventListener('change',updateEstimate));
 function renderSelectedPhotos(){
+ releaseSelectedPhotoPreviews();
  previewGallery.innerHTML='';
  selectedFiles.forEach((file,index)=>{
   const card=document.createElement('article');card.className='photo-card';
-  const image=document.createElement('img');image.alt=`Náhľad fotografie ${index+1}`;image.src=URL.createObjectURL(file);
+  const image=document.createElement('img');image.alt=`Náhľad fotografie ${index+1}`;const previewUrl=URL.createObjectURL(file);selectedPhotoObjectUrls.add(previewUrl);image.src=previewUrl;
   const meta=document.createElement('div');meta.className='photo-card-meta';
   const name=document.createElement('span');name.textContent=`${index+1}. ${file.name}`;name.style.overflowWrap='anywhere';
   const tag=document.createElement('span');tag.className='photo-main-tag';tag.textContent=index===0?'HLAVNÁ':'REFERENCIA';
