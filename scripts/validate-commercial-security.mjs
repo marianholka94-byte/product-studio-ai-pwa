@@ -26,6 +26,8 @@ mustContain(worker, /if \(url\.pathname\.startsWith\("\/api\/products"\)[\s\S]*?
 mustContain(worker, /FROM sessions s JOIN users u ON u\.id = s\.user_id[\s\S]*?s\.token_hash = \? AND s\.revoked_at IS NULL AND s\.expires_at > \? AND u\.status = 'active'/, "Session identity must be resolved from a valid, active server-side session.");
 
 mustContain(worker, /password\.length < 12 \|\| password\.length > 128/, "Account registration must enforce the documented password length bounds.");
+mustContain(worker, /function constantTimeEqual\([\s\S]*?difference \|= \(left\[index\] \|\| 0\) \^ \(right\[index\] \|\| 0\)[\s\S]*?return difference === 0/, "Password hash comparison must not exit early based on matching-prefix length.");
+mustContain(worker, /return constantTimeEqual\(actual, expected\)/, "Password verification must use the constant-time comparison helper.");
 mustContain(worker, /if \(!env\.PREVIEW_SIGNUP_CODE\)[\s\S]*?body\.inviteCode !== env\.PREVIEW_SIGNUP_CODE/, "Preview account registration must remain invite-gated.");
 mustContain(worker, /UPDATE sessions SET revoked_at = \? WHERE token_hash = \? AND revoked_at IS NULL/, "Logout must revoke the server-side session.");
 mustContain(worker, /blocked_until[\s\S]*?>= 5[\s\S]*?now \+ 900/, "Repeated failed logins must trigger a temporary server-side block.");
