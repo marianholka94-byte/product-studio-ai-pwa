@@ -283,10 +283,20 @@
     addSettings();
     renderLanguage();
     const observer = new MutationObserver(records => {
+      let structureChanged = false;
       for (const record of records) {
         if (record.type === "characterData") applyText(record.target);
         else if (record.type === "attributes") applyAttribute(record.target,record.attributeName);
-        else record.addedNodes.forEach(node => walk(node));
+        else {
+          if (record.addedNodes.length) structureChanged = true;
+          record.addedNodes.forEach(node => walk(node));
+        }
+      }
+      // app-navigation.js creates #screenSettings after this script initializes.
+      // Re-check when the app shell is mounted so the language selector is never skipped.
+      if (structureChanged && !document.getElementById("psaiLanguagePanel")) {
+        addSettings();
+        renderLanguage();
       }
     });
     observer.observe(document.body,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:["placeholder","title","aria-label"]});
