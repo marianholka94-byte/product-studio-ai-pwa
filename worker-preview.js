@@ -425,7 +425,7 @@ export default {
         const limitedStream = request.body.pipeThrough(new TransformStream({
           transform(chunk, controller) {
             streamedBytes += chunk.byteLength;
-            if (streamedBytes > maxInputBytes) throw new Error("Zdrojové video môže mať najviac 50 MB.");
+            if (streamedBytes > maxInputBytes) throw new Error("Zdrojové video môže mať najviac 90 MB.");
             if (prefix.length < 12) {
               const take = Math.min(12 - prefix.length, chunk.byteLength);
               const next = new Uint8Array(prefix.length + take);
@@ -745,7 +745,7 @@ export default {
             "SELECT id, r2_key, content_type, byte_size, duration_seconds FROM generation_input_videos WHERE id = ? AND user_id = ? AND generation_id IS NULL AND expires_at > ? LIMIT 1"
           ).bind(inputVideoId, user.id, now).first();
           if (!inputVideo) return json({ error: "Zdrojové video sa nenašlo, už bolo použité alebo vypršala jeho platnosť. Nahraj ho znova." }, 404, origin);
-          if (Number(inputVideo.duration_seconds) < 2 || Number(inputVideo.duration_seconds) > 15 || Number(inputVideo.byte_size) < 12 || Number(inputVideo.byte_size) > 50 * 1024 * 1024) return json({ error: "Zdrojové video nespĺňa bezpečnostné limity." }, 400, origin);
+          if (Number(inputVideo.duration_seconds) < 2 || Number(inputVideo.duration_seconds) > 15 || Number(inputVideo.byte_size) < 12 || Number(inputVideo.byte_size) > MAX_SOURCE_VIDEO_BYTES) return json({ error: "Zdrojové video nespĺňa bezpečnostné limity." }, 400, origin);
           providerInputToken = randomToken(32);
         }
         const generationId = crypto.randomUUID();
