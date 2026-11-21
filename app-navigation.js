@@ -235,9 +235,8 @@
     }
     #appBottomNav button.active { background:#29251c !important;color:#e2c47e !important; }
     #appBottomNav button span { display:block !important;font-size:24px !important;line-height:1 !important;margin:0 !important; }
-/* Studio-only alignment: activate from the selected first nav button,
-   avoiding assumptions about the screen container's active class. */
-    #appBottomNav:has(> button:first-child.active) {
+/* Studio-only alignment toggled explicitly by navigation handler. */
+    #appBottomNav.studio-alignment {
       display:grid !important;
       grid-template-columns:repeat(3,minmax(0,1fr)) !important;
       align-items:stretch !important;
@@ -246,7 +245,7 @@
       box-sizing:border-box !important;
       width:100% !important;
     }
-    #appBottomNav:has(> button:first-child.active) > button {
+    #appBottomNav.studio-alignment > button {
       width:100% !important;
       min-width:0 !important;
       margin:0 !important;
@@ -289,13 +288,14 @@ header{position:relative;gap:10px}.psai-menu-trigger{flex:0 0 46px;width:46px!im
   const header=document.querySelector('header');
   if(header)header.after(views);else document.body.prepend(views);
 
-  const nav=document.createElement('nav');nav.id='appBottomNav';
+  const nav=document.createElement('nav');nav.id='appBottomNav';nav.classList.add('studio-alignment');
   nav.innerHTML='<button class="active" data-screen="screenStudio"><span>✦</span>Štúdio</button><button data-screen="screenProjects"><span>▣</span>Projekty</button><button data-screen="screenSettings"><span>⚙</span>Nastavenia</button>';
   nav.querySelectorAll('button').forEach(button=>{
     button.addEventListener('click',()=>{
       const target=button.dataset.screen;
       document.querySelectorAll('.app-screen').forEach(screen=>screen.classList.toggle('active',screen.id===target));
       nav.querySelectorAll('button').forEach(item=>item.classList.toggle('active',item===button));
+      nav.classList.toggle('studio-alignment',target==='screenStudio');
       if(target==='screenProjects'){
         renderProjects().catch(error=>{projectsList.textContent='Knižnicu projektov sa nepodarilo načítať: '+error.message;});
         renderProducts().catch(error=>{productsList.textContent='Knižnicu produktov sa nepodarilo načítať: '+error.message;});
