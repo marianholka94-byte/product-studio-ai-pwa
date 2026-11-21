@@ -6,8 +6,10 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Build;
 import android.graphics.Color;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
+import android.graphics.Paint;
+import android.graphics.Path;
+import android.graphics.Typeface;
 import android.view.Gravity;
 import android.view.Window;
 import android.view.View;
@@ -20,7 +22,7 @@ import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceError;
 import android.widget.TextView;
 import android.widget.FrameLayout;
-import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.os.Handler;
 import android.os.Looper;
 
@@ -115,31 +117,28 @@ public class MainActivity extends Activity {
             networkErrorView.setOnClickListener(v -> webView.reload());
             root.addView(networkErrorView, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
 
-            // A missing or unreadable optional splash image must never prevent the app from starting.
-            ImageView launchScreen = new ImageView(this);
+            // Native, resource-independent splash screen matching the original app appearance.
+            // It is drawn with Canvas so no external drawable can be missing at runtime.
+            LinearLayout launchScreen = new LinearLayout(this);
+            launchScreen.setOrientation(LinearLayout.VERTICAL);
+            launchScreen.setGravity(Gravity.CENTER);
             launchScreen.setBackgroundColor(Color.rgb(6, 20, 49));
-            launchScreen.setScaleType(ImageView.ScaleType.FIT_CENTER);
-            launchScreen.setPadding(24, 0, 24, 0);
-            try {
-                Bitmap artwork = BitmapFactory.decodeResource(getResources(), R.drawable.splash_brand_lockup);
-                if (artwork != null) {
-                    // Use only the upper lockup: large geometric logo + PRODUCT STUDIO AI wordmark.
-                    // Crop the separator and the small app-icon badge from the supplied artwork.
-                    int left = Math.round(artwork.getWidth() * 0.137f);
-                    int top = Math.round(artwork.getHeight() * 0.176f);
-                    int width = Math.round(artwork.getWidth() * 0.729f);
-                    int height = Math.round(artwork.getHeight() * 0.400f);
-                    left = Math.max(0, Math.min(left, artwork.getWidth() - 1));
-                    top = Math.max(0, Math.min(top, artwork.getHeight() - 1));
-                    width = Math.max(1, Math.min(width, artwork.getWidth() - left));
-                    height = Math.max(1, Math.min(height, artwork.getHeight() - top));
-                    Bitmap lockup = Bitmap.createBitmap(artwork, left, top, width, height);
-                    launchScreen.setImageBitmap(lockup);
-                    if (lockup != artwork) artwork.recycle();
-                }
-            } catch (Throwable ignored) {
-                // Keep the branded background; continue loading the application.
-            }
+            SplashLogoView logo = new SplashLogoView(this);
+            int logoSize = (int) (64 * getResources().getDisplayMetrics().density + 0.5f);
+            LinearLayout.LayoutParams logoParams = new LinearLayout.LayoutParams(logoSize, logoSize);
+            launchScreen.addView(logo, logoParams);
+            TextView brand = new TextView(this);
+            brand.setText("PRODUCT STUDIO AI");
+            brand.setTextColor(Color.rgb(225, 184, 91));
+            brand.setTextSize(24);
+            brand.setTypeface(Typeface.create("sans-serif", Typeface.BOLD));
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) brand.setLetterSpacing(0.045f);
+            brand.setGravity(Gravity.CENTER);
+            LinearLayout.LayoutParams brandParams = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+            brandParams.topMargin = (int) (18 * getResources().getDisplayMetrics().density + 0.5f);
+            brandParams.leftMargin = (int) (12 * getResources().getDisplayMetrics().density + 0.5f);
+            brandParams.rightMargin = brandParams.leftMargin;
+            launchScreen.addView(brand, brandParams);
             root.addView(launchScreen, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
             setContentView(root);
 
@@ -156,6 +155,37 @@ public class MainActivity extends Activity {
             message.setGravity(Gravity.CENTER);
             message.setPadding(32, 32, 32, 32);
             setContentView(message);
+        }
+    }
+
+    /** Small gold geometric mark used by the original PRODUCT STUDIO AI splash screen. */
+    private static final class SplashLogoView extends View {
+        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final int gold = Color.rgb(225, 184, 91);
+        SplashLogoView(Activity context) { super(context); setLayerType(View.LAYER_TYPE_SOFTWARE, null); }
+        @Override protected void onDraw(Canvas canvas) {
+            super.onDraw(canvas);
+            float sx = getWidth() / 100f, sy = getHeight() / 100f;
+            canvas.save(); canvas.scale(sx, sy);
+            paint.setColor(gold); paint.setStyle(Paint.Style.STROKE); paint.setStrokeWidth(2.8f); paint.setStrokeJoin(Paint.Join.MITER); paint.setStrokeCap(Paint.Cap.SQUARE);
+            canvas.drawRect(2, 2, 98, 98, paint);
+            paint.setStrokeWidth(5.5f);
+            Path frame = new Path();
+            frame.moveTo(17, 18); frame.lineTo(43, 18); frame.moveTo(57, 18); frame.lineTo(83, 18);
+            frame.moveTo(17, 18); frame.lineTo(17, 42); frame.moveTo(17, 58); frame.lineTo(17, 82);
+            frame.moveTo(83, 18); frame.lineTo(83, 42); frame.moveTo(83, 58); frame.lineTo(83, 82);
+            frame.moveTo(17, 82); frame.lineTo(43, 82); frame.moveTo(57, 82); frame.lineTo(83, 82);
+            canvas.drawPath(frame, paint);
+            paint.setStyle(Paint.Style.FILL);
+            Path cube = new Path();
+            cube.moveTo(50, 29); cube.lineTo(70, 42); cube.lineTo(50, 55); cube.lineTo(30, 42); cube.close();
+            canvas.drawPath(cube, paint);
+            Path leftFace = new Path(); leftFace.moveTo(30, 42); leftFace.lineTo(50, 55); leftFace.lineTo(50, 78); leftFace.lineTo(30, 65); leftFace.close();
+            canvas.drawPath(leftFace, paint);
+            paint.setStyle(Paint.Style.STROKE); paint.setStrokeWidth(2.5f);
+            Path seams = new Path(); seams.moveTo(30, 42); seams.lineTo(50, 55); seams.lineTo(70, 42); seams.moveTo(50, 55); seams.lineTo(50, 78);
+            canvas.drawPath(seams, paint);
+            canvas.restore();
         }
     }
 
