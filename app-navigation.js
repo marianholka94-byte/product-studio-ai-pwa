@@ -335,6 +335,20 @@ header{position:relative;gap:10px}.psai-menu-trigger{flex:0 0 46px;width:46px!im
     nav.style.setProperty('visibility','visible','important');
     nav.style.setProperty('opacity','1','important');
     nav.style.setProperty('display','grid','important');
+    const studioIsActive = nav.querySelector('button.active')?.dataset.screen === 'screenStudio';
+    nav.style.setProperty(
+      'padding',
+      studioIsActive
+        ? '8px 18.5% calc(8px + env(safe-area-inset-bottom, 0px))'
+        : '8px 12px calc(8px + env(safe-area-inset-bottom, 0px))',
+      'important'
+    );
+    nav.style.setProperty('box-sizing','border-box','important');
+    nav.querySelectorAll('button').forEach(button => {
+      button.style.setProperty('min-width','0','important');
+      button.style.setProperty('width','100%','important');
+      button.style.setProperty('margin','0','important');
+    });
   };
   keepBottomNavigationVisible();
   window.addEventListener('scroll',keepBottomNavigationVisible,{passive:true});
