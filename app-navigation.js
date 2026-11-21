@@ -251,24 +251,26 @@
     }
     #appBottomNav button.active { background:#29251c !important;color:#e2c47e !important; }
     #appBottomNav button span { display:block !important;font-size:24px !important;line-height:1 !important;margin:0 !important; }
-/* Center the app's three-tab navigation across the full WebView viewport.
-   Android's native system navigation buttons remain outside this bar and untouched. */
+/* Center a compact three-tab group like the original Studio layout.
+   Keep the background full width and leave Android system navigation untouched. */
     #appBottomNav {
       position:fixed !important;
-      left:50% !important;
-      right:auto !important;
-      width:100vw !important;
-      max-width:100vw !important;
+      left:0 !important;
+      right:0 !important;
+      width:100% !important;
+      max-width:100% !important;
       margin:0 !important;
-      transform:translateX(-50%) !important;
+      transform:none !important;
       box-sizing:border-box !important;
-      grid-template-columns:repeat(3,minmax(0,1fr)) !important;
+      grid-template-columns:repeat(3,minmax(0,min(140px,33.333vw))) !important;
+      justify-content:center !important;
       justify-items:stretch !important;
     }
     #appBottomNav > button {
       width:100% !important;
+      max-width:140px !important;
       min-width:0 !important;
-      justify-self:stretch !important;
+      justify-self:center !important;
       box-sizing:border-box !important;
     }
     /* Secondary drawer navigation; persistent bottom bar is preserved. */
