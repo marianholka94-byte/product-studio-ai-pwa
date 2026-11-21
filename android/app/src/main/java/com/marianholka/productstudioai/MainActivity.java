@@ -122,7 +122,21 @@ public class MainActivity extends Activity {
             launchScreen.setPadding(24, 0, 24, 0);
             try {
                 Bitmap artwork = BitmapFactory.decodeResource(getResources(), R.drawable.splash_brand_lockup);
-                if (artwork != null) launchScreen.setImageBitmap(artwork);
+                if (artwork != null) {
+                    // Use only the upper lockup: large geometric logo + PRODUCT STUDIO AI wordmark.
+                    // Crop the separator and the small app-icon badge from the supplied artwork.
+                    int left = Math.round(artwork.getWidth() * 0.137f);
+                    int top = Math.round(artwork.getHeight() * 0.176f);
+                    int width = Math.round(artwork.getWidth() * 0.729f);
+                    int height = Math.round(artwork.getHeight() * 0.400f);
+                    left = Math.max(0, Math.min(left, artwork.getWidth() - 1));
+                    top = Math.max(0, Math.min(top, artwork.getHeight() - 1));
+                    width = Math.max(1, Math.min(width, artwork.getWidth() - left));
+                    height = Math.max(1, Math.min(height, artwork.getHeight() - top));
+                    Bitmap lockup = Bitmap.createBitmap(artwork, left, top, width, height);
+                    launchScreen.setImageBitmap(lockup);
+                    if (lockup != artwork) artwork.recycle();
+                }
             } catch (Throwable ignored) {
                 // Keep the branded background; continue loading the application.
             }
