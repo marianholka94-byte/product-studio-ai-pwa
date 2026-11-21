@@ -6,6 +6,8 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Build;
 import android.graphics.Color;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.view.Gravity;
 import android.view.Window;
 import android.view.View;
@@ -31,11 +33,13 @@ public class MainActivity extends Activity {
     @Override public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         Window w = getWindow();
-        w.setStatusBarColor(Color.rgb(8, 8, 14));
-        w.setNavigationBarColor(Color.rgb(8, 8, 14));
+        w.setStatusBarColor(Color.rgb(6, 20, 49));
+        w.setNavigationBarColor(Color.rgb(6, 20, 49));
 
-        // The preview flavor is isolated by package name and never replaces the installed production app.
         try {
+            FrameLayout root = new FrameLayout(this);
+            root.setBackgroundColor(Color.rgb(11, 14, 19));
+
             webView = new WebView(this);
             webView.setBackgroundColor(Color.rgb(11, 14, 19));
             WebSettings settings = webView.getSettings();
@@ -48,9 +52,8 @@ public class MainActivity extends Activity {
             settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
             settings.setAllowFileAccess(false);
             settings.setLoadsImagesAutomatically(true);
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                settings.setSafeBrowsingEnabled(true);
-            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) settings.setSafeBrowsingEnabled(true);
+
             webView.setWebChromeClient(new WebChromeClient() {
                 @Override
                 public boolean onShowFileChooser(WebView view, ValueCallback<Uri[]> callback, FileChooserParams params) {
@@ -64,9 +67,7 @@ public class MainActivity extends Activity {
                         for (String requestedType : requestedTypes) {
                             if (requestedType == null) continue;
                             String mimeType = requestedType.trim();
-                            if (!mimeType.isEmpty() && mimeType.contains("/") && !mimeTypes.contains(mimeType)) {
-                                mimeTypes.add(mimeType);
-                            }
+                            if (!mimeType.isEmpty() && mimeType.contains("/") && !mimeTypes.contains(mimeType)) mimeTypes.add(mimeType);
                         }
                     }
                     if (mimeTypes.isEmpty()) mimeTypes.add("image/*");
@@ -83,36 +84,25 @@ public class MainActivity extends Activity {
                     }
                 }
             });
+
             webView.setWebViewClient(new WebViewClient() {
-                @Override
-                public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
+                @Override public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
                     if (networkErrorView != null) networkErrorView.setVisibility(View.GONE);
                 }
-                @Override
-                public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+                @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                     Uri uri = request.getUrl();
                     String scheme = uri.getScheme();
                     String host = uri.getHost();
-                    if ("https".equalsIgnoreCase(scheme) && BuildConfig.WEB_APP_HOST.equalsIgnoreCase(host)) {
-                        return false;
-                    }
-                    try {
-                        startActivity(new Intent(Intent.ACTION_VIEW, uri));
-                    } catch (Exception ignored) {
-                        // Unsupported external links are safely left unopened.
-                    }
+                    if ("https".equalsIgnoreCase(scheme) && BuildConfig.WEB_APP_HOST.equalsIgnoreCase(host)) return false;
+                    try { startActivity(new Intent(Intent.ACTION_VIEW, uri)); } catch (Exception ignored) {}
                     return true;
                 }
-                @Override
-                public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
+                @Override public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
                     super.onReceivedError(view, request, error);
-                    if (request.isForMainFrame() && networkErrorView != null) {
-                        networkErrorView.setVisibility(View.VISIBLE);
-                    }
+                    if (request.isForMainFrame() && networkErrorView != null) networkErrorView.setVisibility(View.VISIBLE);
                 }
             });
-            FrameLayout root = new FrameLayout(this);
-            root.setBackgroundColor(Color.rgb(11, 14, 19));
+
             root.addView(webView, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
             networkErrorView = new TextView(this);
             networkErrorView.setText("Nepodarilo sa načítať PRODUCT STUDIO AI\n\nSkontroluj internetové pripojenie a ťukni sem pre opakovanie.");
@@ -125,25 +115,28 @@ public class MainActivity extends Activity {
             networkErrorView.setOnClickListener(v -> webView.reload());
             root.addView(networkErrorView, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
 
-            // Restore the original branded startup artwork while the WebView loads.
+            // A missing or unreadable optional splash image must never prevent the app from starting.
             ImageView launchScreen = new ImageView(this);
-            launchScreen.setImageResource(R.drawable.splash_brand_lockup);
-            launchScreen.setScaleType(ImageView.ScaleType.FIT_CENTER);
             launchScreen.setBackgroundColor(Color.rgb(6, 20, 49));
+            launchScreen.setScaleType(ImageView.ScaleType.FIT_CENTER);
             launchScreen.setPadding(24, 0, 24, 0);
-            root.addView(launchScreen, new FrameLayout.LayoutParams(
-                    FrameLayout.LayoutParams.MATCH_PARENT,
-                    FrameLayout.LayoutParams.MATCH_PARENT));
+            try {
+                Bitmap artwork = BitmapFactory.decodeResource(getResources(), R.drawable.splash_brand_lockup);
+                if (artwork != null) launchScreen.setImageBitmap(artwork);
+            } catch (Throwable ignored) {
+                // Keep the branded background; continue loading the application.
+            }
+            root.addView(launchScreen, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
             setContentView(root);
+
             new Handler(Looper.getMainLooper()).postDelayed(() -> {
                 if (launchScreen.getParent() == root) root.removeView(launchScreen);
             }, 2200);
-            if (savedInstanceState == null || webView.restoreState(savedInstanceState) == null) {
-                webView.loadUrl(BuildConfig.WEB_APP_URL);
-            }
+
+            if (savedInstanceState == null || webView.restoreState(savedInstanceState) == null) webView.loadUrl(BuildConfig.WEB_APP_URL);
         } catch (Throwable error) {
             TextView message = new TextView(this);
-            message.setText("PRODUCT STUDIO AI sa nepodarilo spustiť.\n\n" + error.getClass().getSimpleName() + "\n\nSkontroluj aktualizáciu Android System WebView a skús aplikáciu znovu.");
+            message.setText("PRODUCT STUDIO AI sa nepodarilo spustiť.\n\n" + error.getClass().getSimpleName() + "\n\nSkontroluj internetové pripojenie a aktualizáciu Android System WebView.");
             message.setTextColor(Color.WHITE);
             message.setTextSize(16);
             message.setGravity(Gravity.CENTER);
@@ -156,16 +149,8 @@ public class MainActivity extends Activity {
         if (webView != null) webView.saveState(outState);
         super.onSaveInstanceState(outState);
     }
-
-    @Override protected void onResume() {
-        super.onResume();
-        if (webView != null) webView.onResume();
-    }
-
-    @Override protected void onPause() {
-        if (webView != null) webView.onPause();
-        super.onPause();
-    }
+    @Override protected void onResume() { super.onResume(); if (webView != null) webView.onResume(); }
+    @Override protected void onPause() { if (webView != null) webView.onPause(); super.onPause(); }
 
     @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
@@ -176,25 +161,15 @@ public class MainActivity extends Activity {
                     int count = data.getClipData().getItemCount();
                     results = new Uri[count];
                     for (int i = 0; i < count; i++) results[i] = data.getClipData().getItemAt(i).getUri();
-                } else if (data.getData() != null) {
-                    results = new Uri[]{data.getData()};
-                }
+                } else if (data.getData() != null) results = new Uri[]{data.getData()};
             }
             fileChooserCallback.onReceiveValue(results);
             fileChooserCallback = null;
         }
     }
-
-    @Override public void onBackPressed() {
-        if (webView != null && webView.canGoBack()) webView.goBack();
-        else super.onBackPressed();
-    }
-
+    @Override public void onBackPressed() { if (webView != null && webView.canGoBack()) webView.goBack(); else super.onBackPressed(); }
     @Override protected void onDestroy() {
-        if (fileChooserCallback != null) {
-            fileChooserCallback.onReceiveValue(null);
-            fileChooserCallback = null;
-        }
+        if (fileChooserCallback != null) { fileChooserCallback.onReceiveValue(null); fileChooserCallback = null; }
         if (webView != null) { webView.destroy(); webView = null; }
         super.onDestroy();
     }
