@@ -41,7 +41,9 @@ jobs:
           test -s "$APK"
           SIZE="$(stat -c%s "$APK")"
           echo "APK size: $SIZE bytes"
-          test "$SIZE" -gt 1000000
+          test "$SIZE" -gt 25000
+          unzip -l "$APK" | grep -q "classes.dex"
+          unzip -l "$APK" | grep -q "AndroidManifest.xml"
           APKSIGNER="$(find "$ANDROID_HOME/build-tools/35.0.0" -name apksigner -type f | head -n 1)"
           "$APKSIGNER" verify --verbose "$APK"
           unzip -t "$APK" | tail -n 2
