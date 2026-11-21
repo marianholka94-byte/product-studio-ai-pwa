@@ -32,6 +32,10 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.13"
+      - name: Verify native splash implementation
+        run: |
+          grep -q "SplashLogoView" android/app/src/main/java/com/marianholka/productstudioai/MainActivity.java
+          ! grep -q "splash_brand_lockup" android/app/src/main/java/com/marianholka/productstudioai/MainActivity.java
       - name: Build production APK
         working-directory: android
         run: gradle --no-daemon :app:assembleProductionDebug
