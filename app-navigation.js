@@ -256,7 +256,27 @@
     }
     #appBottomNav button.active { background:#29251c !important;color:#e2c47e !important; }
     #appBottomNav button span { display:block !important;font-size:24px !important;line-height:1 !important;margin:0 !important; }
-/* Secondary drawer navigation; persistent bottom bar is preserved. */
+/* Center the app's three-tab navigation across the full WebView viewport.
+   Android's native system navigation buttons remain outside this bar and untouched. */
+    #appBottomNav {
+      position:fixed !important;
+      left:50% !important;
+      right:auto !important;
+      width:100vw !important;
+      max-width:100vw !important;
+      margin:0 !important;
+      transform:translateX(-50%) !important;
+      box-sizing:border-box !important;
+      grid-template-columns:repeat(3,minmax(0,1fr)) !important;
+      justify-items:stretch !important;
+    }
+    #appBottomNav > button {
+      width:100% !important;
+      min-width:0 !important;
+      justify-self:stretch !important;
+      box-sizing:border-box !important;
+    }
+    /* Secondary drawer navigation; persistent bottom bar is preserved. */
 header{position:relative;gap:10px}.psai-menu-trigger{flex:0 0 46px;width:46px!important;height:46px!important;min-height:46px!important;margin:0!important;padding:0!important;border:1px solid #354253!important;border-radius:14px!important;background:#151a22!important;color:#f3f5f8!important;display:grid!important;place-items:center!important;font-size:23px!important}.psai-header-brand{flex:1;min-width:0}
 .psai-drawer-backdrop{position:fixed;inset:0;z-index:10020;background:rgba(0,0,0,.62);opacity:0;visibility:hidden;transition:opacity .2s ease,visibility .2s ease}.psai-drawer-backdrop.open{opacity:1;visibility:visible}
 .psai-side-drawer{position:absolute;inset:0 auto 0 0;width:min(86vw,340px);padding:calc(18px + env(safe-area-inset-top,0px)) 16px calc(18px + env(safe-area-inset-bottom,0px));background:#151b24;border-right:1px solid #354253;box-shadow:16px 0 40px rgba(0,0,0,.35);transform:translateX(-102%);transition:transform .22s ease;overflow-y:auto}.psai-drawer-backdrop.open .psai-side-drawer{transform:translateX(0)}
